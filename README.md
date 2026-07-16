@@ -25,7 +25,7 @@ This app mainly fixes the VoWiFi UI problems on the China ROM: the missing Setti
 
 ## Installation
 
-Download the APK and install it directly on the phone.
+Download the APK from [GitHub Releases](https://github.com/XPRAMT/Redmagic-VoWiFi/releases) and install it directly on the phone.
 
 After installing:
 

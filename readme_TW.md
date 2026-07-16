@@ -25,7 +25,7 @@
 
 ## 安裝
 
-下載 APK 後直接在手機上安裝即可。
+從 [GitHub Releases](https://github.com/XPRAMT/Redmagic-VoWiFi/releases) 下載 APK 後，直接在手機上安裝即可。
 
 安裝後：
 
