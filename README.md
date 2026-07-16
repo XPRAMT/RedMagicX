@@ -1,125 +1,127 @@
 # RedMagic VoWiFi
 
-目標裝置：RedMagic / Nubia NX809J 中國版 ROM。
+Language: English | [繁體中文](readme_TW.md)
 
-本 App 只支援兩種模式：
+Target device: RedMagic / Nubia NX809J China ROM.
 
-- `Root 全域模式`：不 hook App，直接透過 `resetprop` 寫入全域屬性。
-- `Root + LSPosed 模式`：只 hook `com.android.settings` 與 `com.android.systemui`，避免持久修改全域屬性。
+This app supports two modes only:
 
-仍需要 Pixel IMS 或等效 carrier-config 修改，讓電信商 WFC/VoWiFi 能力本身啟用。
+- `Root Global Mode`: does not hook apps. Writes global properties with `resetprop`.
+- `Root + LSPosed Mode`: hooks only `com.android.settings` and `com.android.systemui` to avoid persistent global property changes.
 
-## 能力邊界
+Pixel IMS or equivalent carrier-config changes are still required to enable carrier WFC/VoWiFi capability.
 
-| 功能 / 開關 | Root 全域模式 | Root + LSPosed 模式 |
+## Capability Boundary
+
+| Feature / switch | Root Global Mode | Root + LSPosed Mode |
 |---|---|---|
-| `開啟 VoWiFi 設定` | 支援。透過 `resetprop` 寫入 `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true/false`。 | 支援。Hook `com.android.settings`，讓 `ro.vendor.feature.zte_feature_need_wfc_for_domestic` 讀值跟隨開關。 |
-| `開啟狀態列 VoWiFi 圖標` | 支援。透過 `resetprop` 寫入 `ro.vendor.mifavor.custom=abroad/home` 與 `ro.mifavor.custom=abroad/home`。 | 支援。Hook `com.android.systemui`，讓 SystemUI 在開啟時走 `abroad` IMS icon 分支。 |
-| `VoWiFi 圖標樣式 = GEN_BD` | 支援。透過 `resetprop` 寫入或刪除 `persist.custom.variant.id=GEN_BD`。切換後重啟 SystemUI 生效。 | 支援。Hook `com.android.systemui`，讓它讀到 `persist.custom.variant.id=GEN_BD`。切換後重啟 SystemUI 生效。 |
-| `VoWiFi 圖標樣式 = Hook array` | 不支援。Root 全域模式不 hook SystemUI，且此選項會避免寫入 `persist.custom.variant.id=GEN_BD`，防止非預期全域 variant 行為。 | 支援。Hook `com.android.systemui`，把 IMS icon array 回傳結果替換成 BD array。目前 ROM 已實測雙卡可用，但依賴目前 ROM 方法名。 |
+| `Enable VoWiFi settings` | Supported. Writes `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true/false` with `resetprop`. | Supported. Hooks `com.android.settings` so reads of `ro.vendor.feature.zte_feature_need_wfc_for_domestic` follow the switch. |
+| `Enable status bar VoWiFi icon` | Supported. Writes `ro.vendor.mifavor.custom=abroad/home` and `ro.mifavor.custom=abroad/home` with `resetprop`. | Supported. Hooks `com.android.systemui` so SystemUI enters the `abroad` IMS icon branch when enabled. |
+| `VoWiFi icon style = GEN_BD` | Supported. Writes or deletes `persist.custom.variant.id=GEN_BD` with `resetprop`. Restart SystemUI after changing this style. | Supported. Hooks `com.android.systemui` so it reads `persist.custom.variant.id=GEN_BD`. Restart SystemUI after changing this style. |
+| `VoWiFi icon style = Hook array` | Not supported. Root Global Mode does not hook SystemUI, and this option intentionally avoids writing `persist.custom.variant.id=GEN_BD` to prevent unexpected global variant behavior. | Supported. Hooks `com.android.systemui` and replaces the IMS icon array result with the BD array. Tested working with dual SIM on the current ROM, but depends on the current ROM method name. |
 
-## 安裝
+## Installation
 
-下載 APK 後直接在手機上安裝即可。
+Download the APK and install it directly on the phone.
 
-安裝後：
+After installing:
 
-1. 在 LSPosed 內啟用本模組。
-2. 勾選作用域：
+1. Enable this module in LSPosed.
+2. Select the scopes:
    - `com.android.settings`
    - `com.android.systemui`
-3. 打開 App 選擇需要的模式與開關。
-4. 按 `重啟 Settings + SystemUI` 讓目標進程重新讀取設定。
+3. Open the app and choose the required mode and switches.
+4. Press `Restart Settings + SystemUI` so the target processes reload the settings.
 
-## 編譯
+## Build
 
 ```powershell
 & 'C:\Users\XPRAMT\.gradle\wrapper\dists\gradle-8.13-bin\5xuhj0ry160q40clulazy9h7d\gradle-8.13\bin\gradle.bat' -p 'D:\Android\ZTE\VoWiFI\lsposed-redmagic-vowifi' assembleDebug
 ```
 
-APK 輸出位置：
+APK output:
 
 ```text
 app\build\outputs\apk\debug\app-debug.apk
 ```
 
-## Root 全域模式
+## Root Global Mode
 
-適合不使用 LSPosed hook、只想直接改全域屬性的情境。
+Use this mode when you do not want LSPosed hooks and only want to change global properties directly.
 
-開關變更後，App 會立即透過 root 執行 `resetprop` 同步目前狀態。這不會自動重啟 Settings/SystemUI；變更後請使用 App 內的重啟按鈕。
+When a switch changes, the app immediately runs `resetprop` through root and synchronizes the current state. This does not restart Settings/SystemUI automatically; use the in-app restart buttons after changing values.
 
-App 內的 `Root 全域實際值` 會顯示目前 `getprop` 讀到的全域屬性，並在開關變更後自動更新。
+The in-app `Root Global Actual Values` section shows the current global properties from `getprop` and updates automatically after switch changes.
 
-開關對應：
+Switch mapping:
 
-- `開啟 VoWiFi 設定`
-  - 開：`ro.vendor.feature.zte_feature_need_wfc_for_domestic=true`
-  - 關：`ro.vendor.feature.zte_feature_need_wfc_for_domestic=false`
-- `開啟狀態列 VoWiFi 圖標`
-  - 開：`ro.vendor.mifavor.custom=abroad`、`ro.mifavor.custom=abroad`
-  - 關：`ro.vendor.mifavor.custom=home`、`ro.mifavor.custom=home`
-- `VoWiFi 圖標樣式 = GEN_BD`
-  - 開：`persist.custom.variant.id=GEN_BD`
-  - 預設 / 關：刪除 `persist.custom.variant.id`
-  - 切換圖標樣式後重啟 SystemUI 生效。
-- `VoWiFi 圖標樣式 = Hook array`
-  - Root 全域模式不生效。
-  - 會刪除或保持 `persist.custom.variant.id` 為空，避免非預期全域 variant 行為。
+- `Enable VoWiFi settings`
+  - On: `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true`
+  - Off: `ro.vendor.feature.zte_feature_need_wfc_for_domestic=false`
+- `Enable status bar VoWiFi icon`
+  - On: `ro.vendor.mifavor.custom=abroad`, `ro.mifavor.custom=abroad`
+  - Off: `ro.vendor.mifavor.custom=home`, `ro.mifavor.custom=home`
+- `VoWiFi icon style = GEN_BD`
+  - On: `persist.custom.variant.id=GEN_BD`
+  - Default / off: delete `persist.custom.variant.id`
+  - Restart SystemUI after changing the icon style.
+- `VoWiFi icon style = Hook array`
+  - No-op in Root Global Mode.
+  - Deletes or keeps `persist.custom.variant.id` empty to avoid unexpected global variant behavior.
 
-注意：
+Notes:
 
-- 此模式會修改全域進程可見屬性，直到重置、重啟或其他持久化工具再次改寫。
-- `ro.vendor.mifavor.custom=abroad` 與 `persist.custom.variant.id=GEN_BD` 可能影響 VoWiFi 圖標以外的功能。
+- This mode changes global process-visible properties until they are reset, rebooted, or changed again by persistence tooling.
+- `ro.vendor.mifavor.custom=abroad` and `persist.custom.variant.id=GEN_BD` may affect more than VoWiFi icons.
 
-## Root + LSPosed 模式
+## Root + LSPosed Mode
 
-適合已安裝 LSPosed，且希望降低全域副作用的情境。
+Use this mode when LSPosed is available and you want reduced global side effects.
 
-App 使用 LSPosed 新版 `XSharedPreferences` 流程保存 hook 設定。模組宣告：
+The app stores hook settings with LSPosed's new `XSharedPreferences` flow. The module declares:
 
 ```text
 xposedminversion=93
 xposedsharedprefs=true
 ```
 
-App 端使用 `MODE_WORLD_READABLE` 建立偏好設定檔，hook 端透過 `XSharedPreferences` 讀取。
+The app creates the preference file with `MODE_WORLD_READABLE`, and the hook side reads it through `XSharedPreferences`.
 
-LSPosed 作用域：
+LSPosed scopes:
 
 - `com.android.settings`
 - `com.android.systemui`
-- 如果 LSPosed 需要模組載入 Android/System Framework，再依 LSPosed 提示勾選。
+- If LSPosed requires Android/System Framework for the module to load, select it as prompted by LSPosed.
 
-開關對應：
+Switch mapping:
 
-- `開啟 VoWiFi 設定`
-  - Hook 目標：`com.android.settings`
-  - 偽造值：`ro.vendor.feature.zte_feature_need_wfc_for_domestic=true`
-  - Hook class candidate：`com.zte.settings.utils.SystemPropertiesZTE`
-- `開啟狀態列 VoWiFi 圖標`
-  - Hook 目標：`com.android.systemui`
-  - 偽造值：`ro.vendor.mifavor.custom=abroad`、`ro.mifavor.custom=abroad`
-  - 效果：讓 SystemUI abroad 分支把 WFC 狀態映射到 VoWiFi 圖標。
-- `VoWiFi 圖標樣式 = GEN_BD`
-  - Hook 目標：`com.android.systemui`
-  - 偽造值：`persist.custom.variant.id=GEN_BD`
-  - 效果：使用 BD 樣式 VoWiFi icon 資源。
-  - 切換圖標樣式後重啟 SystemUI 生效。
-- `VoWiFi 圖標樣式 = Hook array`
-  - Hook 目標：`com.android.systemui`
-  - 不修改全域屬性。
-  - 將 `ImsUpdateFeature#getSingleCardImsIconArrayResId()` 替換為 `bd_single_card_volte_vowifi_icons_array`。
-  - 目前 ROM 已實測雙卡可用，但依賴目前 ROM 方法名。
+- `Enable VoWiFi settings`
+  - Hook target: `com.android.settings`
+  - Faked value: `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true`
+  - Hook class candidate: `com.zte.settings.utils.SystemPropertiesZTE`
+- `Enable status bar VoWiFi icon`
+  - Hook target: `com.android.systemui`
+  - Faked values: `ro.vendor.mifavor.custom=abroad`, `ro.mifavor.custom=abroad`
+  - Effect: makes the SystemUI abroad branch map WFC state to a VoWiFi icon.
+- `VoWiFi icon style = GEN_BD`
+  - Hook target: `com.android.systemui`
+  - Faked value: `persist.custom.variant.id=GEN_BD`
+  - Effect: uses BD-style VoWiFi icon resources.
+  - Restart SystemUI after changing the icon style.
+- `VoWiFi icon style = Hook array`
+  - Hook target: `com.android.systemui`
+  - Does not modify global properties.
+  - Replaces `ImsUpdateFeature#getSingleCardImsIconArrayResId()` with `bd_single_card_volte_vowifi_icons_array`.
+  - Tested working with dual SIM on the current ROM, but depends on the current ROM method name.
 
-`Root 全域實際值` 只對 Root 全域模式有意義。LSPosed 模式不修改全域屬性，因此 `getprop` 數值不能用來判斷 hook 是否生效。
+`Root Global Actual Values` is meaningful only in Root Global Mode. LSPosed Mode does not modify global properties, so `getprop` values do not indicate whether hooks are active.
 
-開關變更後，App 會立即保存 hook 設定。若 `XSharedPreferences` 無法讀取，hook 會 fail closed：
+After switches change, the app saves hook settings immediately. If `XSharedPreferences` cannot be read, hooks fail closed:
 
-- WFC Settings hook：關閉
-- SystemUI abroad hook：關閉
-- 圖標樣式覆寫：預設 / 關閉
+- WFC Settings hook: off
+- SystemUI abroad hook: off
+- icon style override: default / off
 
-## 主題
+## Theme
 
-App 使用 Android 非 light Material theme，亮色 / 暗色外觀跟隨系統設定。
+The app uses Android's non-light Material theme, so the light/dark appearance follows the system setting.

@@ -1,5 +1,7 @@
 # RedMagic VoWiFi
 
+語言：[English](README.md) | 繁體中文
+
 目標裝置：RedMagic / Nubia NX809J 中國版 ROM。
 
 本 App 只支援兩種模式：
