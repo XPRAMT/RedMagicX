@@ -1,13 +1,17 @@
 package dev.xpramt.redmagicvowifi;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
@@ -46,15 +50,22 @@ public class MainActivity extends Activity {
         }
     }
 
-    private ScrollView createContent() {
+    private LinearLayout createContent() {
+        LinearLayout screen = new LinearLayout(this);
+        screen.setOrientation(LinearLayout.VERTICAL);
+        screen.addView(appBar());
+
         ScrollView scrollView = new ScrollView(this);
+        scrollView.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+        ));
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(18), dp(20), dp(28));
+        root.setPadding(dp(20), dp(10), dp(20), dp(28));
         scrollView.addView(root);
 
-        TextView title = text("RedMagic VoWiFi", 22, true);
-        root.addView(title);
         root.addView(text("支援 Root 全域 resetprop 與 Root + LSPosed hook 兩種模式。", 14, false));
         root.addView(modeSection());
 
@@ -75,7 +86,63 @@ public class MainActivity extends Activity {
         root.addView(actualValuesSection());
         root.addView(actionSection());
         refreshActualValues();
-        return scrollView;
+        screen.addView(scrollView);
+        return screen;
+    }
+
+    private LinearLayout appBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(20), dp(10), dp(8), dp(10));
+        bar.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        TextView title = text("RedMagic VoWiFi", 20, true);
+        title.setLayoutParams(new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+        ));
+        bar.addView(title);
+
+        Button menu = new Button(this);
+        menu.setText("⋮");
+        menu.setTextSize(24);
+        menu.setMinWidth(dp(48));
+        menu.setMinHeight(dp(48));
+        menu.setOnClickListener(view -> showOverflowMenu(menu));
+        bar.addView(menu);
+        return bar;
+    }
+
+    private void showOverflowMenu(Button anchor) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        popup.getMenu().add("關於");
+        popup.setOnMenuItemClickListener(item -> {
+            showAboutDialog();
+            return true;
+        });
+        popup.show();
+    }
+
+    private void showAboutDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("關於")
+                .setMessage("作者：XPRAMT\nGitHub：https://github.com/XPRAMT/Redmagic-VoWiFi\n版本：" + versionName())
+                .setPositiveButton("確定", null)
+                .show();
+    }
+
+    private String versionName() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return info.versionName;
+        } catch (PackageManager.NameNotFoundException exception) {
+            return "unknown";
+        }
     }
 
     private LinearLayout modeSection() {
