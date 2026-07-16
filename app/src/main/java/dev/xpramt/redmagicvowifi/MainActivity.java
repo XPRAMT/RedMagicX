@@ -33,12 +33,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
+    private static final int APP_BAR_COLOR = Color.rgb(23, 33, 44);
+
     private SharedPreferences prefs;
     private TextView actualValuesView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setStatusBarColor(APP_BAR_COLOR);
         prefs = Config.appPrefs(this);
         ensureDefaults();
         setContentView(createContent());
@@ -107,7 +110,7 @@ public class MainActivity extends Activity {
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setBackgroundColor(Color.rgb(0, 0, 32));
+        bar.setBackgroundColor(APP_BAR_COLOR);
         bar.setPadding(dp(20), dp(10), dp(8), dp(10));
         bar.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
