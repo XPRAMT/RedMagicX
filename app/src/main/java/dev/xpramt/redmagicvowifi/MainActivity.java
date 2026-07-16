@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
                     .putBoolean(Config.KEY_ENABLE_WFC_SETTINGS, true)
                     .putBoolean(Config.KEY_ENABLE_STATUS_ICON, true)
                     .putString(Config.KEY_ICON_STYLE, Config.STYLE_GEN_BD)
-                    .apply();
+                    .commit();
         }
     }
 
@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
         sw.setTextSize(18);
         sw.setChecked(prefs.getBoolean(key, true));
         sw.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(key, isChecked).apply();
+            prefs.edit().putBoolean(key, isChecked).commit();
             makePrefsReadable();
         });
         box.addView(sw);
@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
             group.check(checkedId);
         }
         group.setOnCheckedChangeListener((radioGroup, checked) -> {
-            prefs.edit().putString(Config.KEY_ICON_STYLE, idToStyle(checked)).apply();
+            prefs.edit().putString(Config.KEY_ICON_STYLE, idToStyle(checked)).commit();
             makePrefsReadable();
         });
         box.addView(group);
@@ -116,7 +116,7 @@ public class MainActivity extends Activity {
         Button restartSettings = new Button(this);
         restartSettings.setText("重啟 Settings");
         restartSettings.setOnClickListener(view -> runRootCommand(
-                "am force-stop com.android.settings",
+                prefsPermissionCommand() + "; am force-stop com.android.settings",
                 "已執行：am force-stop com.android.settings",
                 "重啟 Settings 失敗"
         ));
@@ -125,7 +125,7 @@ public class MainActivity extends Activity {
         Button restartSystemUi = new Button(this);
         restartSystemUi.setText("重啟 SystemUI");
         restartSystemUi.setOnClickListener(view -> runRootCommand(
-                "kill -9 $(pidof com.android.systemui)",
+                prefsPermissionCommand() + "; kill -9 $(pidof com.android.systemui)",
                 "已執行：kill -9 $(pidof com.android.systemui)",
                 "重啟 SystemUI 失敗"
         ));
@@ -134,11 +134,20 @@ public class MainActivity extends Activity {
         Button restartBoth = new Button(this);
         restartBoth.setText("重啟 Settings + SystemUI");
         restartBoth.setOnClickListener(view -> runRootCommand(
-                "am force-stop com.android.settings; kill -9 $(pidof com.android.systemui)",
+                prefsPermissionCommand() + "; am force-stop com.android.settings; kill -9 $(pidof com.android.systemui)",
                 "已重啟 Settings + SystemUI",
                 "重啟失敗"
         ));
         box.addView(restartBoth);
+
+        Button fixPrefs = new Button(this);
+        fixPrefs.setText("修正模組設定讀取權限");
+        fixPrefs.setOnClickListener(view -> runRootCommand(
+                prefsPermissionCommand(),
+                "已修正 shared_prefs 權限",
+                "修正權限失敗"
+        ));
+        box.addView(fixPrefs);
         return box;
     }
 
@@ -195,6 +204,26 @@ public class MainActivity extends Activity {
         dir.setExecutable(true, false);
         dir.setReadable(true, false);
         file.setReadable(true, false);
+        runRootCommandQuietly(prefsPermissionCommand());
+    }
+
+    private String prefsPermissionCommand() {
+        String pkg = getPackageName();
+        String file = Config.PREFS_NAME + ".xml";
+        return "chmod 755 /data/user/0/" + pkg + " /data/user/0/" + pkg + "/shared_prefs "
+                + "/data/data/" + pkg + " /data/data/" + pkg + "/shared_prefs 2>/dev/null; "
+                + "chmod 644 /data/user/0/" + pkg + "/shared_prefs/" + file + " "
+                + "/data/data/" + pkg + "/shared_prefs/" + file + " 2>/dev/null";
+    }
+
+    private void runRootCommandQuietly(String command) {
+        try {
+            Process process = new ProcessBuilder("su", "-c", command).redirectErrorStream(true).start();
+            process.waitFor();
+        } catch (IOException ignored) {
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void runRootCommand(String command, String successMessage, String errorMessage) {

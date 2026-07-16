@@ -41,3 +41,14 @@ For LSPosed, scope this module to:
 - Android System / System Framework if needed by LSPosed
 - `com.android.settings`
 - `com.android.systemui`
+
+## Preference Readability
+
+Hook processes read module switches through `XSharedPreferences`.
+If the preference file cannot be read, the hook now fails closed:
+
+- WFC Settings hook: off
+- SystemUI abroad hook: off
+- icon style override: default/off
+
+The app includes `修正模組設定讀取權限` and restart buttons. These run `su chmod` on the module's `shared_prefs` path before restarting Settings/SystemUI.

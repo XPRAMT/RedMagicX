@@ -29,9 +29,9 @@ final class Config {
         prefs.makeWorldReadable();
         prefs.reload();
         return new Snapshot(
-                prefs.getBoolean(KEY_ENABLE_WFC_SETTINGS, true),
-                prefs.getBoolean(KEY_ENABLE_STATUS_ICON, true),
-                prefs.getString(KEY_ICON_STYLE, STYLE_GEN_BD)
+                prefs.getBoolean(KEY_ENABLE_WFC_SETTINGS, false),
+                prefs.getBoolean(KEY_ENABLE_STATUS_ICON, false),
+                prefs.getString(KEY_ICON_STYLE, STYLE_DEFAULT)
         );
     }
 

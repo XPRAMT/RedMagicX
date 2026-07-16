@@ -159,3 +159,18 @@ After toggling Settings:
 ```sh
 am force-stop com.android.settings
 ```
+
+## Preference Readability
+
+The hook uses `XSharedPreferences`.
+If target processes cannot read the module preference XML, all hooks default to disabled.
+This avoids the unsafe behavior where missing preferences accidentally enable every hook.
+
+The app writes preferences with synchronous `commit()` and attempts to run:
+
+```sh
+chmod 755 /data/user/0/dev.xpramt.redmagicvowifi /data/user/0/dev.xpramt.redmagicvowifi/shared_prefs
+chmod 644 /data/user/0/dev.xpramt.redmagicvowifi/shared_prefs/module.xml
+```
+
+The same permission fix is prepended to the in-app restart buttons.
