@@ -57,7 +57,6 @@ public class MainActivity extends Activity {
         root.addView(title);
         root.addView(text("支援 Root 全域 resetprop 與 Root + LSPosed hook 兩種模式。", 14, false));
         root.addView(modeSection());
-        root.addView(actualValuesSection());
 
         root.addView(sectionSwitch(
                 "開啟 VoWiFi 設定",
@@ -73,6 +72,7 @@ public class MainActivity extends Activity {
 
         root.addView(styleSection());
 
+        root.addView(actualValuesSection());
         root.addView(actionSection());
         refreshActualValues();
         return scrollView;
@@ -102,11 +102,6 @@ public class MainActivity extends Activity {
         box.addView(text("目前實際值", 18, true));
         actualValuesView = text("讀取中...", 13, false);
         box.addView(actualValuesView);
-
-        Button refresh = new Button(this);
-        refresh.setText("刷新實際值");
-        refresh.setOnClickListener(view -> refreshActualValues());
-        box.addView(refresh);
         return box;
     }
 

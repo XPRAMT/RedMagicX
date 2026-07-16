@@ -48,7 +48,7 @@ Then tap install on the phone.
 Use this mode when you do not want LSPosed hooks.
 Changing a switch immediately runs `resetprop` through root and synchronizes the current switch state.
 It does not restart Settings/SystemUI. Use the restart buttons after changing values.
-The app also shows the current system property values in `目前實際值`.
+The app also shows the current system property values in `目前實際值` and updates them automatically after switch changes.
 
 Switch mapping:
 
