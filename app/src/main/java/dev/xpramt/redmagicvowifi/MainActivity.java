@@ -45,10 +45,10 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         getWindow().setStatusBarColor(APP_BAR_COLOR);
         getWindow().setNavigationBarColor(Color.BLACK);
-        setSystemBarIconColors(getWindow());
         prefs = Config.appPrefs(this);
         ensureDefaults();
         setContentView(createContent());
+        setSystemBarIconColors(getWindow());
         makePrefsReadable();
     }
 
@@ -141,7 +141,7 @@ public class MainActivity extends Activity {
     }
 
     private void setSystemBarIconColors(Window window) {
-        WindowInsetsController controller = window.getInsetsController();
+        WindowInsetsController controller = window.getDecorView().getWindowInsetsController();
         if (controller != null) {
             controller.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
             controller.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
