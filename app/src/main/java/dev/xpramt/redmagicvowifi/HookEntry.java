@@ -3,8 +3,6 @@ package dev.xpramt.redmagicvowifi;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 import static de.robv.android.xposed.XposedHelpers.findClassIfExists;
 
-import android.content.Context;
-
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -20,21 +18,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         if (!SETTINGS.equals(lpparam.packageName) && !SYSTEM_UI.equals(lpparam.packageName)) {
             return;
         }
-        try {
-            findAndHookMethod("android.app.Application", lpparam.classLoader, "attach", Context.class, new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) {
-                    Context context = (Context) param.args[0];
-                    installHooks(lpparam, context);
-                }
-            });
-        } catch (Throwable throwable) {
-            log("Application.attach hook failed in " + lpparam.packageName + ": " + throwable);
-        }
-    }
-
-    private void installHooks(XC_LoadPackage.LoadPackageParam lpparam, Context context) {
-        Config.Snapshot config = Config.loadForHook(context);
+        Config.Snapshot config = Config.loadForHook();
         log("loaded in " + lpparam.packageName
                 + " mode=" + config.operationMode
                 + " wfc=" + config.enableWfcSettings

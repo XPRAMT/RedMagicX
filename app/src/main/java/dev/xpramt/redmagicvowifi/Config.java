@@ -2,12 +2,12 @@ package dev.xpramt.redmagicvowifi;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.provider.Settings;
+
+import de.robv.android.xposed.XSharedPreferences;
 
 final class Config {
     static final String PACKAGE_NAME = "dev.xpramt.redmagicvowifi";
     static final String PREFS_NAME = "module";
-    static final String GLOBAL_PREFIX = "redmagic_vowifi_";
 
     static final String KEY_ENABLE_WFC_SETTINGS = "enable_wfc_settings";
     static final String KEY_ENABLE_STATUS_ICON = "enable_status_icon";
@@ -25,21 +25,18 @@ final class Config {
     }
 
     static SharedPreferences appPrefs(Context context) {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_WORLD_READABLE);
     }
 
-    static Snapshot loadForHook(Context context) {
+    static Snapshot loadForHook() {
+        XSharedPreferences prefs = new XSharedPreferences(PACKAGE_NAME, PREFS_NAME);
+        prefs.reload();
         return new Snapshot(
-                getGlobal(context, KEY_OPERATION_MODE, MODE_LSPOSED),
-                Boolean.parseBoolean(getGlobal(context, KEY_ENABLE_WFC_SETTINGS, "false")),
-                Boolean.parseBoolean(getGlobal(context, KEY_ENABLE_STATUS_ICON, "false")),
-                getGlobal(context, KEY_ICON_STYLE, STYLE_DEFAULT)
+                prefs.getString(KEY_OPERATION_MODE, MODE_LSPOSED),
+                prefs.getBoolean(KEY_ENABLE_WFC_SETTINGS, false),
+                prefs.getBoolean(KEY_ENABLE_STATUS_ICON, false),
+                prefs.getString(KEY_ICON_STYLE, STYLE_DEFAULT)
         );
-    }
-
-    private static String getGlobal(Context context, String key, String fallback) {
-        String value = Settings.Global.getString(context.getContentResolver(), GLOBAL_PREFIX + key);
-        return value == null ? fallback : value;
     }
 
     static final class Snapshot {

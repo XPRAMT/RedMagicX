@@ -2,7 +2,7 @@
 
 Target device: RedMagic / Nubia NX809J China ROM.
 
-This app supports two root-based operation modes:
+This app supports two operation modes:
 
 - `Root 全域模式`: do not hook apps. Write global properties with `resetprop`.
 - `Root + LSPosed 模式`: hook only `com.android.settings` and `com.android.systemui`; avoid persistent global property changes.
@@ -82,8 +82,8 @@ Notes:
 ## Mode 2: Root + LSPosed Mode
 
 Use this mode when LSPosed is available and you want reduced global side effects.
-The app writes hook settings to Android `Settings.Global` keys through root.
-Hooked Settings/SystemUI processes read those values after `Application.attach()`, avoiding `XSharedPreferences` and filesystem SELinux access failures.
+The app stores hook settings with LSPosed's new `XSharedPreferences` flow.
+The module declares `xposedminversion=93` and `xposedsharedprefs=true`, and the app creates the preference file with `MODE_WORLD_READABLE`.
 
 LSPosed scope:
 
@@ -117,8 +117,8 @@ After changing switches, press:
 重啟 Settings + SystemUI
 ```
 
-The app synchronizes the hook settings when saving switches and before restart actions.
-If the settings cannot be read, hooks fail closed:
+The app saves hook settings immediately when switches change.
+If `XSharedPreferences` cannot be read, hooks fail closed:
 
 - WFC Settings hook: off
 - SystemUI abroad hook: off
