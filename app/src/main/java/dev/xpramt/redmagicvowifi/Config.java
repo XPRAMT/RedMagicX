@@ -19,7 +19,8 @@ final class Config {
     static final String STYLE_ARRAY_HOOK = "array_hook";
 
     static final String MODE_LSPOSED = "lsposed";
-    static final String MODE_GLOBAL = "global";
+    static final String MODE_ROOT_GLOBAL = "root_global";
+    static final String MODE_ADB_SHIZUKU = "adb_shizuku";
 
     private Config() {
     }

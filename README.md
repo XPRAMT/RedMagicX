@@ -2,12 +2,27 @@
 
 Target device: RedMagic / Nubia NX809J China ROM.
 
-This app supports two operation modes:
+This app supports three operation modes:
 
-- `ADB/root 全域模式`: do not hook apps. Write global properties with `resetprop`.
+- `ADB/Shizuku 限制模式`: no root and no hook. Useful for Pixel IMS/carrier-config work and simple process control only.
+- `Root 全域模式`: do not hook apps. Write global properties with `resetprop`.
 - `Root + LSPosed 模式`: hook only `com.android.settings` and `com.android.systemui`; avoid persistent global property changes.
 
 Pixel IMS or equivalent carrier-config changes are still required for carrier WFC support.
+
+## Capability Boundary
+
+| Feature / switch | ADB/Shizuku, no root | Root global mode | Root + LSPosed mode |
+|---|---|---|---|
+| `開啟 VoWiFi 設定` | Partial only. Can use Pixel IMS/Shizuku to set carrier WFC config, but cannot bypass ZTE Settings domestic gate because it requires `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true` or Settings hook. | Supported. Writes `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true` with `resetprop`. | Supported. Hooks `com.android.settings` so reads of `ro.vendor.feature.zte_feature_need_wfc_for_domestic` return `true`. |
+| `開啟狀態列 VoWiFi 圖標` | Not supported. Cannot change `ro.vendor.mifavor.custom` and cannot hook SystemUI. | Supported. Writes `ro.vendor.mifavor.custom=abroad` and `ro.mifavor.custom=abroad` with `resetprop`. | Supported. Hooks `com.android.systemui` so SystemUI behaves as `abroad`. |
+| `VoWiFi 圖標樣式 = GEN_BD` | Not supported. Cannot change `persist.custom.variant.id` and cannot hook SystemUI icon arrays. | Supported. Writes `persist.custom.variant.id=GEN_BD` with `resetprop`. | Supported. Hooks `com.android.systemui` so it reads `persist.custom.variant.id=GEN_BD`, or uses the array-hook fallback. |
+| Restart Settings/SystemUI | Settings restart may be possible. SystemUI restart usually requires shell/root and depends on ROM permissions. | Supported through `su`. | Supported through `su`; LSPosed hook reload still needs process restart. |
+
+Summary:
+
+- No-root users can usually enable carrier WFC capability with Pixel IMS/Shizuku, but this ROM still hides Settings and SystemUI behavior behind ZTE project properties.
+- The three core switches require root property changes or LSPosed hooks.
 
 ## Build
 
@@ -33,10 +48,29 @@ If that happens, push the APK and open the system installer:
 
 Then tap install on the phone.
 
-## Mode 1: ADB/root Global Mode
+## Mode 1: ADB/Shizuku Limited Mode
+
+Use this mode for non-root users.
+It does not apply the three core switches because ADB/Shizuku cannot change `ro.vendor.*`, `persist.custom.variant.id`, or hook Settings/SystemUI.
+
+Useful actions in this mode:
+
+- Use Pixel IMS or similar Shizuku-based tools to enable carrier WFC config.
+- Restart Settings if shell permission allows it.
+- Inspect current behavior.
+
+Not supported in this mode:
+
+- `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true`
+- `ro.vendor.mifavor.custom=abroad`
+- `ro.mifavor.custom=abroad`
+- `persist.custom.variant.id=GEN_BD`
+- SystemUI/Settings hooks
+
+## Mode 2: Root Global Mode
 
 Use this mode when you do not want LSPosed hooks.
-The app's `套用全域參數（ADB/root 模式）` button runs `resetprop` through root.
+The app's `套用全域參數（Root 全域模式）` button runs `resetprop` through root.
 
 Switch mapping:
 
@@ -51,7 +85,7 @@ Switch mapping:
   - Writes: `persist.custom.variant.id=GEN_BD`
   - Effect: SystemUI chooses BD-style VoWiFi resources such as `bd_stat_vowifi` and `bd_vowifi_card1/2/12`.
 
-Equivalent ADB commands:
+Equivalent ADB/root commands:
 
 ```sh
 su
@@ -80,7 +114,7 @@ Notes:
 - This mode changes global process-visible properties until reset/reboot/persistence tooling changes them again.
 - `ro.vendor.mifavor.custom=abroad` and `persist.custom.variant.id=GEN_BD` may affect more than VoWiFi icons.
 
-## Mode 2: Root + LSPosed Mode
+## Mode 3: Root + LSPosed Mode
 
 Use this mode when LSPosed is available and you want reduced global side effects.
 

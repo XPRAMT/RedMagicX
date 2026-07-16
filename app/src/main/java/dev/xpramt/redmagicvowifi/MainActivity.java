@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
 
         TextView title = text("RedMagic VoWiFi", 22, true);
         root.addView(title);
-        root.addView(text("修改只在 LSPosed 目標進程內生效，不直接永久寫入全域屬性。", 14, false));
+        root.addView(text("支援 ADB/Shizuku 能力邊界說明、Root 全域 resetprop、Root + LSPosed hook 三種使用情境。", 14, false));
         root.addView(modeSection());
 
         root.addView(sectionSwitch(
@@ -74,12 +74,13 @@ public class MainActivity extends Activity {
     private LinearLayout modeSection() {
         LinearLayout box = sectionBox();
         box.addView(text("操作模式", 18, true));
-        box.addView(text("ADB/root 全域模式：不使用 hook，直接把參數寫到系統屬性。Root + LSPosed 模式：不永久改全域屬性，只在 Settings/SystemUI 進程內偽造讀值。", 13, false));
+        box.addView(text("ADB/Shizuku 沒有 root，不能改 ro.vendor.* 或 hook SystemUI。Root 全域模式直接 resetprop。Root + LSPosed 模式只在目標進程內偽造讀值。", 13, false));
 
         RadioGroup group = new RadioGroup(this);
         group.setOrientation(RadioGroup.VERTICAL);
+        addModeRadio(group, Config.MODE_ADB_SHIZUKU, "ADB/Shizuku 限制模式：只能輔助重啟/Pixel IMS，不能套用三個核心開關");
+        addModeRadio(group, Config.MODE_ROOT_GLOBAL, "Root 全域模式：不 hook，直接套用 resetprop 全域參數");
         addModeRadio(group, Config.MODE_LSPOSED, "Root + LSPosed 模式：hook Settings/SystemUI，較少全域副作用");
-        addModeRadio(group, Config.MODE_GLOBAL, "ADB/root 全域模式：不 hook，直接套用 resetprop 全域參數");
         String current = prefs.getString(Config.KEY_OPERATION_MODE, Config.MODE_LSPOSED);
         group.check(modeToId(current));
         group.setOnCheckedChangeListener((radioGroup, checked) -> {
@@ -132,10 +133,10 @@ public class MainActivity extends Activity {
     private LinearLayout actionSection() {
         LinearLayout box = sectionBox();
         box.addView(text("套用 / 重啟", 18, true));
-        box.addView(text("改完開關後，需要重啟對應進程才會重新載入 LSPosed hook。以下按鈕會使用 root 執行命令。", 13, false));
+        box.addView(text("Root 按鈕會使用 su。ADB/Shizuku 模式不具備 resetprop/hook 能力，請用 Pixel IMS 類工具處理 carrier config。", 13, false));
 
         Button applyGlobal = new Button(this);
-        applyGlobal.setText("套用全域參數（ADB/root 模式）");
+        applyGlobal.setText("套用全域參數（Root 全域模式）");
         applyGlobal.setOnClickListener(view -> runRootCommand(
                 globalApplyCommand(),
                 "已套用全域參數",
@@ -144,7 +145,7 @@ public class MainActivity extends Activity {
         box.addView(applyGlobal);
 
         Button clearGlobal = new Button(this);
-        clearGlobal.setText("清除全域參數（ADB/root 模式）");
+        clearGlobal.setText("清除全域參數（Root 全域模式）");
         clearGlobal.setOnClickListener(view -> runRootCommand(
                 globalClearCommand(),
                 "已清除全域參數",
@@ -221,12 +222,14 @@ public class MainActivity extends Activity {
     }
 
     private int modeToId(String mode) {
-        if (Config.MODE_GLOBAL.equals(mode)) return 2002;
+        if (Config.MODE_ROOT_GLOBAL.equals(mode)) return 2002;
+        if (Config.MODE_ADB_SHIZUKU.equals(mode)) return 2003;
         return 2001;
     }
 
     private String idToMode(int id) {
-        if (id == 2002) return Config.MODE_GLOBAL;
+        if (id == 2002) return Config.MODE_ROOT_GLOBAL;
+        if (id == 2003) return Config.MODE_ADB_SHIZUKU;
         return Config.MODE_LSPOSED;
     }
 

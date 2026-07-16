@@ -10,7 +10,8 @@ Provide three independent LSPosed toggles for NX809J China ROM VoWiFi behavior:
 
 The app has two operation modes:
 
-- `ADB/root 全域模式`: no hook behavior. The app uses root `resetprop` to write global properties and restarts Settings/SystemUI.
+- `ADB/Shizuku 限制模式`: no hook behavior and no root property writes. This mode documents the no-root boundary and can only support auxiliary actions.
+- `Root 全域模式`: no hook behavior. The app uses root `resetprop` to write global properties and restarts Settings/SystemUI.
 - `Root + LSPosed 模式`: hook behavior is active. Properties are faked inside target processes only.
 
 `HookEntry` must return immediately unless `operation_mode=lsposed`.
