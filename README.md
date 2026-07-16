@@ -15,7 +15,7 @@ Pixel IMS or equivalent carrier-config changes are still required for carrier WF
 |---|---|---|---|
 | `開啟 VoWiFi 設定` | Partial only. Pixel IMS/Shizuku can set carrier WFC config, but cannot bypass ZTE Settings domestic gate. | Supported. Writes `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true/false` with `resetprop`. | Supported. Hooks `com.android.settings` so reads of `ro.vendor.feature.zte_feature_need_wfc_for_domestic` follow the switch. |
 | `開啟狀態列 VoWiFi 圖標` | Not supported. Shizuku cannot change `ro.vendor.mifavor.custom` or hook SystemUI. | Supported. Writes `ro.vendor.mifavor.custom=abroad/home` and `ro.mifavor.custom=abroad/home` with `resetprop`. | Supported. Hooks `com.android.systemui` so SystemUI behaves as `abroad` when enabled. |
-| `VoWiFi 圖標樣式 = GEN_BD` | Not supported. Shizuku cannot change `persist.custom.variant.id` or hook SystemUI icon arrays. | Supported. Writes or deletes `persist.custom.variant.id=GEN_BD` with `resetprop`. Reboot the phone after changing this style. | Supported. Hooks `com.android.systemui` so it reads `persist.custom.variant.id=GEN_BD`, or uses the array-hook fallback. Reboot the phone after changing this style. |
+| `VoWiFi 圖標樣式 = GEN_BD` | Not supported. Shizuku cannot change `persist.custom.variant.id` or hook SystemUI icon arrays. | Supported. Writes or deletes `persist.custom.variant.id=GEN_BD` with `resetprop`. Restart SystemUI after changing this style. | Supported. Hooks `com.android.systemui` so it reads `persist.custom.variant.id=GEN_BD`, or uses the array-hook fallback. Restart SystemUI after changing this style. |
 
 No-root users can usually enable carrier WFC capability with Pixel IMS/Shizuku, but this ROM still hides Settings and SystemUI behavior behind ZTE project properties. The three switches in this app require root property changes or LSPosed hooks.
 
@@ -60,7 +60,7 @@ Switch mapping:
 - `VoWiFi 圖標樣式 = GEN_BD`
   - On: `persist.custom.variant.id=GEN_BD`
   - Default/off: delete `persist.custom.variant.id`
-  - Changing icon style usually needs a full phone reboot. Restarting only SystemUI may not reload all icon resource selections.
+  - Changing icon style takes effect after restarting SystemUI.
 
 After applying, restart separately:
 
@@ -99,7 +99,7 @@ Switch mapping:
   - Hook target: `com.android.systemui`
   - Faked value: `persist.custom.variant.id=GEN_BD`
   - Effect: BD-style VoWiFi icon resources.
-  - Changing icon style usually needs a full phone reboot. Restarting only SystemUI may not reload all icon resource selections.
+  - Changing icon style takes effect after restarting SystemUI.
 
 After changing switches, press:
 

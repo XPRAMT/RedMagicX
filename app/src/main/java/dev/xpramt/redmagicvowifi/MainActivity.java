@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
     private LinearLayout styleSection() {
         LinearLayout box = sectionBox();
         box.addView(text("VoWiFi 圖標樣式", 18, true));
-        box.addView(text("作用進程：com.android.systemui\n等效參數：persist.custom.variant.id=GEN_BD\n用途：控制 SystemUI 選用哪一套 VoWiFi/VoLTE icon array。圖標樣式切換後通常需要重啟手機，單獨重啟 SystemUI 不一定會完整重新載入資源。", 13, false));
+        box.addView(text("作用進程：com.android.systemui\n等效參數：persist.custom.variant.id=GEN_BD\n用途：控制 SystemUI 選用哪一套 VoWiFi/VoLTE icon array。圖標樣式切換後重啟 SystemUI 即可生效。", 13, false));
 
         RadioGroup group = new RadioGroup(this);
         group.setOrientation(RadioGroup.VERTICAL);
