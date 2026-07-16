@@ -41,15 +41,25 @@ After installing:
 
 App settings:
 
-![App settings](img/app截圖.jpg)
+<img src="img/app截圖.jpg" alt="App settings" width="360">
 
 Grant root permission when using Root Global Mode or the restart buttons:
 
-![Grant root permission](img/授予root權限.jpg)
+<img src="img/授予root權限.jpg" alt="Grant root permission" width="360">
 
 Select the LSPosed scopes for Settings and SystemUI:
 
-![Select LSPosed scopes](img/選擇lsposed作用域.jpg)
+<img src="img/選擇lsposed作用域.jpg" alt="Select LSPosed scopes" width="360">
+
+VoWiFi icon style comparison:
+
+Default style uses `statusbar_vowifi.svg`:
+
+<img src="img/icons/statusbar_vowifi.svg" alt="Default statusbar_vowifi icon" width="220">
+
+After changing to the BD style, the icon uses `bd_stat_vowifi.svg`:
+
+<img src="img/icons/bd_stat_vowifi.svg" alt="BD bd_stat_vowifi icon" width="220">
 
 ## Build
 

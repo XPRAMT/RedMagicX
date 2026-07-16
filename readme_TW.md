@@ -41,15 +41,25 @@
 
 App 設定畫面：
 
-![App 設定畫面](img/app截圖.jpg)
+<img src="img/app截圖.jpg" alt="App 設定畫面" width="360">
 
 使用 Root 全域模式或重啟按鈕時，請授予 root 權限：
 
-![授予 root 權限](img/授予root權限.jpg)
+<img src="img/授予root權限.jpg" alt="授予 root 權限" width="360">
 
 在 LSPosed 內選擇 Settings 與 SystemUI 作用域：
 
-![選擇 LSPosed 作用域](img/選擇lsposed作用域.jpg)
+<img src="img/選擇lsposed作用域.jpg" alt="選擇 LSPosed 作用域" width="360">
+
+VoWiFi 圖標樣式對照：
+
+預設樣式使用 `statusbar_vowifi.svg`：
+
+<img src="img/icons/statusbar_vowifi.svg" alt="預設 statusbar_vowifi 圖標" width="220">
+
+改成 BD 樣式後使用 `bd_stat_vowifi.svg`：
+
+<img src="img/icons/bd_stat_vowifi.svg" alt="BD bd_stat_vowifi 圖標" width="220">
 
 ## 編譯
 
