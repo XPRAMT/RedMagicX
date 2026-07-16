@@ -19,6 +19,11 @@ public class HookEntry implements IXposedHookLoadPackage {
             return;
         }
         Config.Snapshot config = Config.loadForHook();
+        log("loaded in " + lpparam.packageName
+                + " mode=" + config.operationMode
+                + " wfc=" + config.enableWfcSettings
+                + " icon=" + config.enableStatusIcon
+                + " style=" + config.iconStyle);
         if (!Config.MODE_LSPOSED.equals(config.operationMode)) {
             return;
         }
@@ -43,16 +48,24 @@ public class HookEntry implements IXposedHookLoadPackage {
                 "ro.vendor.feature.zte_feature_need_wfc_for_domestic",
                 true
         );
+        hookAndroidBooleanProperty(
+                lpparam,
+                "ro.vendor.feature.zte_feature_need_wfc_for_domestic",
+                true
+        );
     }
 
     private void hookSystemUiAbroad(XC_LoadPackage.LoadPackageParam lpparam) {
         hookZteStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad");
         hookZteStringProperty(lpparam, "ro.mifavor.custom", "abroad");
+        hookAndroidStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad");
+        hookAndroidStringProperty(lpparam, "ro.mifavor.custom", "abroad");
         hookFlavorIsAbroad(lpparam);
     }
 
     private void hookSystemUiVariantGenBd(XC_LoadPackage.LoadPackageParam lpparam) {
         hookZteStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD");
+        hookAndroidStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD");
     }
 
     private void hookSystemUiBdArray(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -141,6 +154,35 @@ public class HookEntry implements IXposedHookLoadPackage {
             });
         } catch (Throwable throwable) {
             log("getBoolean hook failed for " + key + ": " + throwable);
+        }
+    }
+
+    private void hookAndroidStringProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, String value) {
+        Class<?> propertyClass = findClassIfExists("android.os.SystemProperties", lpparam.classLoader);
+        if (propertyClass == null) {
+            log("android.os.SystemProperties not found for " + key);
+            return;
+        }
+        hookStringGet(propertyClass, key, value);
+    }
+
+    private void hookAndroidBooleanProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, boolean value) {
+        Class<?> propertyClass = findClassIfExists("android.os.SystemProperties", lpparam.classLoader);
+        if (propertyClass == null) {
+            log("android.os.SystemProperties not found for " + key);
+            return;
+        }
+        try {
+            findAndHookMethod(propertyClass, "getBoolean", String.class, boolean.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (key.equals(param.args[0])) {
+                        param.setResult(value);
+                    }
+                }
+            });
+        } catch (Throwable throwable) {
+            log("android getBoolean hook failed for " + key + ": " + throwable);
         }
     }
 
