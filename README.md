@@ -3,6 +3,7 @@
 Language: English | [繁體中文](readme_TW.md)
 
 Target device: RedMagic / Nubia NX809J China ROM.
+This app has been tested on NX809J. Other RedMagic / Nubia models have not been tested, but they may work in theory if their ZTE Settings/SystemUI implementation uses the same properties and classes.
 
 This app supports two modes only:
 
