@@ -37,6 +37,20 @@ After installing:
 4. Open the app and choose the required mode and switches.
 5. Press `Restart Settings + SystemUI` so the target processes reload the settings.
 
+## Screenshots
+
+App settings:
+
+![App settings](img/app截圖.jpg)
+
+Grant root permission when using Root Global Mode or the restart buttons:
+
+![Grant root permission](img/授予root權限.jpg)
+
+Select the LSPosed scopes for Settings and SystemUI:
+
+![Select LSPosed scopes](img/選擇lsposed作用域.jpg)
+
 ## Build
 
 ```powershell

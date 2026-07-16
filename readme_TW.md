@@ -37,6 +37,20 @@
 4. 打開 App 選擇需要的模式與開關。
 5. 按 `重啟 Settings + SystemUI` 讓目標進程重新讀取設定。
 
+## 圖片說明
+
+App 設定畫面：
+
+![App 設定畫面](img/app截圖.jpg)
+
+使用 Root 全域模式或重啟按鈕時，請授予 root 權限：
+
+![授予 root 權限](img/授予root權限.jpg)
+
+在 LSPosed 內選擇 Settings 與 SystemUI 作用域：
+
+![選擇 LSPosed 作用域](img/選擇lsposed作用域.jpg)
+
 ## 編譯
 
 ```powershell
