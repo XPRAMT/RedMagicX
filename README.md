@@ -82,8 +82,8 @@ Notes:
 ## Mode 2: Root + LSPosed Mode
 
 Use this mode when LSPosed is available and you want reduced global side effects.
-The app writes hook settings to `/data/adb/redmagic-vowifi/config.properties` through root.
-Hooked Settings/SystemUI processes read this file directly, avoiding `XSharedPreferences` access failures caused by SELinux app-data restrictions.
+The app writes hook settings to Android `Settings.Global` keys through root.
+Hooked Settings/SystemUI processes read those values after `Application.attach()`, avoiding `XSharedPreferences` and filesystem SELinux access failures.
 
 LSPosed scope:
 
@@ -117,8 +117,8 @@ After changing switches, press:
 重啟 Settings + SystemUI
 ```
 
-The app synchronizes the hook config file when saving switches and before restart actions.
-If the config file cannot be read, hooks fail closed:
+The app synchronizes the hook settings when saving switches and before restart actions.
+If the settings cannot be read, hooks fail closed:
 
 - WFC Settings hook: off
 - SystemUI abroad hook: off

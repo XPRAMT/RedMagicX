@@ -2,16 +2,12 @@ package dev.xpramt.redmagicvowifi;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.Properties;
+import android.provider.Settings;
 
 final class Config {
     static final String PACKAGE_NAME = "dev.xpramt.redmagicvowifi";
     static final String PREFS_NAME = "module";
-    static final String HOOK_CONFIG_PATH = "/data/adb/redmagic-vowifi/config.properties";
+    static final String GLOBAL_PREFIX = "redmagic_vowifi_";
 
     static final String KEY_ENABLE_WFC_SETTINGS = "enable_wfc_settings";
     static final String KEY_ENABLE_STATUS_ICON = "enable_status_icon";
@@ -32,19 +28,18 @@ final class Config {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    static Snapshot loadForHook() {
-        Properties prefs = new Properties();
-        File file = new File(HOOK_CONFIG_PATH);
-        try (FileInputStream input = new FileInputStream(file)) {
-            prefs.load(input);
-        } catch (IOException ignored) {
-        }
+    static Snapshot loadForHook(Context context) {
         return new Snapshot(
-                prefs.getProperty(KEY_OPERATION_MODE, MODE_LSPOSED),
-                Boolean.parseBoolean(prefs.getProperty(KEY_ENABLE_WFC_SETTINGS, "false")),
-                Boolean.parseBoolean(prefs.getProperty(KEY_ENABLE_STATUS_ICON, "false")),
-                prefs.getProperty(KEY_ICON_STYLE, STYLE_DEFAULT)
+                getGlobal(context, KEY_OPERATION_MODE, MODE_LSPOSED),
+                Boolean.parseBoolean(getGlobal(context, KEY_ENABLE_WFC_SETTINGS, "false")),
+                Boolean.parseBoolean(getGlobal(context, KEY_ENABLE_STATUS_ICON, "false")),
+                getGlobal(context, KEY_ICON_STYLE, STYLE_DEFAULT)
         );
+    }
+
+    private static String getGlobal(Context context, String key, String fallback) {
+        String value = Settings.Global.getString(context.getContentResolver(), GLOBAL_PREFIX + key);
+        return value == null ? fallback : value;
     }
 
     static final class Snapshot {
