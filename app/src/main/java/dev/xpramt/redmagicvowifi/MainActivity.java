@@ -286,7 +286,6 @@ public class MainActivity extends Activity {
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(launcherSection());
-        contentRoot.addView(text("生效條件：更換預設啟動器需要 root 或 Shizuku 執行系統 cmd package set-home-activity。隱藏最近任務需要 LSPosed 勾選 com.zte.mifavor.launcher scope，重啟紅魔 Launcher 或手機後攔截手勢 current-task 卡片。", 13, false));
     }
 
     private LinearLayout featureButton(String title, String description, View.OnClickListener listener) {
@@ -402,7 +401,8 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "已寫入最近任務隱藏開關", Toast.LENGTH_LONG).show();
         });
         box.addView(enabled);
-        box.addView(text("更換 HOME：優先使用 root 執行系統 set-home-activity；無 root 時可透過 Shizuku 授權使用 shell 權限套用。\n隱藏最近任務：LSPosed Hook 紅魔 Launcher / RecentsView#onGestureAnimationStart，只在手勢模式 current task 是選定第三方 HOME 時阻止它被補成最近任務卡片。\n系統 FallbackHome 不會列為可選項；需要 fallback 時使用紅魔原廠 com.zte.mifavor.launcher。", 13, false));
+        box.addView(text("隱藏最近任務：需要 LSPosed 勾選 com.zte.mifavor.launcher scope。Hook 紅魔 Launcher 的 RecentsView#onGestureAnimationStart，只在手勢模式 current task 是選定第三方 HOME 時阻止它被補成最近任務卡片。變更後需重啟紅魔 Launcher 或手機。", 13, false));
+        box.addView(text("更換 HOME：優先使用 root 執行系統 set-home-activity；無 root 時可透過 Shizuku 授權使用 shell 權限套用。系統 FallbackHome 不會列為可選項；需要 fallback 時使用紅魔原廠 com.zte.mifavor.launcher。", 13, false));
 
         String component = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
         if (isSettingsFallbackHome(component)) {
