@@ -197,7 +197,7 @@ public class MainActivity extends Activity {
         ));
         contentRoot.addView(sectionSwitch(
                 "開啟狀態列 VoWiFi 圖標",
-                "作用進程：com.android.systemui\n等效參數：ro.vendor.mifavor.custom=abroad / ro.mifavor.custom=abroad\n用途：讓 SystemUI 走 abroad IMS icon 分支，不再只顯示 HD/HD+。",
+                "作用進程：com.android.systemui\nLSPosed 模式：只讓 IMS/訊號圖標相關呼叫讀到 ro.vendor.mifavor.custom=abroad / ro.mifavor.custom=abroad，避免小白條手勢等其它 SystemUI 分支被 abroad 影響。\nRoot 全域模式：仍會全域 resetprop，可能影響其它 abroad 分支。",
                 Config.KEY_ENABLE_STATUS_ICON
         ));
         contentRoot.addView(styleSection());

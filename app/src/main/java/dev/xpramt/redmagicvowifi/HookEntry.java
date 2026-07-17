@@ -310,16 +310,16 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
     private void hookSystemUiAbroad(XC_LoadPackage.LoadPackageParam lpparam) {
-        hookZteStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad");
-        hookZteStringProperty(lpparam, "ro.mifavor.custom", "abroad");
-        hookAndroidStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad");
-        hookAndroidStringProperty(lpparam, "ro.mifavor.custom", "abroad");
-        hookFlavorIsAbroad(lpparam);
+        hookZteStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad", true);
+        hookZteStringProperty(lpparam, "ro.mifavor.custom", "abroad", true);
+        hookAndroidStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad", true);
+        hookAndroidStringProperty(lpparam, "ro.mifavor.custom", "abroad", true);
+        hookFlavorIsAbroad(lpparam, true);
     }
 
     private void hookSystemUiVariantGenBd(XC_LoadPackage.LoadPackageParam lpparam) {
-        hookZteStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD");
-        hookAndroidStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD");
+        hookZteStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD", false);
+        hookAndroidStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD", false);
     }
 
     private void hookSystemUiBdArray(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -354,7 +354,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
     }
 
-    private void hookFlavorIsAbroad(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookFlavorIsAbroad(XC_LoadPackage.LoadPackageParam lpparam, boolean imsOnly) {
         String[] classNames = new String[]{
                 "com.zte.utils.FlavorUtils$Companion",
                 "com.zte.utils.FlavorUtils"
@@ -364,17 +364,19 @@ public class HookEntry implements IXposedHookLoadPackage {
             if (clazz == null) {
                 continue;
             }
-            hookNoArgBoolean(clazz, "isAbroad", true);
-            hookNoArgBoolean(clazz, "isAbroadProject", true);
+            hookNoArgBoolean(clazz, "isAbroad", true, imsOnly);
+            hookNoArgBoolean(clazz, "isAbroadProject", true, imsOnly);
         }
     }
 
-    private void hookNoArgBoolean(Class<?> clazz, String methodName, boolean result) {
+    private void hookNoArgBoolean(Class<?> clazz, String methodName, boolean result, boolean imsOnly) {
         try {
             XposedHelpers.findAndHookMethod(clazz, methodName, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    param.setResult(result);
+                    if (!imsOnly || isImsIconStack()) {
+                        param.setResult(result);
+                    }
                 }
             });
         } catch (Throwable ignored) {
@@ -382,13 +384,13 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
     }
 
-    private void hookZteStringProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, String value) {
+    private void hookZteStringProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, String value, boolean imsOnly) {
         Class<?> propertyClass = findZtePropertyClass(lpparam.classLoader);
         if (propertyClass == null) {
             log("SystemPropertiesZTE not found for " + key);
             return;
         }
-        hookStringGet(propertyClass, key, value);
+        hookStringGet(propertyClass, key, value, imsOnly);
     }
 
     private void hookZteBooleanProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, boolean value) {
@@ -411,13 +413,13 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
     }
 
-    private void hookAndroidStringProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, String value) {
+    private void hookAndroidStringProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, String value, boolean imsOnly) {
         Class<?> propertyClass = findClassIfExists("android.os.SystemProperties", lpparam.classLoader);
         if (propertyClass == null) {
             log("android.os.SystemProperties not found for " + key);
             return;
         }
-        hookStringGet(propertyClass, key, value);
+        hookStringGet(propertyClass, key, value, imsOnly);
     }
 
     private void hookAndroidBooleanProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, boolean value) {
@@ -440,12 +442,12 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
     }
 
-    private void hookStringGet(Class<?> propertyClass, String key, String value) {
+    private void hookStringGet(Class<?> propertyClass, String key, String value, boolean imsOnly) {
         try {
             findAndHookMethod(propertyClass, "get", String.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    if (key.equals(param.args[0])) {
+                    if (key.equals(param.args[0]) && (!imsOnly || isImsIconStack())) {
                         param.setResult(value);
                     }
                 }
@@ -456,7 +458,7 @@ public class HookEntry implements IXposedHookLoadPackage {
             findAndHookMethod(propertyClass, "get", String.class, String.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    if (key.equals(param.args[0])) {
+                    if (key.equals(param.args[0]) && (!imsOnly || isImsIconStack())) {
                         param.setResult(value);
                     }
                 }
@@ -464,6 +466,34 @@ public class HookEntry implements IXposedHookLoadPackage {
         } catch (Throwable throwable) {
             log("get hook failed for " + key + ": " + throwable);
         }
+    }
+
+    private boolean isImsIconStack() {
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : stack) {
+            String className = element.getClassName();
+            if (className == null) {
+                continue;
+            }
+            if (className.contains("Gesture")
+                    || className.contains("NavigationBar")
+                    || className.contains("NavigationHandle")
+                    || className.contains("OverviewProxy")
+                    || className.contains("Assist")
+                    || className.contains("Keyguard")
+                    || className.contains("Launcher")) {
+                return false;
+            }
+            if (className.startsWith("com.zte.feature.signal.")
+                    || className.startsWith("com.zte.statusbar.signal.")
+                    || className.startsWith("com.zte.adapt.mifavor.signal.")
+                    || className.startsWith("com.zte.qs.tiles.VoWifiTile")
+                    || className.startsWith("com.zte.qs.tiles.VolteTile")
+                    || className.startsWith("com.android.systemui.statusbar.connectivity.")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Class<?> findZtePropertyClass(ClassLoader classLoader) {
