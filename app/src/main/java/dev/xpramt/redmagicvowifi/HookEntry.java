@@ -555,43 +555,58 @@ public class HookEntry implements IXposedHookLoadPackage {
             XposedBridge.hookAllMethods(clazz, "setRunningTaskHidden", new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    if (shouldHideLauncherRunningTask(param.thisObject)) {
-                        param.args[0] = true;
-                        Config.Snapshot config = Config.loadForHook();
-                        log("Launcher_MFV setRunningTaskHidden forced for package="
-                                + config.launcherPackage);
-                    }
+                    logLauncherRunningTask("setRunningTaskHidden(" + param.args[0] + ")",
+                            param.thisObject);
                 }
             });
             XposedBridge.hookAllMethods(clazz, "setCurrentTask", new XC_MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
-                    if (!shouldHideLauncherRunningTask(param.thisObject)) {
-                        return;
-                    }
-                    try {
-                        XposedHelpers.callMethod(param.thisObject, "setRunningTaskHidden", true);
-                    } catch (Throwable throwable) {
-                        log("Launcher_MFV setCurrentTask running tile hide failed: " + throwable);
-                    }
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    logLauncherRunningTask("setCurrentTask(" + param.args[0] + ")",
+                            param.thisObject);
                 }
             });
-            log("Launcher_MFV running task tile filters installed");
+            log("Launcher_MFV running task diagnostics installed");
         } catch (Throwable throwable) {
-            log("Launcher_MFV running task tile hook failed: " + throwable);
+            log("Launcher_MFV running task diagnostics hook failed: " + throwable);
         }
     }
 
-    private boolean shouldHideLauncherRunningTask(Object recentsView) {
+    private void logLauncherRunningTask(String event, Object recentsView) {
         Config.Snapshot config = Config.loadForHook();
         if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
-            return false;
+            return;
         }
         try {
             Object runningTaskView = XposedHelpers.callMethod(recentsView, "getRunningTaskView");
-            return recentTaskBelongsToPackage(runningTaskView, config.launcherPackage);
+            if (!recentTaskBelongsToPackage(runningTaskView, config.launcherPackage)) {
+                return;
+            }
+            Context context = getViewContext(recentsView);
+            int navigationMode = context == null ? -1 : android.provider.Settings.Secure.getInt(
+                    context.getContentResolver(), "navigation_mode", -1);
+            Object runningTaskViewId = XposedHelpers.callMethod(recentsView, "getRunningTaskViewId");
+            Object runningTaskIndex = XposedHelpers.callMethod(recentsView, "getRunningTaskIndex");
+            Object currentPage = XposedHelpers.callMethod(recentsView, "getCurrentPage");
+            Object nextPage = XposedHelpers.callMethod(recentsView, "getNextPage");
+            log("Launcher_MFV running task " + event
+                    + " package=" + config.launcherPackage
+                    + " nav=" + navigationMode
+                    + " viewId=" + runningTaskViewId
+                    + " index=" + runningTaskIndex
+                    + " currentPage=" + currentPage
+                    + " nextPage=" + nextPage);
+        } catch (Throwable throwable) {
+            log("Launcher_MFV running task diagnostics failed: " + throwable);
+        }
+    }
+
+    private Context getViewContext(Object view) {
+        try {
+            Object context = XposedHelpers.callMethod(view, "getContext");
+            return context instanceof Context ? (Context) context : null;
         } catch (Throwable ignored) {
-            return false;
+            return null;
         }
     }
 
