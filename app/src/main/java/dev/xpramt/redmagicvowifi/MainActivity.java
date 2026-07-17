@@ -51,6 +51,10 @@ public class MainActivity extends Activity {
     private static final int PAGE_LAUNCHER = 4;
     private static final int CARD_COLOR = Color.rgb(18, 18, 24);
     private static final int CARD_SELECTED_COLOR = Color.rgb(23, 33, 44);
+    private static final String SETTINGS_FALLBACK_HOME_PACKAGE = "com.android.settings";
+    private static final String SETTINGS_FALLBACK_HOME_CLASS = "com.android.settings.FallbackHome";
+    private static final String STOCK_LAUNCHER_PACKAGE = "com.zte.mifavor.launcher";
+    private static final String STOCK_LAUNCHER_CLASS = "com.android.launcher3.uioverrides.QuickstepLauncher";
 
     private SharedPreferences prefs;
     private LinearLayout screen;
@@ -104,6 +108,13 @@ public class MainActivity extends Activity {
             editor.putBoolean(Config.KEY_LAUNCHER_OVERRIDE_ENABLED, false);
             editor.putString(Config.KEY_LAUNCHER_COMPONENT, "");
             editor.putString(Config.KEY_LAUNCHER_PACKAGE, "");
+            changed = true;
+        }
+        String launcherComponent = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
+        if (isSettingsFallbackHome(launcherComponent)) {
+            ComponentName stockLauncher = stockLauncherComponent();
+            editor.putString(Config.KEY_LAUNCHER_COMPONENT, stockLauncher.flattenToString());
+            editor.putString(Config.KEY_LAUNCHER_PACKAGE, stockLauncher.getPackageName());
             changed = true;
         }
         if (changed) {
@@ -363,9 +374,16 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "已寫入最近任務隱藏開關", Toast.LENGTH_LONG).show();
         });
         box.addView(enabled);
-        box.addView(text("更換 HOME：使用 root 執行系統 set-home-activity。\n隱藏最近任務：Hook android / ActivityTaskManagerService，過濾選定 launcher package。", 13, false));
+        box.addView(text("更換 HOME：使用 root 執行系統 set-home-activity。\n隱藏最近任務：Hook android / ActivityTaskManagerService，過濾選定 launcher package。\n系統 FallbackHome 不會列為可選項；需要 fallback 時使用紅魔原廠 com.zte.mifavor.launcher。", 13, false));
 
         String component = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
+        if (isSettingsFallbackHome(component)) {
+            component = stockLauncherComponent().flattenToString();
+            prefs.edit()
+                    .putString(Config.KEY_LAUNCHER_COMPONENT, component)
+                    .putString(Config.KEY_LAUNCHER_PACKAGE, STOCK_LAUNCHER_PACKAGE)
+                    .commit();
+        }
         box.addView(text("目前啟動器：" + launcherLabel(component), 14, true));
 
         Button applyHome = new Button(this);
@@ -382,6 +400,9 @@ public class MainActivity extends Activity {
         for (ResolveInfo info : launchers) {
             String packageName = info.activityInfo.packageName;
             String className = info.activityInfo.name;
+            if (isSettingsFallbackHome(packageName, className)) {
+                continue;
+            }
             ComponentName componentName = new ComponentName(packageName, className);
             CharSequence label = info.loadLabel(getPackageManager());
             String title = label == null ? packageName : label.toString();
@@ -394,9 +415,13 @@ public class MainActivity extends Activity {
 
     private void applySelectedLauncher() {
         String component = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
-        if (component == null || component.isEmpty()) {
-            Toast.makeText(this, "請先選擇啟動器", Toast.LENGTH_LONG).show();
-            return;
+        if (component == null || component.isEmpty() || isSettingsFallbackHome(component)) {
+            ComponentName stockLauncher = stockLauncherComponent();
+            component = stockLauncher.flattenToString();
+            prefs.edit()
+                    .putString(Config.KEY_LAUNCHER_COMPONENT, component)
+                    .putString(Config.KEY_LAUNCHER_PACKAGE, stockLauncher.getPackageName())
+                    .commit();
         }
         String commandComponent = ComponentName.unflattenFromString(component) == null
                 ? component
@@ -417,6 +442,21 @@ public class MainActivity extends Activity {
             return label == null ? info.activityInfo.packageName : label.toString();
         }, String.CASE_INSENSITIVE_ORDER));
         return launchers;
+    }
+
+    private ComponentName stockLauncherComponent() {
+        return new ComponentName(STOCK_LAUNCHER_PACKAGE, STOCK_LAUNCHER_CLASS);
+    }
+
+    private boolean isSettingsFallbackHome(String flattenedComponent) {
+        ComponentName componentName = ComponentName.unflattenFromString(flattenedComponent);
+        return componentName != null
+                && isSettingsFallbackHome(componentName.getPackageName(), componentName.getClassName());
+    }
+
+    private boolean isSettingsFallbackHome(String packageName, String className) {
+        return SETTINGS_FALLBACK_HOME_PACKAGE.equals(packageName)
+                && SETTINGS_FALLBACK_HOME_CLASS.equals(className);
     }
 
     private LinearLayout launcherCard(String title, String description, String component, String packageName, Drawable icon) {
