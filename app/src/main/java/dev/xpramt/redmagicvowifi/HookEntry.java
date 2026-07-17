@@ -447,8 +447,11 @@ public class HookEntry implements IXposedHookLoadPackage {
             findAndHookMethod(propertyClass, "get", String.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    if (key.equals(param.args[0]) && (!imsOnly || isImsIconStack())) {
-                        param.setResult(value);
+                    if (key.equals(param.args[0])) {
+                        String scopedValue = scopedSystemUiFlavorValue(value, imsOnly);
+                        if (scopedValue != null) {
+                            param.setResult(scopedValue);
+                        }
                     }
                 }
             });
@@ -458,14 +461,52 @@ public class HookEntry implements IXposedHookLoadPackage {
             findAndHookMethod(propertyClass, "get", String.class, String.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    if (key.equals(param.args[0]) && (!imsOnly || isImsIconStack())) {
-                        param.setResult(value);
+                    if (key.equals(param.args[0])) {
+                        String scopedValue = scopedSystemUiFlavorValue(value, imsOnly);
+                        if (scopedValue != null) {
+                            param.setResult(scopedValue);
+                        }
                     }
                 }
             });
         } catch (Throwable throwable) {
             log("get hook failed for " + key + ": " + throwable);
         }
+    }
+
+    private String scopedSystemUiFlavorValue(String value, boolean imsOnly) {
+        if (!imsOnly) {
+            return value;
+        }
+        if (isHomeHandleAssistantStack()) {
+            return "home";
+        }
+        if (isImsIconStack()) {
+            return value;
+        }
+        return null;
+    }
+
+    private boolean isHomeHandleAssistantStack() {
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : stack) {
+            String className = element.getClassName();
+            if (className == null) {
+                continue;
+            }
+            if (className.contains("GestureStub")
+                    || className.contains("GestureController")
+                    || className.contains("NavigationBar")
+                    || className.contains("NavigationHandle")
+                    || className.contains("OverviewProxy")
+                    || className.contains("RecentsAnimationDeviceState")
+                    || className.contains("Assist")
+                    || className.contains("QuickStep")
+                    || className.contains("Launcher")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isImsIconStack() {
