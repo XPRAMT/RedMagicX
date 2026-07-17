@@ -64,6 +64,7 @@ public class HookEntry implements IXposedHookLoadPackage {
             hookSystemUiStartAssist(lpparam);
             hookSystemUiAssistantBroadcast(lpparam);
             log("Recent UI hooks disabled to avoid Recents restart loop");
+            hookShellRecentTasksProvider(lpparam);
             if (config.enableStatusIcon) {
                 hookSystemUiAbroad(lpparam);
             }
@@ -322,6 +323,30 @@ public class HookEntry implements IXposedHookLoadPackage {
         };
         for (String className : classNames) {
             hookRecentUiClass(lpparam, className);
+        }
+    }
+
+    private void hookShellRecentTasksProvider(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> clazz = findClassIfExists("com.android.wm.shell.recents.RecentTasksController", lpparam.classLoader);
+        if (clazz == null) {
+            log("Shell RecentTasksController not found; provider filter skipped");
+            return;
+        }
+        try {
+            XposedBridge.hookAllMethods(clazz, "getRecentTasks", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    int removed = filterRecentMethodResult(param);
+                    if (removed > 0) {
+                        Config.Snapshot config = Config.loadForHook();
+                        log("Shell RecentTasksController#getRecentTasks filtered package="
+                                + config.launcherPackage + " count=" + removed);
+                    }
+                }
+            });
+            log("Shell RecentTasksController#getRecentTasks filter installed");
+        } catch (Throwable throwable) {
+            log("Shell RecentTasksController#getRecentTasks hook failed: " + throwable);
         }
     }
 
@@ -587,6 +612,20 @@ public class HookEntry implements IXposedHookLoadPackage {
                         return true;
                     }
                 }
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Object taskInfo1 = XposedHelpers.callMethod(task, "getTaskInfo1");
+            if (recentTaskBelongsToPackage(taskInfo1, packageName)) {
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Object taskInfo2 = XposedHelpers.callMethod(task, "getTaskInfo2");
+            if (recentTaskBelongsToPackage(taskInfo2, packageName)) {
+                return true;
             }
         } catch (Throwable ignored) {
         }

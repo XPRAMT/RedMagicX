@@ -258,7 +258,7 @@ public class MainActivity extends Activity {
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(launcherSection());
-        contentRoot.addView(text("生效條件：更換預設啟動器需要 root 執行系統 cmd package set-home-activity。隱藏最近任務需要 LSPosed 勾選 android 與 com.zte.mifavor.launcher scope；android scope 需重啟手機讓 system_server 載入，Launcher_MFV scope 可重啟系統啟動程式後生效。", 13, false));
+        contentRoot.addView(text("生效條件：更換預設啟動器需要 root 執行系統 cmd package set-home-activity。隱藏最近任務需要 LSPosed 勾選 com.android.systemui scope，重啟 SystemUI 後在 Shell recent task provider 過濾第三方 HOME task。", 13, false));
     }
 
     private LinearLayout featureButton(String title, String description, View.OnClickListener listener) {
@@ -374,7 +374,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "已寫入最近任務隱藏開關", Toast.LENGTH_LONG).show();
         });
         box.addView(enabled);
-        box.addView(text("更換 HOME：使用 root 執行系統 set-home-activity。\n隱藏最近任務：Hook android / ActivityTaskManagerService 與 com.zte.mifavor.launcher / SystemUiProxy#getRecentTasks，在資料進入最近任務 UI 前過濾第三方 HOME task。\n系統 FallbackHome 不會列為可選項；需要 fallback 時使用紅魔原廠 com.zte.mifavor.launcher。", 13, false));
+        box.addView(text("更換 HOME：使用 root 執行系統 set-home-activity。\n隱藏最近任務：Hook com.android.systemui / RecentTasksController#getRecentTasks，在 Shell provider 回傳資料給 Launcher 前過濾第三方 HOME task；不 hook Launcher UI。\n系統 FallbackHome 不會列為可選項；需要 fallback 時使用紅魔原廠 com.zte.mifavor.launcher。", 13, false));
 
         String component = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
         if (isSettingsFallbackHome(component)) {
