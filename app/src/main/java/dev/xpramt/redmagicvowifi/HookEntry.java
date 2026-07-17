@@ -6,8 +6,9 @@ import static de.robv.android.xposed.XposedHelpers.findClassIfExists;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
-import android.net.Uri;
 import android.media.AudioManager;
+import android.hardware.camera2.CameraManager;
+import android.content.pm.PackageManager;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -24,6 +25,7 @@ public class HookEntry implements IXposedHookLoadPackage {
     private static final int ADJUST_RAISE = AudioManager.ADJUST_RAISE;
 
     private final ThreadLocal<Boolean> applyingVolume = new ThreadLocal<>();
+    private boolean torchEnabled;
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -165,11 +167,34 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
     private boolean launchAssistantTarget(Context context, String target) {
-        Intent intent;
-        if (Config.ASSISTANT_TARGET_CHATGPT.equals(target)) {
-            intent = new Intent(Intent.ACTION_ASSIST);
-            intent.setPackage("com.openai.chatgpt");
+        if (target == null || target.isEmpty() || Config.ASSISTANT_TARGET_DEFAULT.equals(target)) {
+            target = Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST;
         } else if (Config.ASSISTANT_TARGET_GOOGLE_VOICE.equals(target)) {
+            target = Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE;
+        } else if (Config.ASSISTANT_TARGET_CHATGPT.equals(target)) {
+            target = Config.TARGET_PREFIX_APP + "com.openai.chatgpt";
+        }
+        if (target.startsWith(Config.TARGET_PREFIX_APP)) {
+            return launchApp(context, target.substring(Config.TARGET_PREFIX_APP.length()));
+        }
+        if (!target.startsWith(Config.TARGET_PREFIX_ACTION)) {
+            return launchSystemAction(context, Config.ACTION_DEFAULT_ASSIST);
+        }
+        return launchSystemAction(context, target.substring(Config.TARGET_PREFIX_ACTION.length()));
+    }
+
+    private boolean launchSystemAction(Context context, String action) {
+        if (Config.ACTION_RECENTS.equals(action)) {
+            return runShellCommand("input keyevent 187");
+        }
+        if (Config.ACTION_SCREENSHOT.equals(action)) {
+            return runShellCommand("input keyevent 120");
+        }
+        if (Config.ACTION_FLASHLIGHT.equals(action)) {
+            return toggleFlashlight(context);
+        }
+        Intent intent;
+        if (Config.ACTION_GOOGLE_VOICE.equals(action)) {
             intent = new Intent(Intent.ACTION_VOICE_COMMAND);
             intent.setPackage("com.google.android.googlequicksearchbox");
         } else {
@@ -180,19 +205,62 @@ public class HookEntry implements IXposedHookLoadPackage {
         try {
             context.startActivity(intent);
             return true;
-        } catch (Throwable first) {
-            log("assistant target launch failed: " + first);
-            try {
-                Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse("googlequicksearchbox://assistant.google.com"));
-                fallback.setPackage("com.google.android.googlequicksearchbox");
-                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(fallback);
-                return true;
-            } catch (Throwable second) {
-                log("assistant fallback launch failed: " + second);
+        } catch (Throwable throwable) {
+            log("system action launch failed action=" + action + " " + throwable);
+            return false;
+        }
+    }
+
+    private boolean launchApp(Context context, String packageName) {
+        try {
+            PackageManager packageManager = context.getPackageManager();
+            Intent intent = packageManager.getLaunchIntentForPackage(packageName);
+            if (intent == null) {
+                log("app launch intent unavailable package=" + packageName);
                 return false;
             }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            return true;
+        } catch (Throwable throwable) {
+            log("app launch failed package=" + packageName + " " + throwable);
+            return false;
         }
+    }
+
+    private boolean runShellCommand(String command) {
+        try {
+            Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
+            return true;
+        } catch (Throwable throwable) {
+            log("shell action failed command=" + command + " " + throwable);
+            return false;
+        }
+    }
+
+    private boolean toggleFlashlight(Context context) {
+        try {
+            CameraManager cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+            if (cameraManager == null) {
+                return false;
+            }
+            for (String cameraId : cameraManager.getCameraIdList()) {
+                Boolean available = cameraManager.getCameraCharacteristics(cameraId)
+                        .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                Integer facing = cameraManager.getCameraCharacteristics(cameraId)
+                        .get(android.hardware.camera2.CameraCharacteristics.LENS_FACING);
+                if (Boolean.TRUE.equals(available)
+                        && facing != null
+                        && facing == android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK) {
+                    torchEnabled = !torchEnabled;
+                    cameraManager.setTorchMode(cameraId, torchEnabled);
+                    return true;
+                }
+            }
+        } catch (Throwable throwable) {
+            log("flashlight toggle failed: " + throwable);
+        }
+        return false;
     }
 
     private Context contextFromObject(Object object) {

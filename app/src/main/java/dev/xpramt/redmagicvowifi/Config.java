@@ -28,6 +28,13 @@ final class Config {
     static final String ASSISTANT_TARGET_DEFAULT = "default_assist";
     static final String ASSISTANT_TARGET_GOOGLE_VOICE = "google_voice";
     static final String ASSISTANT_TARGET_CHATGPT = "chatgpt";
+    static final String TARGET_PREFIX_ACTION = "action:";
+    static final String TARGET_PREFIX_APP = "app:";
+    static final String ACTION_DEFAULT_ASSIST = "default_assist";
+    static final String ACTION_GOOGLE_VOICE = "google_voice";
+    static final String ACTION_RECENTS = "recents";
+    static final String ACTION_SCREENSHOT = "screenshot";
+    static final String ACTION_FLASHLIGHT = "flashlight";
 
     static final int DEFAULT_VOLUME_STEP = 1;
     static final int MIN_VOLUME_STEP = 1;

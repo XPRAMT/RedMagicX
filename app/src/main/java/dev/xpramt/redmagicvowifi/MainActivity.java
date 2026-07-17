@@ -3,6 +3,7 @@ package dev.xpramt.redmagicvowifi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -33,6 +34,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class MainActivity extends Activity {
@@ -49,6 +52,7 @@ public class MainActivity extends Activity {
     private TextView backView;
     private TextView actualValuesView;
     private int currentPage = PAGE_HOME;
+    private int assistantTab = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -177,7 +181,7 @@ public class MainActivity extends Activity {
         ));
         contentRoot.addView(featureButton(
                 "魔姬手勢替換",
-                "攔截 SystemUI 的小白條長按 Assistant 入口，改啟動 Google、ChatGPT 或系統預設助手",
+                "攔截 SystemUI 的小白條長按 Assistant 入口，改啟動系統動作、使用者 App 或系統 App",
                 view -> showAssistantPage()
         ));
     }
@@ -221,7 +225,7 @@ public class MainActivity extends Activity {
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(assistantSection());
-        contentRoot.addView(text("生效條件：LSPosed 需勾選 com.android.systemui scope，並重啟 SystemUI 或手機。此功能不修改系統預設 assistant 設定，也不需要魔姬存在；它在 SystemUI 發出小白條長按 assistant 事件前攔截，改啟動指定目標。", 13, false));
+        contentRoot.addView(text("生效條件：LSPosed 需勾選 com.android.systemui scope，並重啟 SystemUI 或手機。此功能不修改系統預設 assistant 設定，也不需要魔姬存在；它在 SystemUI 發出小白條長按 assistant 事件前攔截，改啟動指定目標。選擇目標後會立即保存。", 13, false));
     }
 
     private LinearLayout featureButton(String title, String description, View.OnClickListener listener) {
@@ -301,18 +305,123 @@ public class MainActivity extends Activity {
         box.addView(enabled);
         box.addView(text("攔截目標：SystemUI 內 Context.sendBroadcast / sendBroadcastAsUser 發出的 event_Home_Longpressed\n原理：保留原廠小白條長按判斷，在 SystemUI 發送魔姬喚醒事件前阻止原廣播，改啟動指定目標。", 13, false));
 
-        RadioGroup group = new RadioGroup(this);
-        group.setOrientation(RadioGroup.VERTICAL);
-        addAssistantRadio(group, Config.ASSISTANT_TARGET_DEFAULT, "系統預設助手：啟動 android.intent.action.ASSIST");
-        addAssistantRadio(group, Config.ASSISTANT_TARGET_GOOGLE_VOICE, "Google 語音助手：啟動 android.intent.action.VOICE_COMMAND 並指定 Google app");
-        addAssistantRadio(group, Config.ASSISTANT_TARGET_CHATGPT, "ChatGPT：啟動 android.intent.action.ASSIST 並指定 ChatGPT app");
-        group.check(assistantTargetToId(prefs.getString(Config.KEY_ASSISTANT_TARGET, Config.ASSISTANT_TARGET_DEFAULT)));
-        group.setOnCheckedChangeListener((radioGroup, checked) -> {
-            prefs.edit().putString(Config.KEY_ASSISTANT_TARGET, idToAssistantTarget(checked)).commit();
-            Toast.makeText(this, "已寫入替換目標", Toast.LENGTH_SHORT).show();
-        });
-        box.addView(group);
+        box.addView(text("目前目標：" + assistantTargetLabel(prefs.getString(Config.KEY_ASSISTANT_TARGET, Config.ASSISTANT_TARGET_DEFAULT)), 14, true));
+        box.addView(assistantTabs());
+        if (assistantTab == 0) {
+            addSystemActions(box);
+        } else {
+            addAppList(box, assistantTab == 2);
+        }
         return box;
+    }
+
+    private LinearLayout assistantTabs() {
+        LinearLayout tabs = new LinearLayout(this);
+        tabs.setOrientation(LinearLayout.HORIZONTAL);
+        tabs.setPadding(0, dp(12), 0, dp(8));
+        tabs.addView(tabButton("系統動作", 0));
+        tabs.addView(tabButton("User App", 1));
+        tabs.addView(tabButton("System App", 2));
+        return tabs;
+    }
+
+    private Button tabButton(String label, int tab) {
+        Button button = new Button(this);
+        button.setAllCaps(false);
+        button.setText(label);
+        button.setTextSize(13);
+        button.setEnabled(assistantTab != tab);
+        button.setOnClickListener(view -> {
+            assistantTab = tab;
+            showAssistantPage();
+        });
+        button.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        return button;
+    }
+
+    private void addSystemActions(LinearLayout box) {
+        box.addView(targetButton("語音助手", "啟動系統預設 android.intent.action.ASSIST", Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST));
+        box.addView(targetButton("Google 語音助手", "啟動 android.intent.action.VOICE_COMMAND 並指定 Google app", Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE));
+        box.addView(targetButton("最近應用", "送出 KEYCODE_APP_SWITCH", Config.TARGET_PREFIX_ACTION + Config.ACTION_RECENTS));
+        box.addView(targetButton("螢幕截圖", "送出 KEYCODE_SYSRQ", Config.TARGET_PREFIX_ACTION + Config.ACTION_SCREENSHOT));
+        box.addView(targetButton("手電筒", "透過 CameraManager 切換背面閃光燈", Config.TARGET_PREFIX_ACTION + Config.ACTION_FLASHLIGHT));
+    }
+
+    private void addAppList(LinearLayout box, boolean systemApps) {
+        List<ApplicationInfo> apps = installedApps(systemApps);
+        box.addView(text((systemApps ? "系統應用" : "使用者應用") + "：" + apps.size() + " 個", 14, true));
+        for (ApplicationInfo app : apps) {
+            String label = String.valueOf(app.loadLabel(getPackageManager()));
+            box.addView(targetButton(label, app.packageName, Config.TARGET_PREFIX_APP + app.packageName));
+        }
+    }
+
+    private List<ApplicationInfo> installedApps(boolean systemApps) {
+        List<ApplicationInfo> result = new ArrayList<>();
+        PackageManager packageManager = getPackageManager();
+        for (ApplicationInfo app : packageManager.getInstalledApplications(PackageManager.GET_META_DATA)) {
+            if (app.packageName.equals(getPackageName())) {
+                continue;
+            }
+            if (packageManager.getLaunchIntentForPackage(app.packageName) == null) {
+                continue;
+            }
+            boolean isSystem = (app.flags & ApplicationInfo.FLAG_SYSTEM) != 0
+                    || (app.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
+            if (isSystem == systemApps) {
+                result.add(app);
+            }
+        }
+        Collections.sort(result, Comparator.comparing(app -> String.valueOf(app.loadLabel(packageManager)), String.CASE_INSENSITIVE_ORDER));
+        return result;
+    }
+
+    private LinearLayout targetButton(String title, String description, String target) {
+        LinearLayout row = sectionBox();
+        row.setPadding(0, dp(8), 0, dp(6));
+        Button button = new Button(this);
+        button.setAllCaps(false);
+        button.setText(title);
+        button.setTextSize(15);
+        button.setOnClickListener(view -> {
+            prefs.edit().putString(Config.KEY_ASSISTANT_TARGET, target).commit();
+            Toast.makeText(this, "已選擇：" + title, Toast.LENGTH_SHORT).show();
+            showAssistantPage();
+        });
+        row.addView(button);
+        row.addView(text(description, 12, false));
+        return row;
+    }
+
+    private String assistantTargetLabel(String target) {
+        if (target == null || target.isEmpty() || Config.ASSISTANT_TARGET_DEFAULT.equals(target)) {
+            return "語音助手";
+        }
+        if (Config.ASSISTANT_TARGET_GOOGLE_VOICE.equals(target)) {
+            return "Google 語音助手";
+        }
+        if (Config.ASSISTANT_TARGET_CHATGPT.equals(target)) {
+            return "ChatGPT";
+        }
+        if (target.startsWith(Config.TARGET_PREFIX_ACTION)) {
+            String action = target.substring(Config.TARGET_PREFIX_ACTION.length());
+            if (Config.ACTION_DEFAULT_ASSIST.equals(action)) return "語音助手";
+            if (Config.ACTION_GOOGLE_VOICE.equals(action)) return "Google 語音助手";
+            if (Config.ACTION_RECENTS.equals(action)) return "最近應用";
+            if (Config.ACTION_SCREENSHOT.equals(action)) return "螢幕截圖";
+            if (Config.ACTION_FLASHLIGHT.equals(action)) return "手電筒";
+            return action;
+        }
+        if (target.startsWith(Config.TARGET_PREFIX_APP)) {
+            String packageName = target.substring(Config.TARGET_PREFIX_APP.length());
+            try {
+                ApplicationInfo info = getPackageManager().getApplicationInfo(packageName, 0);
+                return info.loadLabel(getPackageManager()) + " (" + packageName + ")";
+            } catch (PackageManager.NameNotFoundException exception) {
+                return packageName;
+            }
+        }
+        return target;
     }
 
     private void setSystemBarIconColors(Window window) {
@@ -484,16 +593,6 @@ public class MainActivity extends Activity {
         group.addView(button);
     }
 
-    private void addAssistantRadio(RadioGroup group, String target, String label) {
-        RadioButton button = new RadioButton(this);
-        button.setId(assistantTargetToId(target));
-        button.setText(label);
-        button.setTextSize(14);
-        button.setTextColor(Color.WHITE);
-        button.setGravity(Gravity.CENTER_VERTICAL);
-        group.addView(button);
-    }
-
     private int styleToId(String style) {
         if (Config.STYLE_GEN_BD.equals(style)) return 1002;
         if (Config.STYLE_ARRAY_HOOK.equals(style)) return 1003;
@@ -504,18 +603,6 @@ public class MainActivity extends Activity {
         if (id == 1002) return Config.STYLE_GEN_BD;
         if (id == 1003) return Config.STYLE_ARRAY_HOOK;
         return Config.STYLE_DEFAULT;
-    }
-
-    private int assistantTargetToId(String target) {
-        if (Config.ASSISTANT_TARGET_GOOGLE_VOICE.equals(target)) return 3002;
-        if (Config.ASSISTANT_TARGET_CHATGPT.equals(target)) return 3003;
-        return 3001;
-    }
-
-    private String idToAssistantTarget(int id) {
-        if (id == 3002) return Config.ASSISTANT_TARGET_GOOGLE_VOICE;
-        if (id == 3003) return Config.ASSISTANT_TARGET_CHATGPT;
-        return Config.ASSISTANT_TARGET_DEFAULT;
     }
 
     private int modeToId(String mode) {
