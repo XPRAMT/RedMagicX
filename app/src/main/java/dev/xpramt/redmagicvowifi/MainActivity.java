@@ -359,11 +359,11 @@ public class MainActivity extends Activity {
     }
 
     private void addSystemActions(LinearLayout box) {
-        box.addView(targetCard("小助手", "啟動系統預設 android.intent.action.ASSIST", Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST, null, "小"));
-        box.addView(targetCard("語音助手", "啟動 android.intent.action.VOICE_COMMAND，實際助手依使用者系統設定", Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE, null, "語"));
-        box.addView(targetCard("最近應用", "送出 KEYCODE_APP_SWITCH", Config.TARGET_PREFIX_ACTION + Config.ACTION_RECENTS, null, "R"));
-        box.addView(targetCard("螢幕截圖", "送出 KEYCODE_SYSRQ", Config.TARGET_PREFIX_ACTION + Config.ACTION_SCREENSHOT, null, "S"));
-        box.addView(targetCard("手電筒", "透過 CameraManager 切換背面閃光燈", Config.TARGET_PREFIX_ACTION + Config.ACTION_FLASHLIGHT, null, "F"));
+        box.addView(targetCard("小助手", "啟動系統預設 android.intent.action.ASSIST", Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST, null, null));
+        box.addView(targetCard("語音助手", "啟動 android.intent.action.VOICE_COMMAND，實際助手依使用者系統設定", Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE, null, null));
+        box.addView(targetCard("最近應用", "送出 KEYCODE_APP_SWITCH", Config.TARGET_PREFIX_ACTION + Config.ACTION_RECENTS, null, null));
+        box.addView(targetCard("螢幕截圖", "送出 KEYCODE_SYSRQ", Config.TARGET_PREFIX_ACTION + Config.ACTION_SCREENSHOT, null, null));
+        box.addView(targetCard("手電筒", "透過 CameraManager 切換背面閃光燈", Config.TARGET_PREFIX_ACTION + Config.ACTION_FLASHLIGHT, null, null));
     }
 
     private void addAppList(LinearLayout box, boolean systemApps) {
@@ -423,7 +423,7 @@ public class MainActivity extends Activity {
             imageParams.setMargins(0, 0, dp(12), 0);
             image.setLayoutParams(imageParams);
             card.addView(image);
-        } else {
+        } else if (fallbackIconText != null && !fallbackIconText.isEmpty()) {
             TextView fallback = text(fallbackIconText == null ? "•" : fallbackIconText, 18, true);
             fallback.setGravity(Gravity.CENTER);
             fallback.setBackground(cardBackground(Color.rgb(42, 48, 58)));
