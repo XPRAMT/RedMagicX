@@ -145,7 +145,7 @@ public class MainActivity extends Activity {
         backView.setOnClickListener(view -> showHome());
         bar.addView(backView);
 
-        titleView = text("RedMagic 工具", 20, true);
+        titleView = text("RedMagicX", 20, true);
         titleView.setLayoutParams(new LinearLayout.LayoutParams(
                 0,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -165,7 +165,7 @@ public class MainActivity extends Activity {
 
     private void showHome() {
         currentPage = PAGE_HOME;
-        titleView.setText("RedMagic 工具");
+        titleView.setText("RedMagicX");
         backView.setVisibility(View.INVISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(text("選擇要調整的功能", 18, true));
@@ -503,9 +503,9 @@ public class MainActivity extends Activity {
     }
 
     private void showAboutDialog() {
-        String message = "作者：XPRAMT\nGitHub：https://github.com/XPRAMT/Redmagic-VoWiFi\n版本：" + versionName();
+        String message = "作者：XPRAMT\nGitHub：https://github.com/XPRAMT/RedMagicX\n版本：" + versionName();
         SpannableString spannable = new SpannableString(message);
-        String url = "https://github.com/XPRAMT/Redmagic-VoWiFi";
+        String url = "https://github.com/XPRAMT/RedMagicX";
         int start = message.indexOf(url);
         if (start >= 0) {
             spannable.setSpan(new URLSpan(url), start, start + url.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);

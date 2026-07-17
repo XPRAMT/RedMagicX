@@ -1,19 +1,20 @@
-# Design
+# RedMagicX Design
 
 ## Goal
 
-Provide three independent LSPosed toggles for NX809J China ROM VoWiFi behavior:
+Provide RedMagicX LSPosed tweaks for NX809J China ROM behavior. The first feature group provides three independent VoWiFi UI toggles:
 
 1. Show and enable the VoWiFi setting entry.
 2. Show the status-bar VoWiFi icon by entering SystemUI's abroad IMS icon branch.
 3. Match the international ROM's BD-style VoWiFi icon resources.
 
-The app has two operation modes:
+The app is LSPosed-only for behavior changes:
 
-- `Root 全域模式`: no hook behavior. The app uses root `resetprop` to write global properties and restarts Settings/SystemUI.
-- `Root + LSPosed 模式`: hook behavior is active. Properties are faked inside target processes only.
+- Properties are faked inside target processes only.
+- The app does not write global `resetprop` values for VoWiFi behavior.
+- Root is only used by in-app restart buttons for Settings/SystemUI.
 
-`HookEntry` must return immediately unless `operation_mode=lsposed`.
+`HookEntry` should not depend on an operation-mode preference. Existing users may still have the old `operation_mode` value in shared preferences, but it must not disable hooks.
 
 ## Toggle 1: Enable VoWiFi
 

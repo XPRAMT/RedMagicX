@@ -618,6 +618,6 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
     private void log(String message) {
-        XposedBridge.log("RedMagicVoWiFi: " + message);
+        XposedBridge.log("RedMagicX: " + message);
     }
 }

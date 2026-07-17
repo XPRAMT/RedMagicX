@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "RedMagicVoWiFi"
+rootProject.name = "RedMagicX"
 include ":app"
