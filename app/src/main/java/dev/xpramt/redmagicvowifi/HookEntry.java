@@ -38,15 +38,11 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
         Config.Snapshot config = Config.loadForHook();
         log("loaded in " + lpparam.packageName
-                + " mode=" + config.operationMode
                 + " wfc=" + config.enableWfcSettings
                 + " icon=" + config.enableStatusIcon
                 + " style=" + config.iconStyle
                 + " volumeStep=" + config.volumeStepEnabled + "/" + config.volumeStep
                 + " assistant=" + config.assistantRedirectEnabled + "/" + config.assistantTarget);
-        if (!Config.MODE_LSPOSED.equals(config.operationMode)) {
-            return;
-        }
         if (SETTINGS.equals(lpparam.packageName) && config.enableWfcSettings) {
             hookSettingsWfcGate(lpparam);
         }

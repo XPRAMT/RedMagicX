@@ -12,7 +12,6 @@ final class Config {
     static final String KEY_ENABLE_WFC_SETTINGS = "enable_wfc_settings";
     static final String KEY_ENABLE_STATUS_ICON = "enable_status_icon";
     static final String KEY_ICON_STYLE = "icon_style";
-    static final String KEY_OPERATION_MODE = "operation_mode";
     static final String KEY_VOLUME_STEP_ENABLED = "volume_step_enabled";
     static final String KEY_VOLUME_STEP = "volume_step";
     static final String KEY_ASSISTANT_REDIRECT_ENABLED = "assistant_redirect_enabled";
@@ -21,9 +20,6 @@ final class Config {
     static final String STYLE_DEFAULT = "default";
     static final String STYLE_GEN_BD = "gen_bd";
     static final String STYLE_ARRAY_HOOK = "array_hook";
-
-    static final String MODE_LSPOSED = "lsposed";
-    static final String MODE_ROOT_GLOBAL = "root_global";
 
     static final String ASSISTANT_TARGET_DEFAULT = "default_assist";
     static final String ASSISTANT_TARGET_GOOGLE_VOICE = "google_voice";
@@ -55,7 +51,6 @@ final class Config {
         XSharedPreferences prefs = new XSharedPreferences(PACKAGE_NAME, PREFS_NAME);
         prefs.reload();
         return new Snapshot(
-                prefs.getString(KEY_OPERATION_MODE, MODE_LSPOSED),
                 prefs.getBoolean(KEY_ENABLE_WFC_SETTINGS, false),
                 prefs.getBoolean(KEY_ENABLE_STATUS_ICON, false),
                 prefs.getString(KEY_ICON_STYLE, STYLE_DEFAULT),
@@ -76,15 +71,13 @@ final class Config {
         final boolean enableWfcSettings;
         final boolean enableStatusIcon;
         final String iconStyle;
-        final String operationMode;
         final boolean volumeStepEnabled;
         final int volumeStep;
         final boolean assistantRedirectEnabled;
         final String assistantTarget;
 
-        Snapshot(String operationMode, boolean enableWfcSettings, boolean enableStatusIcon, String iconStyle,
-                 boolean volumeStepEnabled, int volumeStep, boolean assistantRedirectEnabled, String assistantTarget) {
-            this.operationMode = operationMode == null ? MODE_LSPOSED : operationMode;
+        Snapshot(boolean enableWfcSettings, boolean enableStatusIcon, String iconStyle, boolean volumeStepEnabled,
+                 int volumeStep, boolean assistantRedirectEnabled, String assistantTarget) {
             this.enableWfcSettings = enableWfcSettings;
             this.enableStatusIcon = enableStatusIcon;
             this.iconStyle = iconStyle == null ? STYLE_DEFAULT : iconStyle;

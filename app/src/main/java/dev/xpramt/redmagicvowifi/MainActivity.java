@@ -33,9 +33,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -55,7 +53,6 @@ public class MainActivity extends Activity {
     private LinearLayout contentRoot;
     private TextView titleView;
     private TextView backView;
-    private TextView actualValuesView;
     private int currentPage = PAGE_HOME;
     private int assistantTab = 0;
 
@@ -87,7 +84,6 @@ public class MainActivity extends Activity {
             editor.putBoolean(Config.KEY_ENABLE_WFC_SETTINGS, true);
             editor.putBoolean(Config.KEY_ENABLE_STATUS_ICON, true);
             editor.putString(Config.KEY_ICON_STYLE, Config.STYLE_GEN_BD);
-            editor.putString(Config.KEY_OPERATION_MODE, Config.MODE_LSPOSED);
             changed = true;
         }
         if (!prefs.contains(Config.KEY_VOLUME_STEP_ENABLED)) {
@@ -197,8 +193,7 @@ public class MainActivity extends Activity {
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
 
-        contentRoot.addView(text("支援 Root 全域 resetprop 與 Root + LSPosed hook 兩種模式。", 14, false));
-        contentRoot.addView(modeSection());
+        contentRoot.addView(text("此功能只使用 LSPosed hook，不全域修改系統屬性。Root 後建議直接使用 LSPosed，作用範圍更可控。", 14, false));
         contentRoot.addView(sectionSwitch(
                 "開啟 VoWiFi 設定",
                 "作用進程：com.android.settings\n等效參數：ro.vendor.feature.zte_feature_need_wfc_for_domestic=true\n用途：讓 Settings 的 ZTE 國內 WFC gate 通過，顯示 Wi-Fi Calling/VoWiFi 開關。仍需要 Pixel IMS 或 carrier config 啟用 WFC。",
@@ -206,13 +201,11 @@ public class MainActivity extends Activity {
         ));
         contentRoot.addView(sectionSwitch(
                 "開啟狀態列 VoWiFi 圖標",
-                "作用進程：com.android.systemui\nLSPosed 模式：只讓 IMS/訊號圖標相關呼叫讀到 ro.vendor.mifavor.custom=abroad / ro.mifavor.custom=abroad；小白條、assistant、navigation 相關呼叫會固定讀到 home，避免手勢被 abroad 分支影響。\nRoot 全域模式：仍會全域 resetprop，可能影響其它 abroad 分支。",
+                "作用進程：com.android.systemui\n只讓 IMS/訊號圖標相關呼叫讀到 ro.vendor.mifavor.custom=abroad / ro.mifavor.custom=abroad；小白條、assistant、navigation 相關呼叫會固定讀到 home，避免手勢被 abroad 分支影響。",
                 Config.KEY_ENABLE_STATUS_ICON
         ));
         contentRoot.addView(styleSection());
-        contentRoot.addView(actualValuesSection());
         contentRoot.addView(actionSection());
-        refreshActualValues();
     }
 
     private void showVolumePage() {
@@ -538,33 +531,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private LinearLayout modeSection() {
-        LinearLayout box = sectionBox();
-        box.addView(text("操作模式", 18, true));
-        box.addView(text("Root 全域模式直接 resetprop。Root + LSPosed 模式不永久改全域屬性，只在 Settings/SystemUI 進程內偽造讀值。", 13, false));
-
-        RadioGroup group = new RadioGroup(this);
-        group.setOrientation(RadioGroup.VERTICAL);
-        addModeRadio(group, Config.MODE_ROOT_GLOBAL, "Root 全域模式：不 hook，直接套用 resetprop 全域參數");
-        addModeRadio(group, Config.MODE_LSPOSED, "Root + LSPosed 模式：hook Settings/SystemUI，較少全域副作用");
-        String current = prefs.getString(Config.KEY_OPERATION_MODE, Config.MODE_LSPOSED);
-        group.check(modeToId(current));
-        group.setOnCheckedChangeListener((radioGroup, checked) -> {
-            prefs.edit().putString(Config.KEY_OPERATION_MODE, idToMode(checked)).commit();
-            applyCurrentState("已切換模式並寫入目前設定", "模式切換寫入失敗");
-        });
-        box.addView(group);
-        return box;
-    }
-
-    private LinearLayout actualValuesSection() {
-        LinearLayout box = sectionBox();
-        box.addView(text("Root 全域實際值", 18, true));
-        actualValuesView = text("讀取中...", 13, false);
-        box.addView(actualValuesView);
-        return box;
-    }
-
     private LinearLayout sectionSwitch(String title, String description, String key) {
         LinearLayout box = sectionBox();
         Switch sw = new Switch(this);
@@ -574,7 +540,7 @@ public class MainActivity extends Activity {
         sw.setChecked(prefs.getBoolean(key, true));
         sw.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
             prefs.edit().putBoolean(key, isChecked).commit();
-            applyCurrentState("已寫入：" + title, "寫入失敗");
+            Toast.makeText(this, "已保存 LSPosed 設定：" + title, Toast.LENGTH_LONG).show();
         });
         box.addView(sw);
         box.addView(text(description, 13, false));
@@ -590,7 +556,7 @@ public class MainActivity extends Activity {
         group.setOrientation(RadioGroup.VERTICAL);
         addRadio(group, Config.STYLE_DEFAULT, "預設：不改 persist.custom.variant.id，通常使用 vowifi / vowifi_card1/2/12");
         addRadio(group, Config.STYLE_GEN_BD, "GEN_BD：等效 persist.custom.variant.id=GEN_BD，使用 bd_stat_vowifi / bd_vowifi_card1/2/12");
-        addRadio(group, Config.STYLE_ARRAY_HOOK, "Hook array：僅 Root + LSPosed 模式生效，替換 ImsUpdateFeature 的 IMS icon array；已實測雙卡可用，依賴目前 ROM 方法名");
+        addRadio(group, Config.STYLE_ARRAY_HOOK, "Hook array：替換 ImsUpdateFeature 的 IMS icon array；已實測雙卡可用，依賴目前 ROM 方法名");
 
         String current = prefs.getString(Config.KEY_ICON_STYLE, Config.STYLE_GEN_BD);
         int checkedId = styleToId(current);
@@ -599,7 +565,7 @@ public class MainActivity extends Activity {
         }
         group.setOnCheckedChangeListener((radioGroup, checked) -> {
             prefs.edit().putString(Config.KEY_ICON_STYLE, idToStyle(checked)).commit();
-            applyCurrentState("已寫入：VoWiFi 圖標樣式", "圖標樣式寫入失敗");
+            Toast.makeText(this, "已保存 LSPosed 設定：VoWiFi 圖標樣式", Toast.LENGTH_LONG).show();
         });
         box.addView(group);
         return box;
@@ -608,7 +574,7 @@ public class MainActivity extends Activity {
     private LinearLayout actionSection() {
         LinearLayout box = sectionBox();
         box.addView(text("重啟", 18, true));
-        box.addView(text("開關變更會自動寫入。重啟按鈕只負責讓 Settings/SystemUI 重新讀取目前設定。Root 按鈕會使用 su。", 13, false));
+        box.addView(text("開關變更會自動保存到 LSPosed 設定。重啟按鈕只負責讓 Settings/SystemUI 重新讀取目前設定，會使用 su。", 13, false));
 
         Button restartSettings = new Button(this);
         restartSettings.setText("重啟 Settings");
@@ -664,16 +630,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void addModeRadio(RadioGroup group, String mode, String label) {
-        RadioButton button = new RadioButton(this);
-        button.setId(modeToId(mode));
-        button.setText(label);
-        button.setTextSize(14);
-        button.setTextColor(Color.WHITE);
-        button.setGravity(Gravity.CENTER_VERTICAL);
-        group.addView(button);
-    }
-
     private void addRadio(RadioGroup group, String style, String label) {
         RadioButton button = new RadioButton(this);
         button.setId(styleToId(style));
@@ -694,16 +650,6 @@ public class MainActivity extends Activity {
         if (id == 1002) return Config.STYLE_GEN_BD;
         if (id == 1003) return Config.STYLE_ARRAY_HOOK;
         return Config.STYLE_DEFAULT;
-    }
-
-    private int modeToId(String mode) {
-        if (Config.MODE_ROOT_GLOBAL.equals(mode)) return 2002;
-        return 2001;
-    }
-
-    private String idToMode(int id) {
-        if (id == 2002) return Config.MODE_ROOT_GLOBAL;
-        return Config.MODE_LSPOSED;
     }
 
     private LinearLayout sectionBox() {
@@ -741,47 +687,6 @@ public class MainActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private String resetpropSet(String key, String value) {
-        return "if [ -x /data/adb/ksu/bin/resetprop ]; then /data/adb/ksu/bin/resetprop -n "
-                + key + " " + value + "; else resetprop -n " + key + " " + value + "; fi";
-    }
-
-    private String resetpropDelete(String key) {
-        return "if [ -x /data/adb/ksu/bin/resetprop ]; then /data/adb/ksu/bin/resetprop -d "
-                + key + " || true; else resetprop -d " + key + " || true; fi";
-    }
-
-    private void applyCurrentState(String successMessage, String errorMessage) {
-        if (Config.MODE_ROOT_GLOBAL.equals(prefs.getString(Config.KEY_OPERATION_MODE, Config.MODE_LSPOSED))) {
-            runRootCommands(globalApplyCommands(), successMessage, errorMessage);
-        } else {
-            refreshActualValues();
-            Toast.makeText(this, "已保存 LSPosed hook 設定", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private List<String> globalApplyCommands() {
-        List<String> commands = new ArrayList<>();
-        commands.add(resetpropSet(
-                "ro.vendor.feature.zte_feature_need_wfc_for_domestic",
-                prefs.getBoolean(Config.KEY_ENABLE_WFC_SETTINGS, true) ? "true" : "false"
-        ));
-        if (prefs.getBoolean(Config.KEY_ENABLE_STATUS_ICON, true)) {
-            commands.add(resetpropSet("ro.vendor.mifavor.custom", "abroad"));
-            commands.add(resetpropSet("ro.mifavor.custom", "abroad"));
-        } else {
-            commands.add(resetpropSet("ro.vendor.mifavor.custom", "home"));
-            commands.add(resetpropSet("ro.mifavor.custom", "home"));
-        }
-        String style = prefs.getString(Config.KEY_ICON_STYLE, Config.STYLE_GEN_BD);
-        if (Config.STYLE_GEN_BD.equals(style)) {
-            commands.add(resetpropSet("persist.custom.variant.id", "GEN_BD"));
-        } else {
-            commands.add(resetpropDelete("persist.custom.variant.id"));
-        }
-        return commands;
-    }
-
     private void runRootCommand(String command, String successMessage, String errorMessage) {
         try {
             Process process = new ProcessBuilder("su", "-c", command).redirectErrorStream(true).start();
@@ -795,61 +700,4 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void runRootCommands(List<String> commands, String successMessage, String errorMessage) {
-        try {
-            for (String command : commands) {
-                Process process = new ProcessBuilder("su", "-c", command).redirectErrorStream(true).start();
-                int exitCode = process.waitFor();
-                if (exitCode != 0) {
-                    Toast.makeText(this, errorMessage + " (" + exitCode + ")：" + command, Toast.LENGTH_LONG).show();
-                    return;
-                }
-            }
-            refreshActualValues();
-            Toast.makeText(this, successMessage, Toast.LENGTH_LONG).show();
-        } catch (IOException exception) {
-            Toast.makeText(this, errorMessage + "：無法取得 root", Toast.LENGTH_LONG).show();
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            Toast.makeText(this, errorMessage + "：執行中斷", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void refreshActualValues() {
-        if (actualValuesView == null) {
-            return;
-        }
-        if (!Config.MODE_ROOT_GLOBAL.equals(prefs.getString(Config.KEY_OPERATION_MODE, Config.MODE_LSPOSED))) {
-            actualValuesView.setText("LSPosed 模式不修改全域屬性，這些 getprop 實際值不代表 hook 是否生效。請以 Settings/SystemUI 行為或 LSPosed log 判斷。");
-            return;
-        }
-        actualValuesView.setText(
-                "ro.vendor.feature.zte_feature_need_wfc_for_domestic = " + displayValue(getprop("ro.vendor.feature.zte_feature_need_wfc_for_domestic")) + "\n"
-                        + "ro.vendor.mifavor.custom = " + displayValue(getprop("ro.vendor.mifavor.custom")) + "\n"
-                        + "ro.mifavor.custom = " + displayValue(getprop("ro.mifavor.custom")) + "\n"
-                        + "persist.custom.variant.id = " + displayValue(getprop("persist.custom.variant.id"))
-        );
-    }
-
-    private String getprop(String key) {
-        try {
-            Process process = new ProcessBuilder("getprop", key).redirectErrorStream(true).start();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String value = reader.readLine();
-            int exitCode = process.waitFor();
-            if (exitCode != 0 || value == null) {
-                return "";
-            }
-            return value.trim();
-        } catch (IOException exception) {
-            return "";
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            return "";
-        }
-    }
-
-    private String displayValue(String value) {
-        return value == null || value.isEmpty() ? "(空)" : value;
-    }
 }
