@@ -7,6 +7,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -20,6 +22,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.RadioButton;
@@ -44,6 +47,8 @@ public class MainActivity extends Activity {
     private static final int PAGE_VOWIFI = 1;
     private static final int PAGE_VOLUME = 2;
     private static final int PAGE_ASSISTANT = 3;
+    private static final int CARD_COLOR = Color.rgb(18, 18, 24);
+    private static final int CARD_SELECTED_COLOR = Color.rgb(23, 33, 44);
 
     private SharedPreferences prefs;
     private LinearLayout screen;
@@ -340,11 +345,11 @@ public class MainActivity extends Activity {
     }
 
     private void addSystemActions(LinearLayout box) {
-        box.addView(targetButton("語音助手", "啟動系統預設 android.intent.action.ASSIST", Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST));
-        box.addView(targetButton("Google 語音助手", "啟動 android.intent.action.VOICE_COMMAND 並指定 Google app", Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE));
-        box.addView(targetButton("最近應用", "送出 KEYCODE_APP_SWITCH", Config.TARGET_PREFIX_ACTION + Config.ACTION_RECENTS));
-        box.addView(targetButton("螢幕截圖", "送出 KEYCODE_SYSRQ", Config.TARGET_PREFIX_ACTION + Config.ACTION_SCREENSHOT));
-        box.addView(targetButton("手電筒", "透過 CameraManager 切換背面閃光燈", Config.TARGET_PREFIX_ACTION + Config.ACTION_FLASHLIGHT));
+        box.addView(targetCard("語音助手", "啟動系統預設 android.intent.action.ASSIST", Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST, null, "A"));
+        box.addView(targetCard("Google 語音助手", "啟動 android.intent.action.VOICE_COMMAND 並指定 Google app", Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE, null, "G"));
+        box.addView(targetCard("最近應用", "送出 KEYCODE_APP_SWITCH", Config.TARGET_PREFIX_ACTION + Config.ACTION_RECENTS, null, "R"));
+        box.addView(targetCard("螢幕截圖", "送出 KEYCODE_SYSRQ", Config.TARGET_PREFIX_ACTION + Config.ACTION_SCREENSHOT, null, "S"));
+        box.addView(targetCard("手電筒", "透過 CameraManager 切換背面閃光燈", Config.TARGET_PREFIX_ACTION + Config.ACTION_FLASHLIGHT, null, "F"));
     }
 
     private void addAppList(LinearLayout box, boolean systemApps) {
@@ -352,7 +357,7 @@ public class MainActivity extends Activity {
         box.addView(text((systemApps ? "系統應用" : "使用者應用") + "：" + apps.size() + " 個", 14, true));
         for (ApplicationInfo app : apps) {
             String label = String.valueOf(app.loadLabel(getPackageManager()));
-            box.addView(targetButton(label, app.packageName, Config.TARGET_PREFIX_APP + app.packageName));
+            box.addView(targetCard(label, app.packageName, Config.TARGET_PREFIX_APP + app.packageName, app.loadIcon(getPackageManager()), null));
         }
     }
 
@@ -376,21 +381,56 @@ public class MainActivity extends Activity {
         return result;
     }
 
-    private LinearLayout targetButton(String title, String description, String target) {
-        LinearLayout row = sectionBox();
-        row.setPadding(0, dp(8), 0, dp(6));
-        Button button = new Button(this);
-        button.setAllCaps(false);
-        button.setText(title);
-        button.setTextSize(15);
-        button.setOnClickListener(view -> {
+    private LinearLayout targetCard(String title, String description, String target, Drawable icon, String fallbackIconText) {
+        boolean selected = target.equals(prefs.getString(Config.KEY_ASSISTANT_TARGET, Config.ASSISTANT_TARGET_DEFAULT));
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(12), dp(10), dp(12), dp(10));
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        cardParams.setMargins(0, dp(8), 0, dp(4));
+        card.setLayoutParams(cardParams);
+        card.setBackground(cardBackground(selected ? CARD_SELECTED_COLOR : CARD_COLOR));
+        card.setClickable(true);
+        card.setOnClickListener(view -> {
             prefs.edit().putString(Config.KEY_ASSISTANT_TARGET, target).commit();
             Toast.makeText(this, "已選擇：" + title, Toast.LENGTH_SHORT).show();
             showAssistantPage();
         });
-        row.addView(button);
-        row.addView(text(description, 12, false));
-        return row;
+
+        if (icon != null) {
+            ImageView image = new ImageView(this);
+            image.setImageDrawable(icon);
+            LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(44), dp(44));
+            imageParams.setMargins(0, 0, dp(12), 0);
+            image.setLayoutParams(imageParams);
+            card.addView(image);
+        } else {
+            TextView fallback = text(fallbackIconText == null ? "•" : fallbackIconText, 18, true);
+            fallback.setGravity(Gravity.CENTER);
+            fallback.setBackground(cardBackground(Color.rgb(42, 48, 58)));
+            LinearLayout.LayoutParams fallbackParams = new LinearLayout.LayoutParams(dp(44), dp(44));
+            fallbackParams.setMargins(0, 0, dp(12), 0);
+            fallback.setLayoutParams(fallbackParams);
+            card.addView(fallback);
+        }
+
+        LinearLayout labels = new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView titleView = text(selected ? title + "  已選擇" : title, 15, true);
+        labels.addView(titleView);
+        TextView descriptionView = text(description, 12, false);
+        descriptionView.setTextColor(Color.rgb(190, 196, 205));
+        labels.addView(descriptionView);
+        card.addView(labels);
+
+        return card;
     }
 
     private String assistantTargetLabel(String target) {
@@ -636,6 +676,14 @@ public class MainActivity extends Activity {
             textView.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         }
         return textView;
+    }
+
+    private GradientDrawable cardBackground(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(8));
+        drawable.setStroke(1, Color.rgb(45, 51, 60));
+        return drawable;
     }
 
     private int dp(int value) {
