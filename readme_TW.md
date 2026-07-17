@@ -102,6 +102,8 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 
 將選定啟動器設為預設 HOME，並可在手勢模式下從紅魔最近使用列表隱藏該啟動器。
 
+<img src="img/app截圖4.jpg" alt="第三方啟動器設定" width="360">
+
 - 更換啟動器：使用 Android 內建 `cmd package set-home-activity --user 0 <component>`。
 - 權限方式：優先使用 root；無 root 時可透過 Shizuku shell 權限套用。
 - 隱藏最近任務：需要 LSPosed 勾選 `com.zte.mifavor.launcher` scope。Hook 紅魔 Launcher 的 `RecentsView#onGestureAnimationStart`，只在手勢模式 current task 是選定第三方 HOME 時阻止它被補成最近任務卡片。

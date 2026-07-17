@@ -102,6 +102,8 @@ This feature does not change Android's default assistant setting. It intercepts 
 
 Sets a selected launcher as the default HOME activity and can hide that launcher from RedMagic's recent apps list in gesture mode.
 
+<img src="img/app截圖4.jpg" alt="Third-Party Launcher settings" width="360">
+
 - Change launcher: uses Android's own `cmd package set-home-activity --user 0 <component>`.
 - Permission path: root is tried first; if root is unavailable, Shizuku shell permission is used.
 - Hide from recents: requires LSPosed scope `com.zte.mifavor.launcher`. It hooks RedMagic Launcher `RecentsView#onGestureAnimationStart`; only when gesture mode current task is the selected third-party HOME, it prevents that task from being inserted as a recent-task card.
