@@ -217,8 +217,6 @@ public class MainActivity extends Activity {
         titleView.setText("RedMagicX");
         backView.setVisibility(View.INVISIBLE);
         contentRoot.removeAllViews();
-        contentRoot.addView(text("選擇要調整的功能", 18, true));
-        contentRoot.addView(text("VoWiFi UI 修正處理中國版系統的設定頁與狀態列圖標。音量步進調整用 LSPosed 修改音量鍵每次增減的格數。", 13, false));
         contentRoot.addView(featureButton(
                 "VoWiFi UI 修正",
                 "Wi-Fi Calling 設定、狀態列 VoWiFi 圖標、VoWiFi 圖標樣式",
