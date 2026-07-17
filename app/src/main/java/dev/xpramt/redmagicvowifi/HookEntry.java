@@ -11,6 +11,7 @@ import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
 import android.content.pm.PackageManager;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -348,6 +349,121 @@ public class HookEntry implements IXposedHookLoadPackage {
         } catch (Throwable throwable) {
             log("Shell RecentTasksController#getRecentTasks hook failed: " + throwable);
         }
+        hookShellRecentTasksControllerState(clazz);
+        hookShellRecentTaskListenerCallbacks(lpparam);
+    }
+
+    private void hookShellRecentTasksControllerState(Class<?> clazz) {
+        try {
+            XposedBridge.hookAllMethods(clazz, "onVisibleTasksChanged", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    int removed = filterRecentListArg(param, 0);
+                    if (removed > 0) {
+                        Config.Snapshot config = Config.loadForHook();
+                        log("Shell RecentTasksController#onVisibleTasksChanged filtered package="
+                                + config.launcherPackage + " count=" + removed);
+                    }
+                }
+            });
+            XposedBridge.hookAllMethods(clazz, "generateList", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    int removed = filterRecentListArg(param, 0);
+                    if (removed > 0) {
+                        Config.Snapshot config = Config.loadForHook();
+                        log("Shell RecentTasksController#generateList filtered package="
+                                + config.launcherPackage + " count=" + removed);
+                    }
+                }
+            });
+            String[] methods = new String[]{
+                    "notifyRunningTaskAppeared",
+                    "notifyRunningTaskChanged",
+                    "notifyTaskInfoChanged",
+                    "notifyTaskMovedToFront"
+            };
+            for (String method : methods) {
+                XposedBridge.hookAllMethods(clazz, method, new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        Config.Snapshot config = Config.loadForHook();
+                        if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
+                                || param.args == null || param.args.length == 0) {
+                            return;
+                        }
+                        if (recentTaskBelongsToPackage(param.args[0], config.launcherPackage)) {
+                            log("Shell RecentTasksController#" + method + " suppressed package="
+                                    + config.launcherPackage);
+                            param.setResult(null);
+                        }
+                    }
+                });
+            }
+            log("Shell RecentTasksController state filters installed");
+        } catch (Throwable throwable) {
+            log("Shell RecentTasksController state hook failed: " + throwable);
+        }
+    }
+
+    private int filterRecentListArg(XC_MethodHook.MethodHookParam param, int index) {
+        Config.Snapshot config = Config.loadForHook();
+        if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
+                || param.args == null || param.args.length <= index || !(param.args[index] instanceof List)) {
+            return 0;
+        }
+        List<?> original = (List<?>) param.args[index];
+        List<?> filtered = filteredRecentList(original, config.launcherPackage);
+        if (filtered != original) {
+            param.args[index] = filtered;
+        }
+        return Math.max(0, original.size() - filtered.size());
+    }
+
+    private void hookShellRecentTaskListenerCallbacks(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> clazz = findClassIfExists("com.android.wm.shell.recents.IRecentTasksListener$Stub$Proxy", lpparam.classLoader);
+        if (clazz == null) {
+            log("Shell IRecentTasksListener proxy not found; listener filter skipped");
+            return;
+        }
+        try {
+            XposedBridge.hookAllMethods(clazz, "onVisibleTasksChanged", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    Config.Snapshot config = Config.loadForHook();
+                    if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
+                            || param.args == null || param.args.length == 0 || param.args[0] == null) {
+                        return;
+                    }
+                    Object original = param.args[0];
+                    Object filtered = filteredRecentArray(original, config.launcherPackage);
+                    if (filtered != original) {
+                        param.args[0] = filtered;
+                        log("Shell IRecentTasksListener#onVisibleTasksChanged filtered package="
+                                + config.launcherPackage
+                                + " count=" + (Array.getLength(original) - Array.getLength(filtered)));
+                    }
+                }
+            });
+            XposedBridge.hookAllMethods(clazz, "onTaskMovedToFront", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    Config.Snapshot config = Config.loadForHook();
+                    if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
+                            || param.args == null || param.args.length == 0) {
+                        return;
+                    }
+                    if (recentTaskBelongsToPackage(param.args[0], config.launcherPackage)) {
+                        log("Shell IRecentTasksListener#onTaskMovedToFront suppressed package="
+                                + config.launcherPackage);
+                        param.setResult(null);
+                    }
+                }
+            });
+            log("Shell IRecentTasksListener callback filters installed");
+        } catch (Throwable throwable) {
+            log("Shell IRecentTasksListener callback hook failed: " + throwable);
+        }
     }
 
     private void hookLauncherSystemUiProxyRecentTasks(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -574,6 +690,29 @@ public class HookEntry implements IXposedHookLoadPackage {
             }
         }
         return filtered.size() == tasks.size() ? tasks : filtered;
+    }
+
+    private Object filteredRecentArray(Object tasks, String packageName) {
+        Class<?> arrayClass = tasks.getClass();
+        if (!arrayClass.isArray()) {
+            return tasks;
+        }
+        int length = Array.getLength(tasks);
+        ArrayList<Object> filtered = new ArrayList<>();
+        for (int i = 0; i < length; i++) {
+            Object task = Array.get(tasks, i);
+            if (!recentTaskBelongsToPackage(task, packageName)) {
+                filtered.add(task);
+            }
+        }
+        if (filtered.size() == length) {
+            return tasks;
+        }
+        Object result = Array.newInstance(arrayClass.getComponentType(), filtered.size());
+        for (int i = 0; i < filtered.size(); i++) {
+            Array.set(result, i, filtered.get(i));
+        }
+        return result;
     }
 
     private int filterRecentListInPlace(List<?> tasks, String packageName) {
