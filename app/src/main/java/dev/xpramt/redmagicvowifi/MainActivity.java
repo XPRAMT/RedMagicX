@@ -632,7 +632,7 @@ public class MainActivity extends Activity {
 
         Button restartBoth = new Button(this);
         restartBoth.setText("重啟 Settings + SystemUI");
-        styleButton(restartBoth, true, false);
+        styleButton(restartBoth, false, false);
         restartBoth.setOnClickListener(view -> runRootCommand(
                 "am force-stop com.android.settings; kill -9 $(pidof com.android.systemui)",
                 "已重啟 Settings + SystemUI",
