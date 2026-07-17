@@ -2,7 +2,7 @@
 
 Language: English | [繁體中文](readme_TW.md)
 
-RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It focuses on China ROM UI behavior that can be fixed without replacing the ROM: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, and third-party launcher control.
+RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, and third-party launcher control.
 
 Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
 
@@ -45,7 +45,7 @@ Enable RedMagicX in LSPosed, then select scopes based on the features you use:
 | Assistant Gesture Redirect | `com.android.systemui` |
 | Third-Party Launcher recent-task hiding | `com.zte.mifavor.launcher` |
 
-Settings are saved with LSPosed `XSharedPreferences`. If a target process already loaded before a setting change, restart the related process from the app when available, or reboot when the target is `android` / system_server.
+Settings are saved with LSPosed `XSharedPreferences`. If a target process already loaded before a setting change, restart the related process from the app when available; if the target is `android`, reboot the phone.
 
 ## Features
 
@@ -104,7 +104,6 @@ Sets a selected launcher as the default HOME activity and can hide that launcher
 
 - Change launcher: uses Android's own `cmd package set-home-activity --user 0 <component>`.
 - Permission path: root is tried first; if root is unavailable, Shizuku shell permission is used.
-- Result notice: after the command finishes, the app shows one Toast such as `Set <launcher> as default launcher`.
 - Hide from recents: requires LSPosed scope `com.zte.mifavor.launcher`. It hooks RedMagic Launcher `RecentsView#onGestureAnimationStart`; only when gesture mode current task is the selected third-party HOME, it prevents that task from being inserted as a recent-task card.
 
 ## Build
@@ -121,7 +120,6 @@ app\build\outputs\apk\debug\app-debug.apk
 
 ## Notes
 
-- The package name is intentionally kept as `dev.xpramt.redmagicvowifi` for upgrade compatibility.
 - The module declares `xposedminversion=93` and `xposedsharedprefs=true`.
-- Shizuku support is used only for applying the default launcher without root.
+- Shizuku is used only for applying the default launcher without root.
 - This is an unofficial project and is not affiliated with RedMagic, Nubia, or ZTE.

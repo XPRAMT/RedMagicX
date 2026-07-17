@@ -2,7 +2,7 @@
 
 語言：[English](README.md) | 繁體中文
 
-RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要處理不換 ROM 就能修正的中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制。
+RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制。
 
 測試裝置：RedMagic / Nubia NX809J 中國版 ROM。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
 
@@ -38,14 +38,14 @@ Root 只用於需要執行 shell 指令的動作，例如重啟 Settings/SystemU
 
 在 LSPosed 啟用 RedMagicX，並依照使用功能勾選作用域：
 
-| 功能 | 需要作用域 |
-|---|---|
+| 功能           | 需要作用域                                         |
+| ------------ | --------------------------------------------- |
 | VoWiFi UI 修正 | `com.android.settings`、`com.android.systemui` |
-| 音量步進調整 | `android` / System Framework |
-| 魔姬手勢替換 | `com.android.systemui` |
-| 第三方啟動器最近任務隱藏 | `com.zte.mifavor.launcher` |
+| 音量步進調整       | `android` / System Framework                  |
+| 魔姬手勢替換       | `com.android.systemui`                        |
+| 第三方啟動器最近任務隱藏 | `com.zte.mifavor.launcher`                    |
 
-設定透過 LSPosed `XSharedPreferences` 保存。若目標進程在修改設定前已經載入，請使用 App 內提供的重啟按鈕重啟相關進程；若目標是 `android` / system_server，則需要重啟手機。
+設定透過 LSPosed `XSharedPreferences` 保存。若目標進程在修改設定前已經載入，請使用 App 內提供的重啟按鈕重啟相關進程；若目標是 `android`，則需要重啟手機。
 
 ## 功能
 
@@ -55,12 +55,12 @@ Root 只用於需要執行 shell 指令的動作，例如重啟 Settings/SystemU
 
 <img src="img/app截圖1.jpg" alt="VoWiFi UI 修正設定" width="360">
 
-| 開關 | 作用域 | 修改內容 |
-|---|---|---|
-| 開啟 VoWiFi 設定 | `com.android.settings` | 讓 Settings 讀到 `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true`，顯示 Wi-Fi Calling / VoWiFi 開關。仍需要 Pixel IMS 或 carrier config 啟用 WFC 能力。 |
-| 開啟狀態列 VoWiFi 圖標 | `com.android.systemui` | 只讓 IMS/狀態列圖標相關程式碼讀到 `ro.vendor.mifavor.custom=abroad` / `ro.mifavor.custom=abroad`，navigation/assistant 相關程式碼維持 `home`，避免小白條手勢失效。 |
-| VoWiFi 圖標樣式 = GEN_BD | `com.android.systemui` | 讓 SystemUI 讀到 `persist.custom.variant.id=GEN_BD`，使用 BD 樣式 VoWiFi 資源。切換後重啟 SystemUI 生效。 |
-| VoWiFi 圖標樣式 = Hook array | `com.android.systemui` | 把 IMS icon array 回傳結果替換成 BD array。目前 NX809J ROM 已實測雙卡可用，但依賴目前 ROM 方法名。 |
+| 開關                       | 作用域                    | 修改內容                                                                                                                                            |
+| ------------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 開啟 VoWiFi 設定             | `com.android.settings` | 讓 Settings 讀到 `ro.vendor.feature.zte_feature_need_wfc_for_domestic=true`，顯示 Wi-Fi Calling / VoWiFi 開關。仍需要 Pixel IMS 或 carrier config 啟用 WFC 能力。 |
+| 開啟狀態列 VoWiFi 圖標          | `com.android.systemui` | 只讓 IMS/狀態列圖標相關程式碼讀到 `ro.vendor.mifavor.custom=abroad` / `ro.mifavor.custom=abroad`，navigation/assistant 相關程式碼維持 `home`，避免小白條手勢失效。               |
+| VoWiFi 圖標樣式 = GEN_BD     | `com.android.systemui` | 讓 SystemUI 讀到 `persist.custom.variant.id=GEN_BD`，使用 BD 樣式 VoWiFi 資源。切換後重啟 SystemUI 生效。                                                          |
+| VoWiFi 圖標樣式 = Hook array | `com.android.systemui` | 把 IMS icon array 回傳結果替換成 BD array。目前 NX809J ROM 已實測雙卡可用，但依賴目前 ROM 方法名。                                                                          |
 
 VoWiFi 圖標樣式對照：
 
@@ -104,7 +104,6 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 
 - 更換啟動器：使用 Android 內建 `cmd package set-home-activity --user 0 <component>`。
 - 權限方式：優先使用 root；無 root 時可透過 Shizuku shell 權限套用。
-- 結果通知：指令執行完成後只顯示一則 Toast，例如「已將 XXX 設為預設啟動器」。
 - 隱藏最近任務：需要 LSPosed 勾選 `com.zte.mifavor.launcher` scope。Hook 紅魔 Launcher 的 `RecentsView#onGestureAnimationStart`，只在手勢模式 current task 是選定第三方 HOME 時阻止它被補成最近任務卡片。
 
 ## 編譯
@@ -121,7 +120,6 @@ app\build\outputs\apk\debug\app-debug.apk
 
 ## 注意事項
 
-- 為了升級相容性，package name 保持 `dev.xpramt.redmagicvowifi`。
 - 模組宣告 `xposedminversion=93` 與 `xposedsharedprefs=true`。
 - Shizuku 只用於無 root 時套用預設啟動器。
 - 本專案為非官方工具，與 RedMagic、Nubia、ZTE 無關。
