@@ -386,12 +386,6 @@ public class MainActivity extends Activity {
         }
         box.addView(text("目前啟動器：" + launcherLabel(component), 14, true));
 
-        Button applyHome = new Button(this);
-        applyHome.setText("套用為預設啟動器");
-        styleButton(applyHome, false, false);
-        applyHome.setOnClickListener(view -> applySelectedLauncher());
-        box.addView(applyHome);
-
         box.addView(text("可用啟動器", 18, true));
         List<ResolveInfo> launchers = installedLaunchers();
         if (launchers.isEmpty()) {
@@ -413,8 +407,7 @@ public class MainActivity extends Activity {
         return box;
     }
 
-    private void applySelectedLauncher() {
-        String component = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
+    private void applyLauncherComponent(String component) {
         if (component == null || component.isEmpty() || isSettingsFallbackHome(component)) {
             ComponentName stockLauncher = stockLauncherComponent();
             component = stockLauncher.flattenToString();
@@ -480,6 +473,7 @@ public class MainActivity extends Activity {
                     .putString(Config.KEY_LAUNCHER_PACKAGE, packageName)
                     .commit();
             Toast.makeText(this, "已選擇：" + title, Toast.LENGTH_SHORT).show();
+            applyLauncherComponent(component);
             showLauncherPage();
         });
 

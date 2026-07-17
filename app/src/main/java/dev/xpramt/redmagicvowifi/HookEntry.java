@@ -11,6 +11,9 @@ import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
 import android.content.pm.PackageManager;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -24,6 +27,7 @@ public class HookEntry implements IXposedHookLoadPackage {
     private static final String SETTINGS = "com.android.settings";
     private static final String SYSTEM_UI = "com.android.systemui";
     private static final String ANDROID = "android";
+    private static final String STOCK_LAUNCHER = "com.zte.mifavor.launcher";
     private static final int STREAM_MUSIC = AudioManager.STREAM_MUSIC;
     private static final int ADJUST_LOWER = AudioManager.ADJUST_LOWER;
     private static final int ADJUST_RAISE = AudioManager.ADJUST_RAISE;
@@ -38,7 +42,9 @@ public class HookEntry implements IXposedHookLoadPackage {
             hookRecentTasksFilter(lpparam);
             return;
         }
-        if (!SETTINGS.equals(lpparam.packageName) && !SYSTEM_UI.equals(lpparam.packageName)) {
+        if (!SETTINGS.equals(lpparam.packageName)
+                && !SYSTEM_UI.equals(lpparam.packageName)
+                && !STOCK_LAUNCHER.equals(lpparam.packageName)) {
             return;
         }
         Config.Snapshot config = Config.loadForHook();
@@ -55,6 +61,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         if (SYSTEM_UI.equals(lpparam.packageName)) {
             hookSystemUiStartAssist(lpparam);
             hookSystemUiAssistantBroadcast(lpparam);
+            hookRecentUiFilter(lpparam);
             if (config.enableStatusIcon) {
                 hookSystemUiAbroad(lpparam);
             }
@@ -63,6 +70,9 @@ public class HookEntry implements IXposedHookLoadPackage {
             } else if (Config.STYLE_ARRAY_HOOK.equals(config.iconStyle)) {
                 hookSystemUiBdArray(lpparam);
             }
+        }
+        if (STOCK_LAUNCHER.equals(lpparam.packageName)) {
+            hookRecentUiFilter(lpparam);
         }
     }
 
@@ -299,6 +309,52 @@ public class HookEntry implements IXposedHookLoadPackage {
         hookRecentTasksMethod(lpparam, "com.android.server.wm.RecentTasks", "getRecentTasksImpl");
     }
 
+    private void hookRecentUiFilter(XC_LoadPackage.LoadPackageParam lpparam) {
+        String[] classNames = new String[]{
+                "com.android.quickstep.RecentTasksList",
+                "com.android.quickstep.RecentsModel",
+                "com.android.quickstep.views.RecentsView",
+                "com.android.quickstep.TaskOverlayFactory",
+                "com.android.systemui.shared.recents.model.RecentsTaskLoader",
+                "com.android.systemui.recents.RecentsImplementation"
+        };
+        for (String className : classNames) {
+            hookRecentUiClass(lpparam, className);
+        }
+    }
+
+    private void hookRecentUiClass(XC_LoadPackage.LoadPackageParam lpparam, String className) {
+        Class<?> clazz = findClassIfExists(className, lpparam.classLoader);
+        if (clazz == null) {
+            return;
+        }
+        int hooked = 0;
+        for (Method method : clazz.getDeclaredMethods()) {
+            String name = method.getName();
+            if (!name.toLowerCase().contains("recent") && !name.toLowerCase().contains("task")) {
+                continue;
+            }
+            try {
+                XposedBridge.hookMethod(method, new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        filterRecentArgs(param);
+                    }
+
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        filterRecentMethodResult(param);
+                    }
+                });
+                hooked++;
+            } catch (Throwable ignored) {
+            }
+        }
+        if (hooked > 0) {
+            log(className + " recent UI filters installed count=" + hooked);
+        }
+    }
+
     private void hookRecentTasksMethod(XC_LoadPackage.LoadPackageParam lpparam, String className, String methodName) {
         Class<?> clazz = findClassIfExists(className, lpparam.classLoader);
         if (clazz == null) {
@@ -312,7 +368,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                     if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
                         return;
                     }
-                    int removed = filterRecentResult(param.getResult(), config.launcherPackage);
+                    int removed = filterRecentMethodResult(param);
                     if (removed > 0) {
                         log("filtered launcher from recent tasks package=" + config.launcherPackage + " count=" + removed);
                     }
@@ -324,24 +380,65 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
     }
 
+    private void filterRecentArgs(XC_MethodHook.MethodHookParam param) {
+        Config.Snapshot config = Config.loadForHook();
+        if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty() || param.args == null) {
+            return;
+        }
+        for (int i = 0; i < param.args.length; i++) {
+            Object arg = param.args[i];
+            if (arg instanceof List) {
+                param.args[i] = filteredRecentList((List<?>) arg, config.launcherPackage);
+            } else {
+                filterRecentResult(arg, config.launcherPackage);
+            }
+        }
+    }
+
+    private int filterRecentMethodResult(XC_MethodHook.MethodHookParam param) {
+        Config.Snapshot config = Config.loadForHook();
+        if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
+            return 0;
+        }
+        Object result = param.getResult();
+        if (result instanceof List) {
+            List<?> filtered = filteredRecentList((List<?>) result, config.launcherPackage);
+            if (filtered != result) {
+                param.setResult(filtered);
+            }
+            return Math.max(0, ((List<?>) result).size() - filtered.size());
+        }
+        return filterRecentResult(result, config.launcherPackage);
+    }
+
     private int filterRecentResult(Object result, String packageName) {
         if (result == null) {
             return 0;
         }
         if (result instanceof List) {
-            return filterRecentList((List<?>) result, packageName);
+            return filterRecentListInPlace((List<?>) result, packageName);
         }
         try {
             Object list = XposedHelpers.callMethod(result, "getList");
             if (list instanceof List) {
-                return filterRecentList((List<?>) list, packageName);
+                return filterRecentListInPlace((List<?>) list, packageName);
             }
         } catch (Throwable ignored) {
         }
         return 0;
     }
 
-    private int filterRecentList(List<?> tasks, String packageName) {
+    private List<?> filteredRecentList(List<?> tasks, String packageName) {
+        ArrayList<Object> filtered = new ArrayList<>();
+        for (Object task : tasks) {
+            if (!recentTaskBelongsToPackage(task, packageName)) {
+                filtered.add(task);
+            }
+        }
+        return filtered.size() == tasks.size() ? tasks : filtered;
+    }
+
+    private int filterRecentListInPlace(List<?> tasks, String packageName) {
         int removed = 0;
         try {
             Iterator<?> iterator = tasks.iterator();
@@ -385,6 +482,48 @@ public class HookEntry implements IXposedHookLoadPackage {
                     if (packageName.equals(intentPackage)) {
                         return true;
                     }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        if (objectGraphContainsPackage(task, packageName, 0)) {
+            return true;
+        }
+        try {
+            String text = String.valueOf(task);
+            if (text.contains(packageName)) {
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    private boolean objectGraphContainsPackage(Object object, String packageName, int depth) {
+        if (object == null || depth > 2) {
+            return false;
+        }
+        if (object instanceof ComponentName) {
+            return packageName.equals(((ComponentName) object).getPackageName());
+        }
+        if (object instanceof Intent) {
+            ComponentName component = ((Intent) object).getComponent();
+            return component != null && packageName.equals(component.getPackageName());
+        }
+        if (object instanceof String) {
+            return packageName.equals(object);
+        }
+        Class<?> clazz = object.getClass();
+        String className = clazz.getName();
+        if (className.startsWith("java.") || className.startsWith("android.graphics.")) {
+            return false;
+        }
+        for (Field field : clazz.getDeclaredFields()) {
+            try {
+                field.setAccessible(true);
+                Object value = field.get(object);
+                if (objectGraphContainsPackage(value, packageName, depth + 1)) {
+                    return true;
                 }
             } catch (Throwable ignored) {
             }
