@@ -3,5 +3,6 @@
         <item>android</item>
         <item>com.android.settings</item>
         <item>com.android.systemui</item>
+        <item>com.zte.mifavor.launcher</item>
     </string-array>
 </resources>

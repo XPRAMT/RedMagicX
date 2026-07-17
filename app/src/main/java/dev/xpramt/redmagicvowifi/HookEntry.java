@@ -76,7 +76,7 @@ public class HookEntry implements IXposedHookLoadPackage {
             }
         }
         if (STOCK_LAUNCHER.equals(lpparam.packageName)) {
-            log("Launcher_MFV scope is not used by the stable build");
+            hookLauncherRecentTasksData(lpparam);
         }
     }
 
@@ -515,6 +515,86 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
     }
 
+    private void hookLauncherRecentTasksData(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> clazz = findClassIfExists("com.android.quickstep.RecentTasksList", lpparam.classLoader);
+        if (clazz == null) {
+            log("Launcher_MFV RecentTasksList not found; data filter skipped");
+        } else {
+            hookLauncherRecentConsumerMethod(clazz, "getTasks");
+            hookLauncherRecentConsumerMethod(clazz, "getTaskKeys");
+            try {
+                XposedBridge.hookAllMethods(clazz, "loadTasksInBackground", new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Config.Snapshot config = Config.loadForHook();
+                        if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
+                            return;
+                        }
+                        int removed = filterRecentResult(param.getResult(), config.launcherPackage);
+                        if (removed > 0) {
+                            log("Launcher_MFV loadTasksInBackground filtered in-place package="
+                                    + config.launcherPackage + " count=" + removed);
+                        }
+                    }
+                });
+                log("Launcher_MFV RecentTasksList data filters installed");
+            } catch (Throwable throwable) {
+                log("Launcher_MFV RecentTasksList data hook failed: " + throwable);
+            }
+        }
+        hookLauncherRunningTaskTile(lpparam);
+    }
+
+    private void hookLauncherRunningTaskTile(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> clazz = findClassIfExists("com.android.quickstep.views.RecentsView", lpparam.classLoader);
+        if (clazz == null) {
+            log("Launcher_MFV RecentsView not found; running tile filter skipped");
+            return;
+        }
+        try {
+            XposedBridge.hookAllMethods(clazz, "setRunningTaskHidden", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (shouldHideLauncherRunningTask(param.thisObject)) {
+                        param.args[0] = true;
+                        Config.Snapshot config = Config.loadForHook();
+                        log("Launcher_MFV setRunningTaskHidden forced for package="
+                                + config.launcherPackage);
+                    }
+                }
+            });
+            XposedBridge.hookAllMethods(clazz, "setCurrentTask", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    if (!shouldHideLauncherRunningTask(param.thisObject)) {
+                        return;
+                    }
+                    try {
+                        XposedHelpers.callMethod(param.thisObject, "setRunningTaskHidden", true);
+                    } catch (Throwable throwable) {
+                        log("Launcher_MFV setCurrentTask running tile hide failed: " + throwable);
+                    }
+                }
+            });
+            log("Launcher_MFV running task tile filters installed");
+        } catch (Throwable throwable) {
+            log("Launcher_MFV running task tile hook failed: " + throwable);
+        }
+    }
+
+    private boolean shouldHideLauncherRunningTask(Object recentsView) {
+        Config.Snapshot config = Config.loadForHook();
+        if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
+            return false;
+        }
+        try {
+            Object runningTaskView = XposedHelpers.callMethod(recentsView, "getRunningTaskView");
+            return recentTaskBelongsToPackage(runningTaskView, config.launcherPackage);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     private void hookLauncherRecentConsumerMethod(Class<?> clazz, String methodName) {
         try {
             XposedBridge.hookAllMethods(clazz, methodName, new XC_MethodHook() {
@@ -764,6 +844,13 @@ public class HookEntry implements IXposedHookLoadPackage {
         try {
             Object taskInfo2 = XposedHelpers.callMethod(task, "getTaskInfo2");
             if (recentTaskBelongsToPackage(taskInfo2, packageName)) {
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Object firstTask = XposedHelpers.callMethod(task, "getFirstTask");
+            if (recentTaskBelongsToPackage(firstTask, packageName)) {
                 return true;
             }
         } catch (Throwable ignored) {
