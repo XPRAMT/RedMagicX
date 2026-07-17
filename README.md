@@ -6,6 +6,8 @@ Unofficial RedMagic tweak toolkit for VoWiFi UI, volume step, and assistant gest
 
 Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models have not been tested, but may work in theory if their Settings/SystemUI implementation uses the same ZTE properties and classes.
 
+<img src="img/app截圖main.jpg" alt="RedMagicX main screen" width="360">
+
 ## Table of Contents
 
 - [Installation](#installation)
@@ -14,7 +16,6 @@ Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models 
   - [VoWiFi UI Fix](#vowifi-ui-fix)
   - [Volume Step Control](#volume-step-control)
   - [Assistant Gesture Redirect](#assistant-gesture-redirect)
-- [Screenshots](#screenshots)
 - [Build](#build)
 - [Notes](#notes)
 
@@ -23,6 +24,10 @@ Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models 
 Download the APK from [GitHub Releases](https://github.com/XPRAMT/RedMagicX/releases) and install it directly on the phone.
 
 For VoWiFi carrier capability, install [Pixel IMS](https://github.com/kyujin-cho/pixel-volte-patch) first and use it to enable VoWiFi. RedMagicX mainly fixes China ROM UI behavior: missing VoWiFi Settings toggle and missing/status-bar icon behavior.
+
+Grant root permission for the in-app process restart buttons:
+
+<img src="img/授予root權限.jpg" alt="Grant root permission" width="360">
 
 ## LSPosed Scopes
 
@@ -36,11 +41,17 @@ Enable RedMagicX in LSPosed, then select scopes based on the features you use:
 
 After changing VoWiFi or assistant settings, restart Settings/SystemUI from the app so the target process reloads the settings.
 
+Select LSPosed scopes:
+
+<img src="img/選擇lsposed作用域.jpg" alt="Select LSPosed scopes" width="360">
+
 ## Features
 
 ### VoWiFi UI Fix
 
 Fixes China ROM VoWiFi UI behavior through LSPosed hooks only. It does not write global `resetprop` values.
+
+<img src="img/app截圖1.jpg" alt="VoWiFi UI Fix settings" width="360">
 
 Switch mapping:
 
@@ -51,40 +62,6 @@ Switch mapping:
 | `VoWiFi icon style = GEN_BD` | `com.android.systemui` | Makes SystemUI read `persist.custom.variant.id=GEN_BD`, using BD-style VoWiFi resources. Restart SystemUI after changing. |
 | `VoWiFi icon style = Hook array` | `com.android.systemui` | Replaces the IMS icon array result with the BD array. Tested working with dual SIM on the current NX809J ROM, but depends on the current ROM method name. |
 
-### Volume Step Control
-
-Lets you customize how many media-volume levels one hardware volume-key press changes.
-
-- Range: `1` to `10`
-- Hook target: Android/System Framework
-- Effect: modifies media-volume key adjustment behavior through LSPosed
-
-### Assistant Gesture Redirect
-
-Redirects the RedMagic bottom gesture-bar long-press assistant event.
-
-Targets:
-
-- System actions: assistant, voice assistant, recents, screenshot, flashlight
-- User apps
-- System apps
-
-This does not modify the system default assistant setting. It intercepts SystemUI before the RedMagic assistant broadcast opens the original assistant target.
-
-## Screenshots
-
-App settings:
-
-<img src="img/app截圖.jpg" alt="App settings" width="360">
-
-Grant root permission for the in-app process restart buttons:
-
-<img src="img/授予root權限.jpg" alt="Grant root permission" width="360">
-
-Select LSPosed scopes:
-
-<img src="img/選擇lsposed作用域.jpg" alt="Select LSPosed scopes" width="360">
-
 VoWiFi icon style comparison:
 
 Default style uses `statusbar_vowifi.svg`:
@@ -94,6 +71,30 @@ Default style uses `statusbar_vowifi.svg`:
 BD style uses `bd_stat_vowifi.svg`:
 
 <img src="img/icons/bd_stat_vowifi.svg" alt="BD bd_stat_vowifi icon" width="220">
+
+### Volume Step Control
+
+Lets you customize how many media-volume levels one hardware volume-key press changes.
+
+<img src="img/app截圖2.jpg" alt="Volume Step Control settings" width="360">
+
+- Range: `1` to `10`
+- Hook target: Android/System Framework
+- Effect: modifies media-volume key adjustment behavior through LSPosed
+
+### Assistant Gesture Redirect
+
+Redirects the RedMagic bottom gesture-bar long-press assistant event.
+
+<img src="img/app截圖3.jpg" alt="Assistant Gesture Redirect settings" width="360">
+
+Targets:
+
+- System actions: assistant, voice assistant, recents, screenshot, flashlight
+- User apps
+- System apps
+
+This does not modify the system default assistant setting. It intercepts SystemUI before the RedMagic assistant broadcast opens the original assistant target.
 
 ## Build
 
