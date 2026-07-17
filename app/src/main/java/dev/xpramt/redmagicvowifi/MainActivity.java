@@ -13,8 +13,6 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
@@ -61,7 +59,6 @@ public class MainActivity extends Activity {
     private static final String STOCK_LAUNCHER_PACKAGE = "com.zte.mifavor.launcher";
     private static final String STOCK_LAUNCHER_CLASS = "com.android.launcher3.uioverrides.QuickstepLauncher";
     private static final int SHIZUKU_REQUEST_CODE_HOME = 1001;
-    private static final int TOAST_DURATION_MS = 1500;
 
     private SharedPreferences prefs;
     private LinearLayout screen;
@@ -73,7 +70,6 @@ public class MainActivity extends Activity {
     private String pendingHomeCommand;
     private String pendingHomeSuccessMessage;
     private String pendingHomeErrorMessage;
-    private final Handler toastHandler = new Handler(Looper.getMainLooper());
     private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
             (requestCode, grantResult) -> {
                 if (requestCode != SHIZUKU_REQUEST_CODE_HOME) {
@@ -439,10 +435,11 @@ public class MainActivity extends Activity {
         return box;
     }
 
-    private void applyLauncherComponent(String component) {
+    private void applyLauncherComponent(String component, String launcherName) {
         if (component == null || component.isEmpty() || isSettingsFallbackHome(component)) {
             ComponentName stockLauncher = stockLauncherComponent();
             component = stockLauncher.flattenToString();
+            launcherName = launcherLabel(component);
             prefs.edit()
                     .putString(Config.KEY_LAUNCHER_COMPONENT, component)
                     .putString(Config.KEY_LAUNCHER_PACKAGE, stockLauncher.getPackageName())
@@ -453,7 +450,7 @@ public class MainActivity extends Activity {
                 : ComponentName.unflattenFromString(component).flattenToShortString();
         runHomeCommand(
                 "cmd package set-home-activity --user 0 " + shellQuote(commandComponent),
-                "已套用預設啟動器",
+                "已將 " + launcherName + " 設為預設啟動器",
                 "套用預設啟動器失敗"
         );
     }
@@ -504,8 +501,7 @@ public class MainActivity extends Activity {
                     .putString(Config.KEY_LAUNCHER_COMPONENT, component)
                     .putString(Config.KEY_LAUNCHER_PACKAGE, packageName)
                     .commit();
-            showToast("已選擇：" + title);
-            applyLauncherComponent(component);
+            applyLauncherComponent(component, title);
             showLauncherPage();
         });
 
@@ -997,9 +993,7 @@ public class MainActivity extends Activity {
     }
 
     private void showToast(String message) {
-        Toast toast = Toast.makeText(this, message, Toast.LENGTH_LONG);
-        toast.show();
-        toastHandler.postDelayed(toast::cancel, TOAST_DURATION_MS);
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
 }
