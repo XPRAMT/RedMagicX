@@ -97,6 +97,7 @@ public class MainActivity extends Activity {
     private final ExecutorService rootExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private boolean updatingWirelessAdbSwitch;
+    private boolean updatingDeveloperAdbSwitch;
     private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
             (requestCode, grantResult) -> {
                 if (requestCode != SHIZUKU_REQUEST_CODE_HOME) {
@@ -492,6 +493,26 @@ public class MainActivity extends Activity {
 
     private LinearLayout wirelessAdbSection() {
         LinearLayout box = sectionBox();
+        box.addView(text("ADB", 18, true));
+        box.addView(detailText("快速控制開發人員選項的「USB 偵錯」開關。這會寫入 Settings.Global 的 adb_enabled；關閉後會中斷 USB 與無線 ADB。"));
+
+        Switch developerAdb = new Switch(this);
+        developerAdb.setText("啟用 ADB（開發人員選項）");
+        developerAdb.setTextSize(18);
+        developerAdb.setTextColor(Color.WHITE);
+        developerAdb.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        developerAdb.setEnabled(false);
+        box.addView(developerAdb);
+        TextView developerAdbStatus = wirelessAdbField(box, "系統狀態", "讀取中...");
+        developerAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingDeveloperAdbSwitch) {
+                toggleDeveloperAdb(isChecked, developerAdb, developerAdbStatus);
+            }
+        });
+        refreshDeveloperAdbStatus(developerAdb, developerAdbStatus);
+
+        box.addView(verticalSpace(14));
+        box.addView(text("無線 ADB", 18, true));
         box.addView(detailText("透過 root 立即設定 ADB TCP 連接埠並重啟 adbd。不需要 LSPosed 或重開機；關閉後僅保留 USB ADB。"));
 
         Switch enabled = new Switch(this);
@@ -580,6 +601,64 @@ public class MainActivity extends Activity {
     private TextView wirelessAdbField(LinearLayout box, String label, String value) {
         addDetailField(box, label, value);
         return (TextView) box.getChildAt(box.getChildCount() - 1);
+    }
+
+    private void refreshDeveloperAdbStatus(Switch toggle, TextView statusValue) {
+        toggle.setEnabled(false);
+        statusValue.setText("讀取中...");
+        rootExecutor.execute(() -> {
+            String adbSetting = readRootCommandOutput("settings get global adb_enabled");
+            boolean enabled = "1".equals(adbSetting);
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                updateDeveloperAdbViews(enabled, toggle, statusValue, adbSetting != null);
+            });
+        });
+    }
+
+    private void toggleDeveloperAdb(boolean enabled, Switch toggle, TextView statusValue) {
+        toggle.setEnabled(false);
+        statusValue.setText("套用中...");
+        rootExecutor.execute(() -> {
+            int exitCode = runProcess(new ProcessBuilder("su", "-c", "settings put global adb_enabled " + (enabled ? "1" : "0")));
+            String adbSetting = readRootCommandOutput("settings get global adb_enabled");
+            boolean actualEnabled = "1".equals(adbSetting);
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                boolean available = adbSetting != null;
+                updateDeveloperAdbViews(actualEnabled, toggle, statusValue, available);
+                showToast(exitCode == 0 && available && actualEnabled == enabled
+                        ? (enabled ? "ADB 已開啟" : "ADB 已關閉")
+                        : "ADB 未套用，請確認 root 權限");
+            });
+        });
+    }
+
+    private void updateDeveloperAdbViews(boolean enabled, Switch toggle, TextView statusValue, boolean available) {
+        updatingDeveloperAdbSwitch = true;
+        toggle.setChecked(enabled);
+        updatingDeveloperAdbSwitch = false;
+        toggle.setEnabled(available);
+        statusValue.setText(available
+                ? (enabled ? "已開啟（adb_enabled=1）" : "已關閉（adb_enabled=0）")
+                : "無法取得 root 狀態");
+    }
+
+    private String readRootCommandOutput(String command) {
+        try {
+            Process process = new ProcessBuilder("su", "-c", command).redirectErrorStream(true).start();
+            String output = readFully(process.getInputStream());
+            return process.waitFor() == 0 ? output.trim() : null;
+        } catch (IOException | InterruptedException exception) {
+            if (exception instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return null;
+        }
     }
 
     private void refreshWirelessAdbStatus(Switch enabled, TextView statusValue, TextView portValue,
