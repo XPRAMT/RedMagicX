@@ -99,6 +99,7 @@ public class MainActivity extends Activity {
     private Runnable wirelessAdbPollTask;
     private boolean updatingWirelessAdbSwitch;
     private boolean updatingDeveloperAdbSwitch;
+    private boolean updatingAdbInstallSwitch;
     private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
             (requestCode, grantResult) -> {
                 if (requestCode != SHIZUKU_REQUEST_CODE_HOME) {
@@ -502,6 +503,7 @@ public class MainActivity extends Activity {
     private LinearLayout wirelessAdbSection() {
         LinearLayout box = sectionBox();
         box.addView(detailText("以下功能皆需 root 權限。"));
+        box.addView(verticalSpace(14));
 
         Switch developerAdb = new Switch(this);
         developerAdb.setText("啟用 ADB（開發人員選項）");
@@ -511,6 +513,7 @@ public class MainActivity extends Activity {
         developerAdb.setEnabled(false);
         box.addView(developerAdb);
         box.addView(detailText("快速控制開發人員選項的「USB 偵錯」開關。關閉後也會中斷無線 ADB。"));
+        box.addView(verticalSpace(14));
 
         Switch fakeAdb = new Switch(this);
         fakeAdb.setText("偽裝 ADB 狀態");
@@ -584,6 +587,16 @@ public class MainActivity extends Activity {
         });
         box.addView(applyPort);
 
+        box.addView(verticalSpace(14));
+        Switch adbInstall = new Switch(this);
+        adbInstall.setText("允許 ADB 安裝");
+        adbInstall.setTextSize(18);
+        adbInstall.setTextColor(Color.WHITE);
+        adbInstall.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        adbInstall.setEnabled(false);
+        box.addView(adbInstall);
+        box.addView(detailText("控制開發人員選項的「允許 USB 安裝」，開啟時寫入 adb_install_enabled=1。"));
+
         enabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!updatingWirelessAdbSwitch) {
                 int port = parseWirelessAdbPort(customPort);
@@ -613,7 +626,13 @@ public class MainActivity extends Activity {
                         enabled, statusValue, endpointValue, commandValue, copyCommand);
             }
         });
+        adbInstall.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingAdbInstallSwitch) {
+                toggleAdbInstall(isChecked, adbInstall);
+            }
+        });
         refreshDeveloperAdbStatus(developerAdb, fakeAdb, developerAdbStatus);
+        refreshAdbInstallStatus(adbInstall);
         startWirelessAdbPolling(enabled, statusValue, endpointValue, commandValue, copyCommand);
         return box;
     }
@@ -720,6 +739,46 @@ public class MainActivity extends Activity {
         if ("2".equals(adbSetting) && !prefs.getBoolean(Config.KEY_ADB_SPOOF_ENABLED, false)) {
             prefs.edit().putBoolean(Config.KEY_ADB_SPOOF_ENABLED, true).commit();
         }
+    }
+
+    private void refreshAdbInstallStatus(Switch toggle) {
+        toggle.setEnabled(false);
+        rootExecutor.execute(() -> {
+            String setting = readRootCommandOutput("settings get system adb_install_enabled");
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                updateAdbInstallSwitch(setting, toggle);
+            });
+        });
+    }
+
+    private void toggleAdbInstall(boolean enabled, Switch toggle) {
+        toggle.setEnabled(false);
+        rootExecutor.execute(() -> {
+            int exitCode = runProcess(new ProcessBuilder(
+                    "su", "-c", "settings put system adb_install_enabled " + (enabled ? 1 : 0)
+            ));
+            String setting = readRootCommandOutput("settings get system adb_install_enabled");
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                updateAdbInstallSwitch(setting, toggle);
+                showToast(exitCode == 0 && String.valueOf(enabled ? 1 : 0).equals(setting)
+                        ? (enabled ? "已允許 ADB 安裝" : "已關閉 ADB 安裝")
+                        : "ADB 安裝設定未套用，請確認 root 權限");
+            });
+        });
+    }
+
+    private void updateAdbInstallSwitch(String setting, Switch toggle) {
+        boolean available = setting != null;
+        updatingAdbInstallSwitch = true;
+        toggle.setChecked("1".equals(setting));
+        updatingAdbInstallSwitch = false;
+        toggle.setEnabled(available);
     }
 
     private boolean isAdbEnabled(String adbSetting) {
