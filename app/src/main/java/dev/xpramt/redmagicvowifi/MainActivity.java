@@ -72,7 +72,7 @@ public class MainActivity extends Activity {
     private static final int PAGE_VOLUME = 2;
     private static final int PAGE_ASSISTANT = 3;
     private static final int PAGE_LAUNCHER = 4;
-    private static final int PAGE_WIRELESS_ADB = 5;
+    private static final int PAGE_ADB_CONTROL = 5;
     private static final int CARD_COLOR = Color.rgb(18, 18, 24);
     private static final int CARD_SELECTED_COLOR = Color.rgb(23, 33, 44);
     private static final String SETTINGS_FALLBACK_HOME_PACKAGE = "com.android.settings";
@@ -96,6 +96,7 @@ public class MainActivity extends Activity {
     private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService rootExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Runnable wirelessAdbPollTask;
     private boolean updatingWirelessAdbSwitch;
     private boolean updatingDeveloperAdbSwitch;
     private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
@@ -131,6 +132,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        stopWirelessAdbPolling();
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
         updateExecutor.shutdownNow();
         rootExecutor.shutdownNow();
@@ -246,6 +248,7 @@ public class MainActivity extends Activity {
     }
 
     private void showHome() {
+        stopWirelessAdbPolling();
         currentPage = PAGE_HOME;
         titleView.setText("RedMagicX");
         backView.setVisibility(View.INVISIBLE);
@@ -271,13 +274,14 @@ public class MainActivity extends Activity {
                 view -> showLauncherPage()
         ));
         contentRoot.addView(featureButton(
-                "無線 ADB",
-                "使用 root 即時開關 ADB TCP 連線，預設連接埠 5555",
-                view -> showWirelessAdbPage()
+                "ADB 控制中心",
+                "快速控制 USB 偵錯、ADB 偽裝與無線 ADB",
+                view -> showAdbControlPage()
         ));
     }
 
     private void showVoWifiPage() {
+        stopWirelessAdbPolling();
         currentPage = PAGE_VOWIFI;
         titleView.setText("VoWiFi UI 修正");
         backView.setVisibility(View.VISIBLE);
@@ -303,6 +307,7 @@ public class MainActivity extends Activity {
     }
 
     private void showVolumePage() {
+        stopWirelessAdbPolling();
         currentPage = PAGE_VOLUME;
         titleView.setText("音量步進調整");
         backView.setVisibility(View.VISIBLE);
@@ -311,6 +316,7 @@ public class MainActivity extends Activity {
     }
 
     private void showAssistantPage() {
+        stopWirelessAdbPolling();
         currentPage = PAGE_ASSISTANT;
         titleView.setText("魔姬手勢替換");
         backView.setVisibility(View.VISIBLE);
@@ -319,6 +325,7 @@ public class MainActivity extends Activity {
     }
 
     private void showLauncherPage() {
+        stopWirelessAdbPolling();
         currentPage = PAGE_LAUNCHER;
         titleView.setText("第三方啟動器");
         backView.setVisibility(View.VISIBLE);
@@ -326,9 +333,10 @@ public class MainActivity extends Activity {
         contentRoot.addView(launcherSection());
     }
 
-    private void showWirelessAdbPage() {
-        currentPage = PAGE_WIRELESS_ADB;
-        titleView.setText("無線 ADB");
+    private void showAdbControlPage() {
+        stopWirelessAdbPolling();
+        currentPage = PAGE_ADB_CONTROL;
+        titleView.setText("ADB 控制中心");
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(wirelessAdbSection());
@@ -493,8 +501,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout wirelessAdbSection() {
         LinearLayout box = sectionBox();
-        box.addView(text("ADB", 18, true));
-        box.addView(detailText("快速控制開發人員選項的「USB 偵錯」開關。這會寫入 Settings.Global 的 adb_enabled；關閉後會中斷 USB 與無線 ADB。"));
+        box.addView(detailText("以下功能皆需 root 權限。"));
 
         Switch developerAdb = new Switch(this);
         developerAdb.setText("啟用 ADB（開發人員選項）");
@@ -503,7 +510,7 @@ public class MainActivity extends Activity {
         developerAdb.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         developerAdb.setEnabled(false);
         box.addView(developerAdb);
-        TextView developerAdbStatus = wirelessAdbField(box, "系統狀態", "讀取中...");
+        box.addView(detailText("快速控制開發人員選項的「USB 偵錯」開關。關閉後也會中斷無線 ADB。"));
 
         Switch fakeAdb = new Switch(this);
         fakeAdb.setText("偽裝 ADB 狀態");
@@ -512,23 +519,10 @@ public class MainActivity extends Activity {
         fakeAdb.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         fakeAdb.setEnabled(false);
         box.addView(fakeAdb);
-        box.addView(detailText("寫入 adb_enabled=2。系統會把非零值視為 ADB 已開啟，因此 ADB 連線可維持；只有精確檢查 adb_enabled 是否等於 1 的部分 App 會判定 ADB 未開啟。檢查非零值、USB 設定或其它偵錯狀態的 App 不受影響。"));
-
-        developerAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!updatingDeveloperAdbSwitch) {
-                toggleDeveloperAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus);
-            }
-        });
-        fakeAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!updatingDeveloperAdbSwitch) {
-                toggleFakeAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus);
-            }
-        });
-        refreshDeveloperAdbStatus(developerAdb, fakeAdb, developerAdbStatus);
+        box.addView(detailText("寫入 adb_enabled=2。系統會把大於零的值視為 ADB 已開啟，只能欺騙精確檢查 adb_enabled 是否等於 1 的部分 App。對於會檢查非零值或其它偵錯狀態的 App 無效。"));
+        TextView developerAdbStatus = wirelessAdbField(box, "系統狀態", "讀取中...");
 
         box.addView(verticalSpace(14));
-        box.addView(text("無線 ADB", 18, true));
-        box.addView(detailText("透過 root 立即設定 ADB TCP 連接埠並重啟 adbd。不需要 LSPosed 或重開機；關閉後僅保留 USB ADB。"));
 
         Switch enabled = new Switch(this);
         enabled.setText("啟用無線 ADB");
@@ -537,6 +531,7 @@ public class MainActivity extends Activity {
         enabled.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         enabled.setEnabled(false);
         box.addView(enabled);
+        box.addView(detailText("立即設定 ADB TCP 連接埠並重啟 adbd。"));
 
         TextView customPortLabel = text("自訂連接埠", 14, true);
         customPortLabel.setPadding(0, dp(10), 0, 0);
@@ -557,8 +552,7 @@ public class MainActivity extends Activity {
         box.addView(customPort);
 
         TextView statusValue = wirelessAdbField(box, "狀態", "讀取中...");
-        TextView portValue = wirelessAdbField(box, "連接埠", "-");
-        TextView ipValue = wirelessAdbField(box, "Wi-Fi 位址", "讀取中...");
+        TextView endpointValue = wirelessAdbField(box, "IP 位址", "讀取中...");
         TextView commandValue = wirelessAdbField(box, "連線指令", "-");
 
         Button copyCommand = new Button(this);
@@ -576,7 +570,7 @@ public class MainActivity extends Activity {
         box.addView(copyCommand);
 
         Button applyPort = new Button(this);
-        applyPort.setText("套用連接埠");
+        applyPort.setText("套用");
         styleButton(applyPort, false, false);
         applyPort.setOnClickListener(view -> {
             int port = parseWirelessAdbPort(customPort);
@@ -585,15 +579,9 @@ public class MainActivity extends Activity {
                 return;
             }
             prefs.edit().putInt(Config.KEY_WIRELESS_ADB_PORT, port).commit();
-            applyWirelessAdbPort(port, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+            applyWirelessAdbPort(port, enabled, statusValue, endpointValue, commandValue, copyCommand);
         });
         box.addView(applyPort);
-
-        Button refresh = new Button(this);
-        refresh.setText("重新讀取狀態");
-        styleButton(refresh, false, false);
-        refresh.setOnClickListener(view -> refreshWirelessAdbStatus(enabled, statusValue, portValue, ipValue, commandValue, copyCommand));
-        box.addView(refresh);
 
         enabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!updatingWirelessAdbSwitch) {
@@ -606,10 +594,23 @@ public class MainActivity extends Activity {
                     return;
                 }
                 prefs.edit().putInt(Config.KEY_WIRELESS_ADB_PORT, port).commit();
-                toggleWirelessAdb(isChecked, port, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+                toggleWirelessAdb(isChecked, port, enabled, statusValue, endpointValue, commandValue, copyCommand);
             }
         });
-        refreshWirelessAdbStatus(enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+        developerAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingDeveloperAdbSwitch) {
+                toggleDeveloperAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus,
+                        enabled, statusValue, endpointValue, commandValue, copyCommand);
+            }
+        });
+        fakeAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingDeveloperAdbSwitch) {
+                toggleFakeAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus,
+                        enabled, statusValue, endpointValue, commandValue, copyCommand);
+            }
+        });
+        refreshDeveloperAdbStatus(developerAdb, fakeAdb, developerAdbStatus);
+        startWirelessAdbPolling(enabled, statusValue, endpointValue, commandValue, copyCommand);
         return box;
     }
 
@@ -628,44 +629,63 @@ public class MainActivity extends Activity {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
+                syncAdbSpoofPreference(adbSetting);
                 updateDeveloperAdbViews(adbSetting, toggle, fakeToggle, statusValue);
             });
         });
     }
 
-    private void toggleDeveloperAdb(boolean enabled, Switch toggle, Switch fakeToggle, TextView statusValue) {
+    private void toggleDeveloperAdb(boolean enabled, Switch toggle, Switch fakeToggle, TextView statusValue,
+                                    Switch wirelessToggle, TextView wirelessStatusValue, TextView endpointValue,
+                                    TextView commandValue, Button copyCommand) {
         toggle.setEnabled(false);
         fakeToggle.setEnabled(false);
         statusValue.setText("套用中...");
         rootExecutor.execute(() -> {
-            int exitCode = runProcess(new ProcessBuilder("su", "-c", "settings put global adb_enabled " + (enabled ? "1" : "0")));
+            int targetValue = enabled
+                    ? (prefs.getBoolean(Config.KEY_ADB_SPOOF_ENABLED, false) ? 2 : 1)
+                    : 0;
+            int exitCode = runProcess(new ProcessBuilder("su", "-c", "settings put global adb_enabled " + targetValue));
             String adbSetting = readRootCommandOutput("settings get global adb_enabled");
             mainHandler.post(() -> {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
                 updateDeveloperAdbViews(adbSetting, toggle, fakeToggle, statusValue);
-                showToast(exitCode == 0 && String.valueOf(enabled ? 1 : 0).equals(adbSetting)
+                refreshWirelessAdbStatus(wirelessToggle, wirelessStatusValue, endpointValue, commandValue, copyCommand);
+                showToast(exitCode == 0 && String.valueOf(targetValue).equals(adbSetting)
                         ? (enabled ? "ADB 已開啟" : "ADB 已關閉")
                         : "ADB 未套用，請確認 root 權限");
             });
         });
     }
 
-    private void toggleFakeAdb(boolean enabled, Switch toggle, Switch fakeToggle, TextView statusValue) {
+    private void toggleFakeAdb(boolean enabled, Switch toggle, Switch fakeToggle, TextView statusValue,
+                               Switch wirelessToggle, TextView wirelessStatusValue, TextView endpointValue,
+                               TextView commandValue, Button copyCommand) {
         toggle.setEnabled(false);
         fakeToggle.setEnabled(false);
         statusValue.setText("套用中...");
+        prefs.edit().putBoolean(Config.KEY_ADB_SPOOF_ENABLED, enabled).commit();
         rootExecutor.execute(() -> {
-            int exitCode = runProcess(new ProcessBuilder("su", "-c", "settings put global adb_enabled " + (enabled ? "2" : "1")));
+            String currentSetting = readRootCommandOutput("settings get global adb_enabled");
+            boolean adbEnabled = isAdbEnabled(currentSetting);
+            int targetValue = enabled ? 2 : 1;
+            int exitCode = adbEnabled
+                    ? runProcess(new ProcessBuilder("su", "-c", "settings put global adb_enabled " + targetValue))
+                    : 0;
             String adbSetting = readRootCommandOutput("settings get global adb_enabled");
             mainHandler.post(() -> {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
                 updateDeveloperAdbViews(adbSetting, toggle, fakeToggle, statusValue);
-                showToast(exitCode == 0 && String.valueOf(enabled ? 2 : 1).equals(adbSetting)
-                        ? (enabled ? "ADB 偽裝模式已開啟" : "ADB 偽裝模式已關閉")
+                refreshWirelessAdbStatus(wirelessToggle, wirelessStatusValue, endpointValue, commandValue, copyCommand);
+                boolean applied = !adbEnabled || (exitCode == 0 && String.valueOf(targetValue).equals(adbSetting));
+                showToast(applied
+                        ? (adbEnabled
+                            ? (enabled ? "ADB 偽裝模式已開啟" : "ADB 偽裝模式已關閉")
+                            : "已儲存 ADB 偽裝設定")
                         : "ADB 偽裝模式未套用，請確認 root 權限");
             });
         });
@@ -674,18 +694,22 @@ public class MainActivity extends Activity {
     private void updateDeveloperAdbViews(String adbSetting, Switch toggle, Switch fakeToggle, TextView statusValue) {
         boolean available = adbSetting != null;
         boolean enabled = isAdbEnabled(adbSetting);
-        boolean fakeEnabled = "2".equals(adbSetting);
+        boolean fakeEnabled = prefs.getBoolean(Config.KEY_ADB_SPOOF_ENABLED, false);
         updatingDeveloperAdbSwitch = true;
         toggle.setChecked(enabled);
         fakeToggle.setChecked(fakeEnabled);
         updatingDeveloperAdbSwitch = false;
         toggle.setEnabled(available);
-        fakeToggle.setEnabled(available && enabled);
+        fakeToggle.setEnabled(available);
         statusValue.setText(available
-                ? (enabled
-                    ? (fakeEnabled ? "已開啟（adb_enabled=2，偽裝模式）" : "已開啟（adb_enabled=" + adbSetting + "）")
-                    : "已關閉（adb_enabled=" + adbSetting + "）")
+                ? "adb_enabled=" + adbSetting
                 : "無法取得 root 狀態");
+    }
+
+    private void syncAdbSpoofPreference(String adbSetting) {
+        if ("2".equals(adbSetting) && !prefs.getBoolean(Config.KEY_ADB_SPOOF_ENABLED, false)) {
+            prefs.edit().putBoolean(Config.KEY_ADB_SPOOF_ENABLED, true).commit();
+        }
     }
 
     private boolean isAdbEnabled(String adbSetting) {
@@ -709,10 +733,40 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void refreshWirelessAdbStatus(Switch enabled, TextView statusValue, TextView portValue,
-                                          TextView ipValue, TextView commandValue, Button copyCommand) {
-        enabled.setEnabled(false);
-        statusValue.setText("讀取中...");
+    private void startWirelessAdbPolling(Switch enabled, TextView statusValue, TextView endpointValue,
+                                         TextView commandValue, Button copyCommand) {
+        stopWirelessAdbPolling();
+        wirelessAdbPollTask = new Runnable() {
+            @Override
+            public void run() {
+                if (currentPage != PAGE_ADB_CONTROL) {
+                    return;
+                }
+                refreshWirelessAdbStatus(enabled, statusValue, endpointValue, commandValue, copyCommand, false);
+                mainHandler.postDelayed(this, 5000);
+            }
+        };
+        wirelessAdbPollTask.run();
+    }
+
+    private void stopWirelessAdbPolling() {
+        if (wirelessAdbPollTask != null) {
+            mainHandler.removeCallbacks(wirelessAdbPollTask);
+            wirelessAdbPollTask = null;
+        }
+    }
+
+    private void refreshWirelessAdbStatus(Switch enabled, TextView statusValue, TextView endpointValue,
+                                          TextView commandValue, Button copyCommand) {
+        refreshWirelessAdbStatus(enabled, statusValue, endpointValue, commandValue, copyCommand, true);
+    }
+
+    private void refreshWirelessAdbStatus(Switch enabled, TextView statusValue, TextView endpointValue,
+                                          TextView commandValue, Button copyCommand, boolean showLoading) {
+        if (showLoading) {
+            enabled.setEnabled(false);
+            statusValue.setText("讀取中...");
+        }
         rootExecutor.execute(() -> {
             WirelessAdbStatus status = readWirelessAdbStatus();
             String ipAddress = wirelessIpv4Address();
@@ -720,7 +774,7 @@ public class MainActivity extends Activity {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
-                updateWirelessAdbViews(status, ipAddress, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+                updateWirelessAdbViews(status, ipAddress, enabled, statusValue, endpointValue, commandValue, copyCommand);
             });
         });
     }
@@ -734,8 +788,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void applyWirelessAdbPort(int port, Switch enabled, TextView statusValue, TextView portValue,
-                                      TextView ipValue, TextView commandValue, Button copyCommand) {
+    private void applyWirelessAdbPort(int port, Switch enabled, TextView statusValue, TextView endpointValue,
+                                      TextView commandValue, Button copyCommand) {
         enabled.setEnabled(false);
         statusValue.setText("套用中...");
         rootExecutor.execute(() -> {
@@ -749,7 +803,7 @@ public class MainActivity extends Activity {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
-                updateWirelessAdbViews(status, ipAddress, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+                updateWirelessAdbViews(status, ipAddress, enabled, statusValue, endpointValue, commandValue, copyCommand);
                 boolean applied = !current.enabled || (status.enabled && String.valueOf(port).equals(status.port));
                 showToast(exitCode == 0 && applied
                         ? (current.enabled ? "無線 ADB 已改為連接埠 " + port : "已儲存連接埠 " + port)
@@ -758,8 +812,8 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void toggleWirelessAdb(boolean enabled, int port, Switch toggle, TextView statusValue, TextView portValue,
-                                   TextView ipValue, TextView commandValue, Button copyCommand) {
+    private void toggleWirelessAdb(boolean enabled, int port, Switch toggle, TextView statusValue, TextView endpointValue,
+                                   TextView commandValue, Button copyCommand) {
         toggle.setEnabled(false);
         statusValue.setText("套用中...");
         String command = enabled
@@ -773,7 +827,7 @@ public class MainActivity extends Activity {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
-                updateWirelessAdbViews(status, ipAddress, toggle, statusValue, portValue, ipValue, commandValue, copyCommand);
+                updateWirelessAdbViews(status, ipAddress, toggle, statusValue, endpointValue, commandValue, copyCommand);
                 boolean applied = enabled
                         ? status.enabled && String.valueOf(port).equals(status.port)
                         : !status.enabled;
@@ -822,17 +876,19 @@ public class MainActivity extends Activity {
     }
 
     private void updateWirelessAdbViews(WirelessAdbStatus status, String ipAddress, Switch enabled,
-                                        TextView statusValue, TextView portValue, TextView ipValue,
+                                        TextView statusValue, TextView endpointValue,
                                         TextView commandValue, Button copyCommand) {
         updatingWirelessAdbSwitch = true;
         enabled.setChecked(status.enabled);
         updatingWirelessAdbSwitch = false;
         enabled.setEnabled(status.available);
         statusValue.setText(status.available ? (status.enabled ? "已開啟，adbd 正在執行" : "已關閉") : "無法取得 root 狀態");
-        portValue.setText(status.enabled ? status.port : "-");
-        ipValue.setText(ipAddress);
-        String command = status.enabled && !"未連線 Wi-Fi".equals(ipAddress)
-                ? "adb connect " + ipAddress + ":" + status.port
+        String endpoint = status.enabled && !"未連線 Wi-Fi".equals(ipAddress)
+                ? ipAddress + ":" + status.port
+                : "-";
+        endpointValue.setText(endpoint);
+        String command = !"-".equals(endpoint)
+                ? "adb connect " + endpoint
                 : "-";
         commandValue.setText(command);
         copyCommand.setEnabled(!"-".equals(command));
