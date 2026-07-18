@@ -73,6 +73,7 @@ public class MainActivity extends Activity {
     private static final int PAGE_ASSISTANT = 3;
     private static final int PAGE_LAUNCHER = 4;
     private static final int PAGE_ADB_CONTROL = 5;
+    private static final int PAGE_QUICK_ENTRY = 6;
     private static final int CARD_COLOR = Color.rgb(18, 18, 24);
     private static final int CARD_SELECTED_COLOR = Color.rgb(23, 33, 44);
     private static final String SETTINGS_FALLBACK_HOME_PACKAGE = "com.android.settings";
@@ -279,6 +280,11 @@ public class MainActivity extends Activity {
                 "快速控制 USB 偵錯、ADB 偽裝與無線 ADB",
                 view -> showAdbControlPage()
         ));
+        contentRoot.addView(featureButton(
+                "快速入口",
+                "工程模式撥號碼與常用系統入口",
+                view -> showQuickEntryPage()
+        ));
     }
 
     private void showVoWifiPage() {
@@ -341,6 +347,92 @@ public class MainActivity extends Activity {
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(wirelessAdbSection());
+    }
+
+    private void showQuickEntryPage() {
+        stopWirelessAdbPolling();
+        currentPage = PAGE_QUICK_ENTRY;
+        titleView.setText("快速入口");
+        backView.setVisibility(View.VISIBLE);
+        contentRoot.removeAllViews();
+        contentRoot.addView(quickEntrySection());
+    }
+
+    private LinearLayout quickEntrySection() {
+        LinearLayout box = sectionBox();
+        box.addView(detailText("以下功能需 root 權限，透過原廠電話鍵盤模擬輸入撥號碼。"));
+        box.addView(verticalSpace(14));
+        box.addView(text("工程模式", 18, true));
+        box.addView(detailText("首次使用時，請先解鎖工程模式；完成解鎖後可直接進入工程模式主選單。"));
+        box.addView(verticalSpace(14));
+
+        Button unlock = new Button(this);
+        unlock.setText("解鎖工程模式");
+        styleButton(unlock, false, false);
+        unlock.setOnClickListener(view -> openEngineeringMode("*983*673636#", "已送出工程模式解鎖碼"));
+        box.addView(unlock);
+        box.addView(detailText("模擬輸入 *983*673636#。只需要在首次使用時執行。"));
+
+        box.addView(verticalSpace(14));
+        Button enter = new Button(this);
+        enter.setText("進入工程模式");
+        styleButton(enter, false, false);
+        enter.setOnClickListener(view -> openEngineeringMode("*983*0#", "已開啟工程模式"));
+        box.addView(enter);
+        box.addView(detailText("模擬輸入 *983*0#，開啟工程模式主選單。"));
+        return box;
+    }
+
+    private void openEngineeringMode(String dialCode, String successMessage) {
+        rootExecutor.execute(() -> {
+            int exitCode = runProcess(new ProcessBuilder("su", "-c", engineeringDialCommand(dialCode)));
+            mainHandler.post(() -> showToast(exitCode == 0 ? successMessage : "無法開啟工程模式，請確認 root 權限"));
+        });
+    }
+
+    private String engineeringDialCommand(String dialCode) {
+        int width = getResources().getDisplayMetrics().widthPixels;
+        int height = getResources().getDisplayMetrics().heightPixels;
+        int deleteX = Math.round(1125 * width / 1216f);
+        int deleteY = Math.round(1370 * height / 2688f);
+        StringBuilder command = new StringBuilder(
+                "am start -n com.android.contacts/.activities.DialtactsActivity -a android.intent.action.DIAL"
+        );
+        command.append("; sleep 1; input swipe ")
+                .append(deleteX).append(' ').append(deleteY).append(' ')
+                .append(deleteX).append(' ').append(deleteY).append(" 900")
+                .append("; sleep 1; am start -n com.android.contacts/.activities.DialtactsActivity")
+                .append(" -a android.intent.action.DIAL; sleep 1");
+        for (int index = 0; index < dialCode.length(); index++) {
+            int[] point = dialPadPoint(dialCode.charAt(index), width, height);
+            command.append("; input tap ").append(point[0]).append(' ').append(point[1]);
+        }
+        return command.toString();
+    }
+
+    private int[] dialPadPoint(char digit, int width, int height) {
+        int column;
+        int row;
+        if (digit == '*') {
+            column = 0;
+            row = 3;
+        } else if (digit == '#') {
+            column = 2;
+            row = 3;
+        } else if (digit == '0') {
+            column = 1;
+            row = 3;
+        } else {
+            int value = digit - '1';
+            column = value % 3;
+            row = value / 3;
+        }
+        int[] x = {235, 607, 980};
+        int[] y = {1569, 1764, 1959, 2154};
+        return new int[]{
+                Math.round(x[column] * width / 1216f),
+                Math.round(y[row] * height / 2688f)
+        };
     }
 
     private LinearLayout featureButton(String title, String description, View.OnClickListener listener) {
