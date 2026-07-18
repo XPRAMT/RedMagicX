@@ -2,7 +2,10 @@ package dev.xpramt.redmagicvowifi;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -19,6 +22,7 @@ import android.os.Looper;
 import android.text.Layout;
 import android.text.SpannableString;
 import android.text.Spanned;
+import android.text.InputType;
 import android.text.method.LinkMovementMethod;
 import android.text.style.URLSpan;
 import android.view.Gravity;
@@ -29,6 +33,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -42,12 +47,16 @@ import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.HttpURLConnection;
+import java.net.NetworkInterface;
 import java.net.URL;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -63,6 +72,7 @@ public class MainActivity extends Activity {
     private static final int PAGE_VOLUME = 2;
     private static final int PAGE_ASSISTANT = 3;
     private static final int PAGE_LAUNCHER = 4;
+    private static final int PAGE_WIRELESS_ADB = 5;
     private static final int CARD_COLOR = Color.rgb(18, 18, 24);
     private static final int CARD_SELECTED_COLOR = Color.rgb(23, 33, 44);
     private static final String SETTINGS_FALLBACK_HOME_PACKAGE = "com.android.settings";
@@ -84,7 +94,9 @@ public class MainActivity extends Activity {
     private String pendingHomeSuccessMessage;
     private String pendingHomeErrorMessage;
     private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService rootExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private boolean updatingWirelessAdbSwitch;
     private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
             (requestCode, grantResult) -> {
                 if (requestCode != SHIZUKU_REQUEST_CODE_HOME) {
@@ -120,6 +132,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
         updateExecutor.shutdownNow();
+        rootExecutor.shutdownNow();
         super.onDestroy();
     }
 
@@ -256,6 +269,11 @@ public class MainActivity extends Activity {
                 "設定預設 HOME，並從最近使用列表隱藏選定啟動器",
                 view -> showLauncherPage()
         ));
+        contentRoot.addView(featureButton(
+                "無線 ADB",
+                "使用 root 即時開關 ADB TCP 連線，預設連接埠 5555",
+                view -> showWirelessAdbPage()
+        ));
     }
 
     private void showVoWifiPage() {
@@ -305,6 +323,14 @@ public class MainActivity extends Activity {
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(launcherSection());
+    }
+
+    private void showWirelessAdbPage() {
+        currentPage = PAGE_WIRELESS_ADB;
+        titleView.setText("無線 ADB");
+        backView.setVisibility(View.VISIBLE);
+        contentRoot.removeAllViews();
+        contentRoot.addView(wirelessAdbSection());
     }
 
     private LinearLayout featureButton(String title, String description, View.OnClickListener listener) {
@@ -462,6 +488,251 @@ public class MainActivity extends Activity {
             box.addView(launcherCard(title, description, componentName.flattenToString(), packageName, icon));
         }
         return box;
+    }
+
+    private LinearLayout wirelessAdbSection() {
+        LinearLayout box = sectionBox();
+        box.addView(detailText("透過 root 立即設定 ADB TCP 連接埠並重啟 adbd。不需要 LSPosed 或重開機；關閉後僅保留 USB ADB。"));
+
+        Switch enabled = new Switch(this);
+        enabled.setText("啟用無線 ADB");
+        enabled.setTextSize(18);
+        enabled.setTextColor(Color.WHITE);
+        enabled.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        enabled.setEnabled(false);
+        box.addView(enabled);
+
+        TextView customPortLabel = text("自訂連接埠", 14, true);
+        customPortLabel.setPadding(0, dp(10), 0, 0);
+        box.addView(customPortLabel);
+        EditText customPort = new EditText(this);
+        customPort.setText(String.valueOf(prefs.getInt(Config.KEY_WIRELESS_ADB_PORT, Config.DEFAULT_WIRELESS_ADB_PORT)));
+        customPort.setTextSize(14);
+        customPort.setTextColor(Color.WHITE);
+        customPort.setHintTextColor(Color.rgb(190, 196, 205));
+        customPort.setSingleLine(true);
+        customPort.setSelectAllOnFocus(false);
+        customPort.setInputType(InputType.TYPE_CLASS_NUMBER);
+        customPort.setBackground(cardBackground(CARD_COLOR));
+        customPort.setPadding(dp(12), 0, dp(12), 0);
+        LinearLayout.LayoutParams portParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        portParams.setMargins(0, dp(4), 0, 0);
+        customPort.setLayoutParams(portParams);
+        box.addView(customPort);
+
+        TextView statusValue = wirelessAdbField(box, "狀態", "讀取中...");
+        TextView portValue = wirelessAdbField(box, "連接埠", "-");
+        TextView ipValue = wirelessAdbField(box, "Wi-Fi 位址", "讀取中...");
+        TextView commandValue = wirelessAdbField(box, "連線指令", "-");
+
+        Button copyCommand = new Button(this);
+        copyCommand.setText("複製連線指令");
+        styleButton(copyCommand, false, false);
+        copyCommand.setEnabled(false);
+        copyCommand.setOnClickListener(view -> {
+            String command = String.valueOf(commandValue.getText());
+            if (!"-".equals(command)) {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText("ADB connect", command));
+                showToast("已複製連線指令");
+            }
+        });
+        box.addView(copyCommand);
+
+        Button applyPort = new Button(this);
+        applyPort.setText("套用連接埠");
+        styleButton(applyPort, false, false);
+        applyPort.setOnClickListener(view -> {
+            int port = parseWirelessAdbPort(customPort);
+            if (port == -1) {
+                showToast("連接埠必須介於 1 到 65535");
+                return;
+            }
+            prefs.edit().putInt(Config.KEY_WIRELESS_ADB_PORT, port).commit();
+            applyWirelessAdbPort(port, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+        });
+        box.addView(applyPort);
+
+        Button refresh = new Button(this);
+        refresh.setText("重新讀取狀態");
+        styleButton(refresh, false, false);
+        refresh.setOnClickListener(view -> refreshWirelessAdbStatus(enabled, statusValue, portValue, ipValue, commandValue, copyCommand));
+        box.addView(refresh);
+
+        enabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingWirelessAdbSwitch) {
+                int port = parseWirelessAdbPort(customPort);
+                if (port == -1) {
+                    updatingWirelessAdbSwitch = true;
+                    enabled.setChecked(false);
+                    updatingWirelessAdbSwitch = false;
+                    showToast("連接埠必須介於 1 到 65535");
+                    return;
+                }
+                prefs.edit().putInt(Config.KEY_WIRELESS_ADB_PORT, port).commit();
+                toggleWirelessAdb(isChecked, port, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+            }
+        });
+        refreshWirelessAdbStatus(enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+        return box;
+    }
+
+    private TextView wirelessAdbField(LinearLayout box, String label, String value) {
+        addDetailField(box, label, value);
+        return (TextView) box.getChildAt(box.getChildCount() - 1);
+    }
+
+    private void refreshWirelessAdbStatus(Switch enabled, TextView statusValue, TextView portValue,
+                                          TextView ipValue, TextView commandValue, Button copyCommand) {
+        enabled.setEnabled(false);
+        statusValue.setText("讀取中...");
+        rootExecutor.execute(() -> {
+            WirelessAdbStatus status = readWirelessAdbStatus();
+            String ipAddress = wirelessIpv4Address();
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                updateWirelessAdbViews(status, ipAddress, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+            });
+        });
+    }
+
+    private int parseWirelessAdbPort(EditText input) {
+        try {
+            int port = Integer.parseInt(String.valueOf(input.getText()).trim());
+            return port >= 1 && port <= 65535 ? port : -1;
+        } catch (NumberFormatException exception) {
+            return -1;
+        }
+    }
+
+    private void applyWirelessAdbPort(int port, Switch enabled, TextView statusValue, TextView portValue,
+                                      TextView ipValue, TextView commandValue, Button copyCommand) {
+        enabled.setEnabled(false);
+        statusValue.setText("套用中...");
+        rootExecutor.execute(() -> {
+            WirelessAdbStatus current = readWirelessAdbStatus();
+            int exitCode = current.enabled
+                    ? runProcess(new ProcessBuilder("su", "-c", wirelessAdbCommand(port)))
+                    : 0;
+            WirelessAdbStatus status = readWirelessAdbStatus();
+            String ipAddress = wirelessIpv4Address();
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                updateWirelessAdbViews(status, ipAddress, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
+                showToast(exitCode == 0
+                        ? (current.enabled ? "無線 ADB 已改為連接埠 " + port : "已儲存連接埠 " + port)
+                        : "連接埠套用失敗 (" + exitCode + ")");
+            });
+        });
+    }
+
+    private void toggleWirelessAdb(boolean enabled, int port, Switch toggle, TextView statusValue, TextView portValue,
+                                   TextView ipValue, TextView commandValue, Button copyCommand) {
+        toggle.setEnabled(false);
+        statusValue.setText("套用中...");
+        String command = enabled
+                ? wirelessAdbCommand(port)
+                : "setprop service.adb.tcp.port ''; stop adbd; start adbd";
+        rootExecutor.execute(() -> {
+            int exitCode = runProcess(new ProcessBuilder("su", "-c", command));
+            WirelessAdbStatus status = readWirelessAdbStatus();
+            String ipAddress = wirelessIpv4Address();
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                updateWirelessAdbViews(status, ipAddress, toggle, statusValue, portValue, ipValue, commandValue, copyCommand);
+                showToast(exitCode == 0
+                        ? (status.enabled ? "無線 ADB 已開啟，連接埠 " + status.port : "無線 ADB 已關閉")
+                        : "無線 ADB 切換失敗 (" + exitCode + ")");
+            });
+        });
+    }
+
+    private String wirelessAdbCommand(int port) {
+        return "setprop service.adb.tcp.port " + port + "; stop adbd; start adbd";
+    }
+
+    private WirelessAdbStatus readWirelessAdbStatus() {
+        try {
+            Process process = new ProcessBuilder("su", "-c", "getprop service.adb.tcp.port; getprop init.svc.adbd")
+                    .redirectErrorStream(true)
+                    .start();
+            String output = readFully(process.getInputStream());
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                return WirelessAdbStatus.unavailable();
+            }
+            String[] lines = output.trim().split("\\n");
+            String port = lines.length > 0 ? lines[0].trim() : "";
+            String daemonState = lines.length > 1 ? lines[1].trim() : "";
+            return new WirelessAdbStatus(port, daemonState, true);
+        } catch (IOException | InterruptedException exception) {
+            if (exception instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return WirelessAdbStatus.unavailable();
+        }
+    }
+
+    private void updateWirelessAdbViews(WirelessAdbStatus status, String ipAddress, Switch enabled,
+                                        TextView statusValue, TextView portValue, TextView ipValue,
+                                        TextView commandValue, Button copyCommand) {
+        updatingWirelessAdbSwitch = true;
+        enabled.setChecked(status.enabled);
+        updatingWirelessAdbSwitch = false;
+        enabled.setEnabled(status.available);
+        statusValue.setText(status.available ? (status.enabled ? "已開啟，adbd 正在執行" : "已關閉") : "無法取得 root 狀態");
+        portValue.setText(status.enabled ? status.port : "-");
+        ipValue.setText(ipAddress);
+        String command = status.enabled && !"未連線 Wi-Fi".equals(ipAddress)
+                ? "adb connect " + ipAddress + ":" + status.port
+                : "-";
+        commandValue.setText(command);
+        copyCommand.setEnabled(!"-".equals(command));
+    }
+
+    private String wirelessIpv4Address() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface networkInterface = interfaces.nextElement();
+                if (!networkInterface.isUp() || networkInterface.isLoopback()) {
+                    continue;
+                }
+                Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress address = addresses.nextElement();
+                    if (address instanceof Inet4Address && !address.isLoopbackAddress() && !address.isLinkLocalAddress()) {
+                        return address.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "未連線 Wi-Fi";
+    }
+
+    private static final class WirelessAdbStatus {
+        final String port;
+        final String daemonState;
+        final boolean available;
+        final boolean enabled;
+
+        WirelessAdbStatus(String port, String daemonState, boolean available) {
+            this.port = port;
+            this.daemonState = daemonState;
+            this.available = available;
+            this.enabled = available && "running".equals(daemonState) && port.matches("[1-9][0-9]*");
+        }
+
+        static WirelessAdbStatus unavailable() {
+            return new WirelessAdbStatus("", "", false);
+        }
     }
 
     private void applyLauncherComponent(String component, String launcherName) {
