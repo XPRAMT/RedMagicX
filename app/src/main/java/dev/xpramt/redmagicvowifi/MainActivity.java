@@ -478,10 +478,13 @@ public class MainActivity extends Activity {
         int height = getResources().getDisplayMetrics().heightPixels;
         int deleteX = Math.round(1125 * width / 1216f);
         int deleteY = Math.round(1370 * height / 2688f);
+        int[] onePoint = dialPadPoint('1', width, height);
         StringBuilder command = new StringBuilder(
                 "am start -n com.android.contacts/.activities.DialtactsActivity -a android.intent.action.DIAL"
         );
-        command.append("; sleep 1; input swipe ")
+        command.append("; sleep 1; input tap ")
+                .append(onePoint[0]).append(' ').append(onePoint[1])
+                .append("; sleep 0.2; input swipe ")
                 .append(deleteX).append(' ').append(deleteY).append(' ')
                 .append(deleteX).append(' ').append(deleteY).append(" 900")
                 .append("; sleep 1; am start -n com.android.contacts/.activities.DialtactsActivity")
