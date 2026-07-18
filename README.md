@@ -2,7 +2,7 @@
 
 Language: English | [繁體中文](readme_TW.md)
 
-RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, and third-party launcher control.
+RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, third-party launcher control, and ADB control.
 
 Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
 
@@ -17,6 +17,7 @@ Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models 
   - [Volume Step Control](#volume-step-control)
   - [Assistant Gesture Redirect](#assistant-gesture-redirect)
   - [Third-Party Launcher](#third-party-launcher)
+  - [ADB Control Center](#adb-control-center)
 - [Build](#build)
 - [Notes](#notes)
 
@@ -107,6 +108,15 @@ Sets a selected launcher as the default HOME activity and can hide that launcher
 - Change launcher: uses Android's own `cmd package set-home-activity --user 0 <component>`.
 - Permission path: root is tried first; if root is unavailable, Shizuku shell permission is used.
 - Hide from recents: requires LSPosed scope `com.zte.mifavor.launcher`. It hooks RedMagic Launcher `RecentsView#onGestureAnimationStart`; only when gesture mode current task is the selected third-party HOME, it prevents that task from being inserted as a recent-task card.
+
+### ADB Control Center
+
+All ADB Control Center actions require root.
+
+- Enable ADB: controls the Developer options USB debugging setting through `adb_enabled=1`.
+- Spoof ADB status: writes `adb_enabled=2`. Android treats values above zero as enabled, while some apps that check only for `adb_enabled == 1` may treat it as disabled. It does not bypass apps that check other debugging state.
+- Enable wireless ADB: sets the TCP port and restarts `adbd`. The switch is saved as user intent rather than mirroring the current daemon state. When ADB is enabled, RedMagicX checks the daemon every five seconds and restores wireless ADB with the saved port when needed.
+- Allow ADB install: controls RedMagic Developer options `adb_install_enabled=1`, which is required before `adb install` can install APKs.
 
 ## Build
 

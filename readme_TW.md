@@ -2,7 +2,7 @@
 
 語言：[English](README.md) | 繁體中文
 
-RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制。
+RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制與 ADB 控制。
 
 測試裝置：RedMagic / Nubia NX809J 中國版 ROM。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
 
@@ -17,6 +17,7 @@ RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、ro
   - [音量步進調整](#音量步進調整)
   - [魔姬手勢替換](#魔姬手勢替換)
   - [第三方啟動器](#第三方啟動器)
+  - [ADB 控制中心](#adb-控制中心)
 - [編譯](#編譯)
 - [注意事項](#注意事項)
 
@@ -107,6 +108,15 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 - 更換啟動器：使用 Android 內建 `cmd package set-home-activity --user 0 <component>`。
 - 權限方式：優先使用 root；無 root 時可透過 Shizuku shell 權限套用。
 - 隱藏最近任務：需要 LSPosed 勾選 `com.zte.mifavor.launcher` scope。Hook 紅魔 Launcher 的 `RecentsView#onGestureAnimationStart`，只在手勢模式 current task 是選定第三方 HOME 時阻止它被補成最近任務卡片。
+
+### ADB 控制中心
+
+ADB 控制中心的所有動作都需要 root 權限。
+
+- 啟用 ADB：透過 `adb_enabled=1` 控制開發人員選項的 USB 偵錯。
+- 偽裝 ADB 狀態：寫入 `adb_enabled=2`。Android 將大於零的值視為已啟用；只會影響精確檢查 `adb_enabled == 1` 的部分 App，無法繞過檢查其它偵錯狀態的 App。
+- 啟用無線 ADB：設定 TCP 連接埠並重啟 `adbd`。開關保存的是使用者意圖，不會隨 daemon 實際狀態自動關閉。ADB 已開啟時，RedMagicX 每五秒檢查一次；若無線 ADB 未執行，會以已保存的連接埠自動恢復。
+- 允許 ADB 安裝：控制紅魔開發人員選項的 `adb_install_enabled=1`，開啟後才可透過 `adb install` 安裝 APK。
 
 ## 編譯
 
