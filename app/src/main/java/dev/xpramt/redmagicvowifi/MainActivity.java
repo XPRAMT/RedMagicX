@@ -81,6 +81,7 @@ public class MainActivity extends Activity {
     private static final String STOCK_LAUNCHER_PACKAGE = "com.zte.mifavor.launcher";
     private static final String STOCK_LAUNCHER_CLASS = "com.android.launcher3.uioverrides.QuickstepLauncher";
     private static final int SHIZUKU_REQUEST_CODE_HOME = 1001;
+    private static final int SHIZUKU_REQUEST_CODE_QUICK_ENTRY = 1002;
     private static final String RELEASES_LATEST_URL = "https://api.github.com/repos/XPRAMT/RedMagicX/releases/latest";
     private static final Pattern JSON_STRING_FIELD = Pattern.compile("\\\"(tag_name|html_url)\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
 
@@ -94,6 +95,8 @@ public class MainActivity extends Activity {
     private String pendingHomeCommand;
     private String pendingHomeSuccessMessage;
     private String pendingHomeErrorMessage;
+    private String pendingQuickEntryCommand;
+    private String pendingQuickEntrySuccessMessage;
     private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService rootExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -115,6 +118,19 @@ public class MainActivity extends Activity {
                 pendingHomeSuccessMessage = null;
                 pendingHomeErrorMessage = null;
             };
+    private final Shizuku.OnRequestPermissionResultListener quickEntryShizukuPermissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != SHIZUKU_REQUEST_CODE_QUICK_ENTRY) {
+                    return;
+                }
+                if (grantResult == PackageManager.PERMISSION_GRANTED && pendingQuickEntryCommand != null) {
+                    runQuickEntryWithShizuku(pendingQuickEntryCommand, pendingQuickEntrySuccessMessage);
+                } else {
+                    showToast("Shizuku 未授權，無法使用快速入口");
+                }
+                pendingQuickEntryCommand = null;
+                pendingQuickEntrySuccessMessage = null;
+            };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +139,7 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(Color.BLACK);
         prefs = Config.appPrefs(this);
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
+        Shizuku.addRequestPermissionResultListener(quickEntryShizukuPermissionListener);
         ensureDefaults();
         setContentView(createShell());
         setSystemBarIconColors(getWindow());
@@ -136,6 +153,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         stopWirelessAdbPolling();
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
+        Shizuku.removeRequestPermissionResultListener(quickEntryShizukuPermissionListener);
         updateExecutor.shutdownNow();
         rootExecutor.shutdownNow();
         super.onDestroy();
@@ -360,7 +378,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout quickEntrySection() {
         LinearLayout box = sectionBox();
-        box.addView(detailText("以下功能需 root 權限，透過原廠電話鍵盤模擬輸入撥號碼。"));
+        box.addView(detailText("以下功能可使用 root 或 Shizuku 授權，透過原廠電話鍵盤模擬輸入撥號碼。"));
         box.addView(verticalSpace(14));
         box.addView(text("工程模式", 18, true));
         box.addView(detailText("首次使用時，請先解鎖工程模式；完成解鎖後可直接進入工程模式主選單。"));
@@ -385,8 +403,46 @@ public class MainActivity extends Activity {
 
     private void openEngineeringMode(String dialCode, String successMessage) {
         rootExecutor.execute(() -> {
-            int exitCode = runProcess(new ProcessBuilder("su", "-c", engineeringDialCommand(dialCode)));
-            mainHandler.post(() -> showToast(exitCode == 0 ? successMessage : "無法開啟工程模式，請確認 root 權限"));
+            String command = engineeringDialCommand(dialCode);
+            int exitCode = runProcess(new ProcessBuilder("su", "-c", command));
+            if (exitCode == 0) {
+                mainHandler.post(() -> showToast(successMessage + "（root）"));
+                return;
+            }
+            mainHandler.post(() -> runQuickEntryWithShizukuPermission(command, successMessage));
+        });
+    }
+
+    private void runQuickEntryWithShizukuPermission(String command, String successMessage) {
+        if (!isShizukuAvailable()) {
+            showToast("無法使用快速入口：無 root，且 Shizuku 未連線");
+            return;
+        }
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            pendingQuickEntryCommand = command;
+            pendingQuickEntrySuccessMessage = successMessage;
+            Shizuku.requestPermission(SHIZUKU_REQUEST_CODE_QUICK_ENTRY);
+            showToast("請授權 Shizuku 後自動繼續");
+            return;
+        }
+        runQuickEntryWithShizuku(command, successMessage);
+    }
+
+    private void runQuickEntryWithShizuku(String command, String successMessage) {
+        rootExecutor.execute(() -> {
+            try {
+                Method newProcess = Shizuku.class.getDeclaredMethod(
+                        "newProcess", String[].class, String[].class, String.class);
+                newProcess.setAccessible(true);
+                Process process = (Process) newProcess.invoke(null,
+                        new String[]{"sh", "-c", command}, null, null);
+                int exitCode = process.waitFor();
+                mainHandler.post(() -> showToast(exitCode == 0
+                        ? successMessage + "（Shizuku）"
+                        : "無法開啟工程模式（Shizuku " + exitCode + "）"));
+            } catch (Throwable throwable) {
+                mainHandler.post(() -> showToast("無法開啟工程模式：Shizuku 執行失敗"));
+            }
         });
     }
 
