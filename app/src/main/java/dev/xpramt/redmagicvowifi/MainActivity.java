@@ -416,7 +416,7 @@ public class MainActivity extends Activity {
         styleButton(enter, false, false);
         enter.setOnClickListener(view -> openEngineeringModeMenu());
         box.addView(enter);
-        box.addView(detailText("root 直接開啟工程模式主選單；Shizuku 模擬輸入 *983*0#。"));
+        box.addView(detailText("透過原廠電話鍵盤模擬輸入 *983*0#，完成工程模式初始化並開啟主選單。"));
 
         box.addView(verticalSpace(22));
         box.addView(text("手機資訊", 18, true));
@@ -449,20 +449,7 @@ public class MainActivity extends Activity {
     }
 
     private void openEngineeringModeMenu() {
-        rootExecutor.execute(() -> {
-            int exitCode = runProcess(new ProcessBuilder(
-                    "su", "-c", "am start -n com.zte.emode/.base.EmodeSubmenu"
-            ));
-            if (exitCode == 0) {
-                mainHandler.post(() -> showToast("已開啟工程模式（root）"));
-                return;
-            }
-            String shizukuCommand = engineeringDialCommand("*983*0#");
-            mainHandler.post(() -> runQuickEntryWithShizukuPermission(
-                    shizukuCommand,
-                    "已開啟工程模式"
-            ));
-        });
+        openEngineeringMode("*983*0#", "已開啟工程模式");
     }
 
     private void openQuickEntryCommand(String command, String successMessage) {
