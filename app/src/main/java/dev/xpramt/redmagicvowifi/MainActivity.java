@@ -398,12 +398,28 @@ public class MainActivity extends Activity {
         enter.setOnClickListener(view -> openEngineeringMode("*983*0#", "已開啟工程模式"));
         box.addView(enter);
         box.addView(detailText("模擬輸入 *983*0#，開啟工程模式主選單。"));
+
+        box.addView(verticalSpace(22));
+        box.addView(text("手機資訊", 18, true));
+        box.addView(detailText("開啟系統電話服務的手機資訊頁面，可查看行動網路、IMS 與無線電狀態。"));
+        box.addView(verticalSpace(14));
+        Button phoneInfo = new Button(this);
+        phoneInfo.setText("開啟手機資訊");
+        styleButton(phoneInfo, false, false);
+        phoneInfo.setOnClickListener(view -> openQuickEntryCommand(
+                "am start -n com.android.phone/.settings.RadioInfo",
+                "已開啟手機資訊"
+        ));
+        box.addView(phoneInfo);
         return box;
     }
 
     private void openEngineeringMode(String dialCode, String successMessage) {
+        openQuickEntryCommand(engineeringDialCommand(dialCode), successMessage);
+    }
+
+    private void openQuickEntryCommand(String command, String successMessage) {
         rootExecutor.execute(() -> {
-            String command = engineeringDialCommand(dialCode);
             int exitCode = runProcess(new ProcessBuilder("su", "-c", command));
             if (exitCode == 0) {
                 mainHandler.post(() -> showToast(successMessage + "（root）"));
@@ -439,9 +455,9 @@ public class MainActivity extends Activity {
                 int exitCode = process.waitFor();
                 mainHandler.post(() -> showToast(exitCode == 0
                         ? successMessage + "（Shizuku）"
-                        : "無法開啟工程模式（Shizuku " + exitCode + "）"));
+                        : "無法執行快速入口（Shizuku " + exitCode + "）"));
             } catch (Throwable throwable) {
-                mainHandler.post(() -> showToast("無法開啟工程模式：Shizuku 執行失敗"));
+                mainHandler.post(() -> showToast("無法執行快速入口：Shizuku 執行失敗"));
             }
         });
     }
