@@ -614,7 +614,7 @@ public class MainActivity extends Activity {
         rootExecutor.execute(() -> {
             WirelessAdbStatus current = readWirelessAdbStatus();
             int exitCode = current.enabled
-                    ? runProcess(new ProcessBuilder("su", "-c", wirelessAdbCommand(port)))
+                    ? applyWirelessAdbCommand(wirelessAdbCommand(port))
                     : 0;
             WirelessAdbStatus status = readWirelessAdbStatus();
             String ipAddress = wirelessIpv4Address();
@@ -623,9 +623,10 @@ public class MainActivity extends Activity {
                     return;
                 }
                 updateWirelessAdbViews(status, ipAddress, enabled, statusValue, portValue, ipValue, commandValue, copyCommand);
-                showToast(exitCode == 0
+                boolean applied = !current.enabled || (status.enabled && String.valueOf(port).equals(status.port));
+                showToast(exitCode == 0 && applied
                         ? (current.enabled ? "無線 ADB 已改為連接埠 " + port : "已儲存連接埠 " + port)
-                        : "連接埠套用失敗 (" + exitCode + ")");
+                        : "連接埠未套用，請確認 root 與 adbd 狀態");
             });
         });
     }
@@ -636,9 +637,9 @@ public class MainActivity extends Activity {
         statusValue.setText("套用中...");
         String command = enabled
                 ? wirelessAdbCommand(port)
-                : "setprop service.adb.tcp.port ''; stop adbd; start adbd";
+                : "setprop service.adb.tcp.port ''; setprop ctl.restart adbd";
         rootExecutor.execute(() -> {
-            int exitCode = runProcess(new ProcessBuilder("su", "-c", command));
+            int exitCode = applyWirelessAdbCommand(command);
             WirelessAdbStatus status = readWirelessAdbStatus();
             String ipAddress = wirelessIpv4Address();
             mainHandler.post(() -> {
@@ -646,15 +647,29 @@ public class MainActivity extends Activity {
                     return;
                 }
                 updateWirelessAdbViews(status, ipAddress, toggle, statusValue, portValue, ipValue, commandValue, copyCommand);
-                showToast(exitCode == 0
+                boolean applied = enabled
+                        ? status.enabled && String.valueOf(port).equals(status.port)
+                        : !status.enabled;
+                showToast(exitCode == 0 && applied
                         ? (status.enabled ? "無線 ADB 已開啟，連接埠 " + status.port : "無線 ADB 已關閉")
-                        : "無線 ADB 切換失敗 (" + exitCode + ")");
+                        : "無線 ADB 未套用，請確認 root 與 adbd 狀態");
             });
         });
     }
 
     private String wirelessAdbCommand(int port) {
-        return "setprop service.adb.tcp.port " + port + "; stop adbd; start adbd";
+        return "setprop service.adb.tcp.port " + port + "; setprop ctl.restart adbd";
+    }
+
+    private int applyWirelessAdbCommand(String command) {
+        int exitCode = runProcess(new ProcessBuilder("su", "-c", command));
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return -1;
+        }
+        return exitCode;
     }
 
     private WirelessAdbStatus readWirelessAdbStatus() {
