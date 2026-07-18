@@ -80,6 +80,8 @@ public class MainActivity extends Activity {
     private static final String SETTINGS_FALLBACK_HOME_CLASS = "com.android.settings.FallbackHome";
     private static final String STOCK_LAUNCHER_PACKAGE = "com.zte.mifavor.launcher";
     private static final String STOCK_LAUNCHER_CLASS = "com.android.launcher3.uioverrides.QuickstepLauncher";
+    private static final String STOCK_DIALER_PACKAGE = "com.android.contacts";
+    private static final String STOCK_DIALER_CLASS = "com.android.contacts.activities.DialtactsActivity";
     private static final int SHIZUKU_REQUEST_CODE_HOME = 1001;
     private static final int SHIZUKU_REQUEST_CODE_QUICK_ENTRY = 1002;
     private static final String RELEASES_LATEST_URL = "https://api.github.com/repos/XPRAMT/RedMagicX/releases/latest";
@@ -445,7 +447,22 @@ public class MainActivity extends Activity {
     }
 
     private void openEngineeringMode(String dialCode, String successMessage) {
+        if (!isStockDialerAvailable()) {
+            showToast("找不到支援的原廠電話鍵盤");
+            return;
+        }
         openQuickEntryCommand(engineeringDialCommand(dialCode), successMessage);
+    }
+
+    private boolean isStockDialerAvailable() {
+        try {
+            return getPackageManager().getActivityInfo(
+                    new ComponentName(STOCK_DIALER_PACKAGE, STOCK_DIALER_CLASS),
+                    0
+            ).enabled;
+        } catch (PackageManager.NameNotFoundException exception) {
+            return false;
+        }
     }
 
     private void openEngineeringModeMenu() {
@@ -503,7 +520,10 @@ public class MainActivity extends Activity {
         int deleteY = Math.round(1370 * height / 2688f);
         int[] onePoint = dialPadPoint('1', width, height);
         StringBuilder command = new StringBuilder(
-                "am start -n com.android.contacts/.activities.DialtactsActivity -a android.intent.action.DIAL"
+                "cmd package resolve-activity --brief -n com.android.contacts/.activities.DialtactsActivity"
+                        + " >/dev/null 2>&1 || exit 20; "
+                        + "am start -n com.android.contacts/.activities.DialtactsActivity"
+                        + " -a android.intent.action.DIAL || exit 21"
         );
         command.append("; sleep 0.5; input tap ")
                 .append(onePoint[0]).append(' ').append(onePoint[1])
@@ -511,7 +531,7 @@ public class MainActivity extends Activity {
                 .append(deleteX).append(' ').append(deleteY).append(' ')
                 .append(deleteX).append(' ').append(deleteY).append(" 600")
                 .append("; sleep 0.3; am start -n com.android.contacts/.activities.DialtactsActivity")
-                .append(" -a android.intent.action.DIAL; sleep 0.5");
+                .append(" -a android.intent.action.DIAL || exit 21; sleep 0.5");
         for (int index = 0; index < dialCode.length(); index++) {
             int[] point = dialPadPoint(dialCode.charAt(index), width, height);
             command.append("; input tap ").append(point[0]).append(' ').append(point[1]);
