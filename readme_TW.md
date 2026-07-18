@@ -2,7 +2,9 @@
 
 語言：[English](README.md) | 繁體中文
 
-RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制與 ADB 控制。
+RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制、ADB 控制，以及工程模式與手機資訊快速入口。
+
+目前版本：`0.3.1`
 
 測試裝置：RedMagic / Nubia NX809J 中國版 ROM。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
 
@@ -18,6 +20,7 @@ RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、ro
   - [魔姬手勢替換](#魔姬手勢替換)
   - [第三方啟動器](#第三方啟動器)
   - [ADB 控制中心](#adb-控制中心)
+  - [快速入口](#快速入口)
 - [編譯](#編譯)
 - [注意事項](#注意事項)
 
@@ -62,6 +65,8 @@ Root 只用於需要執行 shell 指令的動作，例如重啟 Settings/SystemU
 | 開啟狀態列 VoWiFi 圖標          | `com.android.systemui` | 只讓 IMS/狀態列圖標相關程式碼讀到 `ro.vendor.mifavor.custom=abroad` / `ro.mifavor.custom=abroad`，navigation/assistant 相關程式碼維持 `home`，避免小白條手勢失效。               |
 | VoWiFi 圖標樣式 = GEN_BD     | `com.android.systemui` | 讓 SystemUI 讀到 `persist.custom.variant.id=GEN_BD`，使用 BD 樣式 VoWiFi 資源。切換後重啟 SystemUI 生效。                                                          |
 | VoWiFi 圖標樣式 = Hook array | `com.android.systemui` | 把 IMS icon array 回傳結果替換成 BD array。目前 NX809J ROM 已實測雙卡可用，但依賴目前 ROM 方法名。                                                                          |
+
+「打開 WiFi 通話設定」按鈕可直接開啟紅魔設定的 `WifiCallingSettingsActivity`，不需要 root 或 Shizuku。
 
 VoWiFi 圖標樣式對照：
 
@@ -118,6 +123,16 @@ ADB 控制中心的所有動作都需要 root 權限。
 - 啟用無線 ADB：設定 TCP 連接埠並重啟 `adbd`。開關保存的是使用者意圖，不會隨 daemon 實際狀態自動關閉。ADB 已開啟時，RedMagicX 每五秒檢查一次；若無線 ADB 未執行，會以已保存的連接埠自動恢復。
 - 允許 ADB 安裝：控制紅魔開發人員選項的 `adb_install_enabled=1`，開啟後才可透過 `adb install` 安裝 APK。
 
+### 快速入口
+
+自動撥號進入紅魔工程模式，並提供手機資訊入口。
+
+- 解鎖工程模式：透過紅魔原廠撥號盤自動輸入 `*983*673636#`，通常只需執行一次。
+- 進入工程模式：自動輸入 `*983*0#`，讓 EMode 完成必要初始化並載入完整測試選單。
+- 撥號盤檢查：注入輸入前會確認 `com.android.contacts/.activities.DialtactsActivity` 存在且已啟用；找不到或啟動失敗時立即停止，不會誤報成功。
+- 權限方式：優先使用 root；無 root 時可透過 Shizuku shell 權限操作。
+- 手機資訊：在已測試的 NX809J ROM 可直接開啟 `com.android.phone/.settings.RadioInfo`，不需要 root 或 Shizuku。
+
 ## 編譯
 
 ```powershell
@@ -133,5 +148,5 @@ app\build\outputs\apk\debug\app-debug.apk
 ## 注意事項
 
 - 模組宣告 `xposedminversion=93` 與 `xposedsharedprefs=true`。
-- Shizuku 只用於無 root 時套用預設啟動器。
+- Shizuku 用於無 root 時套用預設啟動器，以及操作工程模式快速入口。
 - 本專案為非官方工具，與 RedMagic、Nubia、ZTE 無關。

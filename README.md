@@ -2,7 +2,9 @@
 
 Language: English | [繁體中文](readme_TW.md)
 
-RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, third-party launcher control, and ADB control.
+RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, third-party launcher control, ADB control, and quick access to engineering mode and phone information.
+
+Current version: `0.3.1`
 
 Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
 
@@ -18,6 +20,7 @@ Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models 
   - [Assistant Gesture Redirect](#assistant-gesture-redirect)
   - [Third-Party Launcher](#third-party-launcher)
   - [ADB Control Center](#adb-control-center)
+  - [Quick Entry](#quick-entry)
 - [Build](#build)
 - [Notes](#notes)
 
@@ -62,6 +65,8 @@ Uses LSPosed hooks only. It does not globally modify system properties with `res
 | Enable status-bar VoWiFi icon | `com.android.systemui` | Makes IMS/status-icon code read `ro.vendor.mifavor.custom=abroad` / `ro.mifavor.custom=abroad`, while navigation and assistant code stays on `home` to avoid breaking the gesture bar. |
 | VoWiFi icon style = GEN_BD | `com.android.systemui` | Makes SystemUI read `persist.custom.variant.id=GEN_BD`, selecting BD-style VoWiFi resources. Restart SystemUI after changing. |
 | VoWiFi icon style = Hook array | `com.android.systemui` | Replaces the IMS icon array result with the BD array. Tested working with dual SIM on the current NX809J ROM; it depends on the current ROM method name. |
+
+The **Open WiFi Calling settings** button directly opens RedMagic Settings `WifiCallingSettingsActivity` and does not require root or Shizuku.
 
 VoWiFi icon style comparison:
 
@@ -118,6 +123,16 @@ All ADB Control Center actions require root.
 - Enable wireless ADB: sets the TCP port and restarts `adbd`. The switch is saved as user intent rather than mirroring the current daemon state. When ADB is enabled, RedMagicX checks the daemon every five seconds and restores wireless ADB with the saved port when needed.
 - Allow ADB install: controls RedMagic Developer options `adb_install_enabled=1`, which is required before `adb install` can install APKs.
 
+### Quick Entry
+
+Provides automatic dialing for RedMagic engineering mode and a direct phone-information shortcut.
+
+- Unlock engineering mode: automatically enters `*983*673636#` in the stock RedMagic dialer. This is normally needed only once.
+- Enter engineering mode: automatically enters `*983*0#` so EMode performs its required initialization and loads the complete test menu.
+- Dialer validation: verifies that `com.android.contacts/.activities.DialtactsActivity` exists and is enabled before injecting input. Missing or failed dialer launches stop immediately instead of reporting success.
+- Permission path: root is tried first; when root is unavailable, Shizuku shell permission is used.
+- Phone information: directly opens `com.android.phone/.settings.RadioInfo` without root or Shizuku on the tested NX809J ROM.
+
 ## Build
 
 ```powershell
@@ -133,5 +148,5 @@ app\build\outputs\apk\debug\app-debug.apk
 ## Notes
 
 - The module declares `xposedminversion=93` and `xposedsharedprefs=true`.
-- Shizuku is used only for applying the default launcher without root.
+- Shizuku is used for applying the default launcher and operating engineering-mode quick entry without root.
 - This is an unofficial project and is not affiliated with RedMagic, Nubia, or ZTE.

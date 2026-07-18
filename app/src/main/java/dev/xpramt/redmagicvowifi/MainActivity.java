@@ -302,7 +302,7 @@ public class MainActivity extends Activity {
         ));
         contentRoot.addView(featureButton(
                 "快速入口",
-                "工程模式撥號碼與常用系統入口",
+                "自動撥號進入工程模式與手機資訊入口",
                 view -> showQuickEntryPage()
         ));
     }
