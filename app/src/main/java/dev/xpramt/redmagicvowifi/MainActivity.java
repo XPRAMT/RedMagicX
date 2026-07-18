@@ -656,7 +656,13 @@ public class MainActivity extends Activity {
                     return;
                 }
                 updateDeveloperAdbViews(adbSetting, toggle, fakeToggle, statusValue);
-                refreshWirelessAdbStatus(wirelessToggle, wirelessStatusValue, endpointValue, commandValue, copyCommand);
+                if (enabled) {
+                    restartWirelessAdbPollingAfterDelay(
+                            wirelessToggle, wirelessStatusValue, endpointValue, commandValue, copyCommand
+                    );
+                } else {
+                    refreshWirelessAdbStatus(wirelessToggle, wirelessStatusValue, endpointValue, commandValue, copyCommand);
+                }
                 showToast(exitCode == 0 && String.valueOf(targetValue).equals(adbSetting)
                         ? (enabled ? "ADB 已開啟" : "ADB 已關閉")
                         : "ADB 未套用，請確認 root 權限");
@@ -739,6 +745,16 @@ public class MainActivity extends Activity {
 
     private void startWirelessAdbPolling(Switch enabled, TextView statusValue, TextView endpointValue,
                                          TextView commandValue, Button copyCommand) {
+        scheduleWirelessAdbPolling(enabled, statusValue, endpointValue, commandValue, copyCommand, 0);
+    }
+
+    private void restartWirelessAdbPollingAfterDelay(Switch enabled, TextView statusValue, TextView endpointValue,
+                                                      TextView commandValue, Button copyCommand) {
+        scheduleWirelessAdbPolling(enabled, statusValue, endpointValue, commandValue, copyCommand, 5000);
+    }
+
+    private void scheduleWirelessAdbPolling(Switch enabled, TextView statusValue, TextView endpointValue,
+                                            TextView commandValue, Button copyCommand, long initialDelayMillis) {
         stopWirelessAdbPolling();
         wirelessAdbPollTask = new Runnable() {
             @Override
@@ -750,7 +766,7 @@ public class MainActivity extends Activity {
                 mainHandler.postDelayed(this, 5000);
             }
         };
-        wirelessAdbPollTask.run();
+        mainHandler.postDelayed(wirelessAdbPollTask, initialDelayMillis);
     }
 
     private void stopWirelessAdbPolling() {
