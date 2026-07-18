@@ -70,7 +70,6 @@ public class MainActivity extends Activity {
     private static final String STOCK_LAUNCHER_CLASS = "com.android.launcher3.uioverrides.QuickstepLauncher";
     private static final int SHIZUKU_REQUEST_CODE_HOME = 1001;
     private static final String RELEASES_LATEST_URL = "https://api.github.com/repos/XPRAMT/RedMagicX/releases/latest";
-    private static final String RELEASES_PAGE_URL = "https://github.com/XPRAMT/RedMagicX/releases";
     private static final Pattern JSON_STRING_FIELD = Pattern.compile("\\\"(tag_name|html_url)\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
 
     private SharedPreferences prefs;
