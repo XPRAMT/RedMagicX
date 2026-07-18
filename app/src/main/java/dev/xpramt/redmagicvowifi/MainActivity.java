@@ -529,9 +529,10 @@ public class MainActivity extends Activity {
         enabled.setTextSize(18);
         enabled.setTextColor(Color.WHITE);
         enabled.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        enabled.setChecked(prefs.getBoolean(Config.KEY_WIRELESS_ADB_ENABLED, false));
         enabled.setEnabled(false);
         box.addView(enabled);
-        box.addView(detailText("立即設定 ADB TCP 連接埠並重啟 adbd。"));
+        box.addView(detailText("立即設定 ADB TCP 連接埠並重啟 adbd。開啟後會保留使用者設定；ADB 已開啟時每 5 秒確認一次，未執行時會自動恢復。"));
 
         TextView customPortLabel = text("自訂連接埠", 14, true);
         customPortLabel.setPadding(0, dp(10), 0, 0);
@@ -593,7 +594,10 @@ public class MainActivity extends Activity {
                     showToast("連接埠必須介於 1 到 65535");
                     return;
                 }
-                prefs.edit().putInt(Config.KEY_WIRELESS_ADB_PORT, port).commit();
+                prefs.edit()
+                        .putInt(Config.KEY_WIRELESS_ADB_PORT, port)
+                        .putBoolean(Config.KEY_WIRELESS_ADB_ENABLED, isChecked)
+                        .commit();
                 toggleWirelessAdb(isChecked, port, enabled, statusValue, endpointValue, commandValue, copyCommand);
             }
         });
@@ -769,12 +773,22 @@ public class MainActivity extends Activity {
         }
         rootExecutor.execute(() -> {
             WirelessAdbStatus status = readWirelessAdbStatus();
+            boolean shouldRestore = prefs.getBoolean(Config.KEY_WIRELESS_ADB_ENABLED, false)
+                    && status.available
+                    && !status.enabled
+                    && isAdbEnabled(readRootCommandOutput("settings get global adb_enabled"));
+            if (shouldRestore) {
+                int port = prefs.getInt(Config.KEY_WIRELESS_ADB_PORT, Config.DEFAULT_WIRELESS_ADB_PORT);
+                applyWirelessAdbCommand(wirelessAdbCommand(port));
+                status = readWirelessAdbStatus();
+            }
+            WirelessAdbStatus result = status;
             String ipAddress = wirelessIpv4Address();
             mainHandler.post(() -> {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
-                updateWirelessAdbViews(status, ipAddress, enabled, statusValue, endpointValue, commandValue, copyCommand);
+                updateWirelessAdbViews(result, ipAddress, enabled, statusValue, endpointValue, commandValue, copyCommand);
             });
         });
     }
@@ -878,8 +892,9 @@ public class MainActivity extends Activity {
     private void updateWirelessAdbViews(WirelessAdbStatus status, String ipAddress, Switch enabled,
                                         TextView statusValue, TextView endpointValue,
                                         TextView commandValue, Button copyCommand) {
+        boolean desiredEnabled = prefs.getBoolean(Config.KEY_WIRELESS_ADB_ENABLED, false);
         updatingWirelessAdbSwitch = true;
-        enabled.setChecked(status.enabled);
+        enabled.setChecked(desiredEnabled);
         updatingWirelessAdbSwitch = false;
         enabled.setEnabled(status.available);
         statusValue.setText(status.available ? (status.enabled ? "已開啟，adbd 正在執行" : "已關閉") : "無法取得 root 狀態");

@@ -21,6 +21,7 @@ final class Config {
     static final String KEY_LAUNCHER_PACKAGE = "launcher_package";
     static final String KEY_AUTO_CHECK_UPDATES = "auto_check_updates";
     static final String KEY_WIRELESS_ADB_PORT = "wireless_adb_port";
+    static final String KEY_WIRELESS_ADB_ENABLED = "wireless_adb_enabled";
     static final String KEY_ADB_SPOOF_ENABLED = "adb_spoof_enabled";
 
     static final String STYLE_DEFAULT = "default";
