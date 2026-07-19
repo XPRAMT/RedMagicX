@@ -15,6 +15,8 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -24,12 +26,14 @@ import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -204,7 +208,40 @@ public class HookEntry implements IXposedHookLoadPackage {
                         + " icons=" + hasThemeIcons(config));
             }
         });
+        hookBeautifyWallpaperCompletion(lpparam);
         log("Beautify theme apply route hook installed");
+    }
+
+    private void hookBeautifyWallpaperCompletion(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> taskClass = findClassIfExists(
+                "com.zte.beautify.view.base.BaseSetWallPaperManager$SetThemeDesktopWallPaperAsyncTask",
+                lpparam.classLoader);
+        if (taskClass == null) {
+            log("Beautify wallpaper task not found");
+            return;
+        }
+        XposedBridge.hookAllMethods(taskClass, "doCommonBackgroudAction", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Config.Snapshot config = Config.loadForHook();
+                if (!config.themeSelectEnabled || !isThemeWallpaperAndIconsOnly(config)
+                        || !hasThemeWallpaper(config)) {
+                    return;
+                }
+                Object reference = XposedHelpers.getObjectField(param.thisObject, "mContext");
+                if (!(reference instanceof WeakReference)) {
+                    return;
+                }
+                Object value = ((WeakReference<?>) reference).get();
+                if (!(value instanceof Context)) {
+                    return;
+                }
+                Context context = (Context) value;
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(context, "已套用桌布", Toast.LENGTH_SHORT).show());
+            }
+        });
+        log("Beautify wallpaper completion toast hook installed");
     }
 
     private boolean isThemeWallpaperAndIconsOnly(Config.Snapshot config) {
