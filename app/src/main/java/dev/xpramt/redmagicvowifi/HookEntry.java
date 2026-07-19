@@ -18,7 +18,9 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import java.lang.reflect.Array;
@@ -240,24 +242,36 @@ public class HookEntry implements IXposedHookLoadPackage {
         title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         panel.addView(title);
 
-        CheckBox type1 = themeCheckBox(context, "完整主題", config.themeType1);
+        Switch fullTheme = new Switch(context);
+        fullTheme.setText("完整主題");
+        fullTheme.setTextColor(Color.WHITE);
+        fullTheme.setTextSize(15);
+        fullTheme.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        fullTheme.setChecked(config.themeType1);
+        fullTheme.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         CheckBox wallpaper = themeCheckBox(context, "桌布",
                 config.themeType2 || config.themeType6);
         CheckBox type4 = themeCheckBox(context, "字體", config.themeType4);
         CheckBox type16 = themeCheckBox(context, "色彩／形狀", config.themeType16);
         CheckBox icons = themeCheckBox(context, "圖標",
                 config.themeType17 || config.themeType23);
-        panel.addView(themeSelectorRow(context, type1, wallpaper));
-        panel.addView(themeSelectorRow(context, type4, type16));
-        panel.addView(themeSelectorRow(context, icons, null));
+        panel.addView(fullTheme);
+        panel.addView(themeSelectorRow(context, wallpaper, type4));
+        panel.addView(themeSelectorRow(context, type16, icons));
 
-        android.widget.CompoundButton.OnCheckedChangeListener listener = (button, checked) ->
-                saveThemeSelection(context, type1, wallpaper, type4, type16, icons);
-        type1.setOnCheckedChangeListener(listener);
-        wallpaper.setOnCheckedChangeListener(listener);
-        type4.setOnCheckedChangeListener(listener);
-        type16.setOnCheckedChangeListener(listener);
-        icons.setOnCheckedChangeListener(listener);
+        CheckBox[] detailControls = {wallpaper, type4, type16, icons};
+        updateThemeDetailControls(detailControls, !fullTheme.isChecked());
+        CompoundButton.OnCheckedChangeListener detailListener = (button, checked) ->
+                saveThemeSelection(context, fullTheme, wallpaper, type4, type16, icons);
+        wallpaper.setOnCheckedChangeListener(detailListener);
+        type4.setOnCheckedChangeListener(detailListener);
+        type16.setOnCheckedChangeListener(detailListener);
+        icons.setOnCheckedChangeListener(detailListener);
+        fullTheme.setOnCheckedChangeListener((button, checked) -> {
+            updateThemeDetailControls(detailControls, !checked);
+            saveThemeSelection(context, fullTheme, wallpaper, type4, type16, icons);
+        });
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -292,7 +306,14 @@ public class HookEntry implements IXposedHookLoadPackage {
         return checkBox;
     }
 
-    private void saveThemeSelection(Context context, CheckBox type1, CheckBox wallpaper,
+    private void updateThemeDetailControls(CheckBox[] controls, boolean enabled) {
+        for (CheckBox control : controls) {
+            control.setEnabled(enabled);
+            control.setAlpha(enabled ? 1f : 0.4f);
+        }
+    }
+
+    private void saveThemeSelection(Context context, CompoundButton type1, CheckBox wallpaper,
                                     CheckBox type4, CheckBox type16, CheckBox icons) {
         Bundle values = new Bundle();
         values.putBoolean(Config.KEY_THEME_TYPE_1, type1.isChecked());

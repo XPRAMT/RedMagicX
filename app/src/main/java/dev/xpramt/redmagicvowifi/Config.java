@@ -141,6 +141,9 @@ final class Config {
         }
 
         boolean allowsThemeType(int type) {
+            if (themeType1) {
+                return true;
+            }
             switch (type) {
                 case 1: return themeType1;
                 case 2: return themeType2;
