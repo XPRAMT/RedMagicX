@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.ComponentName;
 import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
+import android.app.WallpaperManager;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -34,9 +35,14 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.ref.WeakReference;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -457,22 +463,81 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify dynamic theme lockscreen apply requested");
             return;
         }
-        applyStaticThemeLockscreen(context, manager, themeBean);
+        applyStaticThemeLockscreen(context, themeBean);
     }
 
-    private void applyStaticThemeLockscreen(Context context, Object manager, Object themeBean) {
+    private void applyStaticThemeLockscreen(Context context, Object themeBean) {
         new Thread(() -> {
             try {
-                Object result = XposedHelpers.callMethod(
-                        manager, "setLockScreenWallPaper", context, themeBean);
-                if (Boolean.TRUE.equals(result)) {
-                    new Handler(Looper.getMainLooper()).post(() ->
-                            Toast.makeText(context, "已套用鎖屏", Toast.LENGTH_SHORT).show());
+                byte[] wallpaper = readThemeLockscreen(themeBean);
+                if (wallpaper == null) {
+                    log("Beautify theme has no supported lockscreen wallpaper");
+                    return;
                 }
+                try (InputStream input = new ByteArrayInputStream(wallpaper)) {
+                    WallpaperManager.getInstance(context).setStream(
+                            input, null, false, WallpaperManager.FLAG_LOCK);
+                }
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(context, "已套用鎖屏", Toast.LENGTH_SHORT).show());
             } catch (Throwable throwable) {
                 log("Beautify static theme lockscreen apply failed: " + throwable);
             }
         }, "RedMagicX-ThemeLockscreen").start();
+    }
+
+    private byte[] readThemeLockscreen(Object themeBean) throws Exception {
+        ClassLoader classLoader = themeBean.getClass().getClassLoader();
+        Class<?> resourceManagerClass = XposedHelpers.findClass(
+                "com.zte.beautify.model.ResourceManager", classLoader);
+        Object resourceManager = XposedHelpers.callStaticMethod(resourceManagerClass, "getInstance");
+        InputStream themeStream = (InputStream) XposedHelpers.callMethod(
+                resourceManager, "getThemeZipInputStream", themeBean);
+        if (themeStream == null) {
+            return null;
+        }
+
+        byte[] best = null;
+        int bestRank = Integer.MAX_VALUE;
+        try (ZipInputStream zip = new ZipInputStream(themeStream)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                int rank = lockscreenEntryRank(entry.getName());
+                if (!entry.isDirectory() && rank < bestRank) {
+                    ByteArrayOutputStream output = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = zip.read(buffer)) != -1) {
+                        output.write(buffer, 0, count);
+                    }
+                    best = output.toByteArray();
+                    bestRank = rank;
+                    log("Beautify selected lockscreen entry=" + entry.getName());
+                    if (rank == 0) {
+                        break;
+                    }
+                }
+                zip.closeEntry();
+            }
+        }
+        return best;
+    }
+
+    private int lockscreenEntryRank(String name) {
+        String normalized = name.startsWith("/") ? name.substring(1) : name;
+        if ("lockscreen/wallpaper1.jpg".equalsIgnoreCase(normalized)) {
+            return 0;
+        }
+        if ("lockscreen/wallpaper1.png".equalsIgnoreCase(normalized)) {
+            return 1;
+        }
+        if ("lockscreen/wallpaper169.jpg".equalsIgnoreCase(normalized)) {
+            return 2;
+        }
+        if ("lockscreen/wallpaper169.png".equalsIgnoreCase(normalized)) {
+            return 3;
+        }
+        return Integer.MAX_VALUE;
     }
 
     private void saveThemeSelection(Context context, Switch fullTheme, CheckBox systemResources,
