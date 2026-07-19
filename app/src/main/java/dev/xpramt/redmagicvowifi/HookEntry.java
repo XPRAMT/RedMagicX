@@ -182,23 +182,34 @@ public class HookEntry implements IXposedHookLoadPackage {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
-                if (!config.themeSelectEnabled || !isThemeIconsOnly(config)
-                        || param.args == null || param.args.length < 2) {
+                if (!config.themeSelectEnabled || !isThemeWallpaperAndIconsOnly(config)
+                        || param.args == null || param.args.length < 2
+                        || (param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]))) {
                     return;
                 }
-                XposedHelpers.callMethod(param.thisObject, "setResourceDirectly",
-                        param.args[0], param.args[1]);
+                if (config.themeType2) {
+                    XposedHelpers.callMethod(param.thisObject, "setThemeDesktopWallPaperAsync",
+                            param.args[0], param.args[1]);
+                }
+                if (hasThemeIcons(config)) {
+                    XposedHelpers.callMethod(param.thisObject, "setResourceDirectly",
+                            param.args[0], param.args[1]);
+                }
                 param.setResult(null);
-                log("Beautify full-theme apply redirected to built-in icons-only route");
+                log("Beautify full-theme apply split into wallpaper=" + config.themeType2
+                        + " icons=" + hasThemeIcons(config));
             }
         });
         log("Beautify theme apply route hook installed");
     }
 
-    private boolean isThemeIconsOnly(Config.Snapshot config) {
-        return !config.themeType1 && !config.themeType2 && !config.themeType4
-                && !config.themeType6 && !config.themeType16
-                && (config.themeType17 || config.themeType23);
+    private boolean isThemeWallpaperAndIconsOnly(Config.Snapshot config) {
+        return !config.themeType1 && !config.themeType4 && !config.themeType6
+                && !config.themeType16 && (config.themeType2 || hasThemeIcons(config));
+    }
+
+    private boolean hasThemeIcons(Config.Snapshot config) {
+        return config.themeType17 || config.themeType23;
     }
 
     private void injectThemeSelector(LinearLayout itemView, Config.Snapshot config) {
@@ -323,7 +334,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                     return;
                 }
                 int type = (Integer) param.args[0];
-                if (type == 1 && isThemeIconsOnly(config)) {
+                if (type == 1 && isThemeWallpaperAndIconsOnly(config) && hasThemeIcons(config)) {
                     return;
                 }
                 if (!config.allowsThemeType(type)) {
