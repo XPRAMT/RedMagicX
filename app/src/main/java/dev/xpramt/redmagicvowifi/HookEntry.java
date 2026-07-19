@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ComponentName;
-import android.content.res.ColorStateList;
 import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
 import android.content.pm.PackageManager;
@@ -17,14 +16,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -318,71 +315,6 @@ public class HookEntry implements IXposedHookLoadPackage {
         checkBox.setLayoutParams(new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         return checkBox;
-    }
-
-    private void updateThemeDetailControls(CheckBox[] controls, boolean enabled) {
-        for (CheckBox control : controls) {
-            control.setEnabled(enabled);
-            control.setAlpha(enabled ? 1f : 0.4f);
-        }
-    }
-
-    private void applyThemeAccentTint(Context context, Switch control) {
-        int colorId = context.getResources().getIdentifier(
-                "mfvc_primary_main_color", "color", BEAUTIFY);
-        Integer accent = colorId == 0 ? null : context.getColor(colorId);
-        if (accent == null) {
-            int attrId = context.getResources().getIdentifier(
-                    "colorControlActivated", "attr", BEAUTIFY);
-            accent = resolveThemeColor(context, attrId);
-        }
-        if (accent == null) {
-            accent = resolveThemeColor(context, android.R.attr.colorAccent);
-        }
-        if (accent == null) {
-            return;
-        }
-        int[][] states = {
-                new int[]{-android.R.attr.state_enabled},
-                new int[]{android.R.attr.state_checked},
-                new int[]{}
-        };
-        ColorStateList oldThumb = control.getThumbTintList();
-        ColorStateList oldTrack = control.getTrackTintList();
-        int disabledThumb = tintColorForState(oldThumb, states[0], 0xFF666666);
-        int normalThumb = tintColorForState(oldThumb, states[2], 0xFFBDBDBD);
-        int disabledTrack = tintColorForState(oldTrack, states[0], 0x33666666);
-        int normalTrack = tintColorForState(oldTrack, states[2], 0x4DFFFFFF);
-        control.setThumbTintList(new ColorStateList(states,
-                new int[]{disabledThumb, accent, normalThumb}));
-        control.setTrackTintList(new ColorStateList(states,
-                new int[]{disabledTrack, withAlpha(accent, 0x66), normalTrack}));
-    }
-
-    private Integer resolveThemeColor(Context context, int attrId) {
-        if (attrId == 0) {
-            return null;
-        }
-        TypedValue value = new TypedValue();
-        if (!context.getTheme().resolveAttribute(attrId, value, true)) {
-            return null;
-        }
-        if (value.resourceId != 0) {
-            return context.getColor(value.resourceId);
-        }
-        if (value.type >= TypedValue.TYPE_FIRST_COLOR_INT
-                && value.type <= TypedValue.TYPE_LAST_COLOR_INT) {
-            return value.data;
-        }
-        return null;
-    }
-
-    private int tintColorForState(ColorStateList colors, int[] state, int fallback) {
-        return colors == null ? fallback : colors.getColorForState(state, colors.getDefaultColor());
-    }
-
-    private int withAlpha(int color, int alpha) {
-        return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
     private void saveThemeSelection(Context context, CheckBox systemResources,
