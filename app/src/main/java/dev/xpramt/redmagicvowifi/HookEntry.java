@@ -235,13 +235,6 @@ public class HookEntry implements IXposedHookLoadPackage {
         background.setCornerRadius(dp(context, 8));
         panel.setBackground(background);
 
-        TextView title = new TextView(context);
-        title.setText("套用元素");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(16);
-        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        panel.addView(title);
-
         Switch fullTheme = new Switch(context);
         fullTheme.setText("完整主題");
         fullTheme.setTextColor(Color.WHITE);
