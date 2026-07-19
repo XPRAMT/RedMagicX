@@ -208,10 +208,14 @@ public class HookEntry implements IXposedHookLoadPackage {
                     XposedHelpers.callMethod(param.thisObject, "setIconChangeSelfDefine",
                             param.args[0], param.args[1], "", false);
                 }
+                if (config.themeLockscreen) {
+                    applyThemeLockscreen((Context) param.args[0], param.thisObject, param.args[1]);
+                }
                 param.setResult(null);
                 log("Beautify selective apply systemResources=" + config.themeType1
                         + " wallpaper=" + hasThemeWallpaper(config)
-                        + " icons=" + hasThemeIcons(config));
+                        + " icons=" + hasThemeIcons(config)
+                        + " lockscreen=" + config.themeLockscreen);
             }
         });
         hookBeautifyWallpaperCompletion(lpparam);
@@ -288,20 +292,22 @@ public class HookEntry implements IXposedHookLoadPackage {
                 config.themeType2 || config.themeType6);
         CheckBox icons = themeCheckBox(context, "圖標",
                 config.themeType17 || config.themeType23);
+        CheckBox lockscreen = themeCheckBox(context, "鎖屏", config.themeLockscreen);
         panel.addView(fullTheme);
-        panel.addView(themeSelectorRow(context, systemResources, wallpaper));
-        panel.addView(themeSelectorRow(context, icons, null));
+        panel.addView(themeSelectorRow(context, systemResources, icons));
+        panel.addView(themeSelectorRow(context, wallpaper, lockscreen));
 
-        CheckBox[] detailControls = {systemResources, wallpaper, icons};
+        CheckBox[] detailControls = {systemResources, icons, wallpaper, lockscreen};
         updateThemeDetailControls(detailControls, !fullTheme.isChecked());
         CompoundButton.OnCheckedChangeListener detailListener = (button, checked) ->
-                saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons);
+                saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons, lockscreen);
         systemResources.setOnCheckedChangeListener(detailListener);
         wallpaper.setOnCheckedChangeListener(detailListener);
         icons.setOnCheckedChangeListener(detailListener);
+        lockscreen.setOnCheckedChangeListener(detailListener);
         fullTheme.setOnCheckedChangeListener((button, checked) -> {
             updateThemeDetailControls(detailControls, !checked);
-            saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons);
+            saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons, lockscreen);
         });
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -437,10 +443,43 @@ public class HookEntry implements IXposedHookLoadPackage {
         }, "RedMagicX-ThemeResources").start();
     }
 
+    private void applyThemeLockscreen(Context context, Object manager, Object themeBean) {
+        String type;
+        try {
+            type = (String) XposedHelpers.callMethod(themeBean, "getLockScreenWallpaperType");
+        } catch (Throwable throwable) {
+            log("Unable to read theme lockscreen type: " + throwable);
+            return;
+        }
+        if ("3".equals(type)) {
+            XposedHelpers.callMethod(manager, "setDynamicLockerAsync", context, themeBean);
+            log("Beautify dynamic theme lockscreen apply requested");
+            return;
+        }
+        if ("2".equals(type)) {
+            XposedHelpers.callMethod(manager, "setZTELockScreenAsync", context);
+            log("Beautify ZTE lockscreen apply requested");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                Object result = XposedHelpers.callMethod(
+                        manager, "setLockScreenWallPaper", context, themeBean);
+                if (Boolean.TRUE.equals(result)) {
+                    new Handler(Looper.getMainLooper()).post(() ->
+                            Toast.makeText(context, "已套用鎖屏", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Throwable throwable) {
+                log("Beautify static theme lockscreen apply failed: " + throwable);
+            }
+        }, "RedMagicX-ThemeLockscreen").start();
+    }
+
     private void saveThemeSelection(Context context, Switch fullTheme, CheckBox systemResources,
-                                    CheckBox wallpaper, CheckBox icons) {
+                                    CheckBox wallpaper, CheckBox icons, CheckBox lockscreen) {
         Bundle values = new Bundle();
         values.putBoolean(Config.KEY_THEME_FULL, fullTheme.isChecked());
+        values.putBoolean(Config.KEY_THEME_LOCKSCREEN, lockscreen.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_1, systemResources.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_2, wallpaper.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_4, false);

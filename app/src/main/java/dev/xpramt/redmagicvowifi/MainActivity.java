@@ -199,6 +199,7 @@ public class MainActivity extends Activity {
         if (!prefs.contains(Config.KEY_THEME_SELECT_ENABLED)) {
             editor.putBoolean(Config.KEY_THEME_SELECT_ENABLED, false);
             editor.putBoolean(Config.KEY_THEME_FULL, false);
+            editor.putBoolean(Config.KEY_THEME_LOCKSCREEN, false);
             editor.putBoolean(Config.KEY_THEME_TYPE_1, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_2, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_4, false);
@@ -210,6 +211,10 @@ public class MainActivity extends Activity {
         }
         if (!prefs.contains(Config.KEY_THEME_FULL)) {
             editor.putBoolean(Config.KEY_THEME_FULL, false);
+            changed = true;
+        }
+        if (!prefs.contains(Config.KEY_THEME_LOCKSCREEN)) {
+            editor.putBoolean(Config.KEY_THEME_LOCKSCREEN, false);
             changed = true;
         }
         String launcherComponent = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
@@ -432,8 +437,8 @@ public class MainActivity extends Activity {
             showToast(isChecked ? "已啟用主題元素選擇" : "已停用主題元素選擇");
         });
         box.addView(enabled);
-        box.addView(detailText("開啟後，原廠主題預覽頁會在自我介紹下方顯示系統資源、桌布與圖標選項，可分別選擇要套用的元素。"));
-        addDetailField(box, "可選元素", "系統資源\n桌布\n圖標");
+        box.addView(detailText("開啟後，原廠主題預覽頁會在自我介紹下方顯示系統資源、圖標、桌布與鎖屏選項，可分別選擇要套用的元素。"));
+        addDetailField(box, "可選元素", "系統資源\n圖標\n桌布\n鎖屏");
         addDetailField(box, "作用進程", "com.zte.beautify\ncom.zte.beautifyadapter");
         addDetailField(box, "生效條件", "LSPosed 需要勾選上述兩個作用域。變更作用域後請重新開啟原廠主題 App。");
         Button openBeautify = new Button(this);
