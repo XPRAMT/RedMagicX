@@ -304,11 +304,16 @@ public class MainActivity extends Activity {
         return bar;
     }
 
+    private void setHeader(String title, boolean showBack) {
+        titleView.setText(title);
+        backView.setVisibility(showBack ? View.VISIBLE : View.GONE);
+        titleView.setPadding(showBack ? 0 : dp(12), 0, 0, 0);
+    }
+
     private void showHome() {
         stopWirelessAdbPolling();
         currentPage = PAGE_HOME;
-        titleView.setText("RedMagicX");
-        backView.setVisibility(View.INVISIBLE);
+        setHeader("RedMagicX", false);
         contentRoot.removeAllViews();
         contentRoot.addView(featureButton(
                 "VoWiFi UI 修正",
@@ -350,8 +355,7 @@ public class MainActivity extends Activity {
     private void showVoWifiPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_VOWIFI;
-        titleView.setText("VoWiFi UI 修正");
-        backView.setVisibility(View.VISIBLE);
+        setHeader("VoWiFi UI 修正", true);
         contentRoot.removeAllViews();
 
         contentRoot.addView(detailText("此功能修正 VoWiFi UI 顯示。"));
@@ -395,8 +399,7 @@ public class MainActivity extends Activity {
     private void showVolumePage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_VOLUME;
-        titleView.setText("音量步進調整");
-        backView.setVisibility(View.VISIBLE);
+        setHeader("音量步進調整", true);
         contentRoot.removeAllViews();
         contentRoot.addView(volumeSection());
     }
@@ -404,8 +407,7 @@ public class MainActivity extends Activity {
     private void showAssistantPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_ASSISTANT;
-        titleView.setText("魔姬手勢替換");
-        backView.setVisibility(View.VISIBLE);
+        setHeader("魔姬手勢替換", true);
         contentRoot.removeAllViews();
         contentRoot.addView(assistantSection());
     }
@@ -413,8 +415,7 @@ public class MainActivity extends Activity {
     private void showLauncherPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_LAUNCHER;
-        titleView.setText("第三方啟動器");
-        backView.setVisibility(View.VISIBLE);
+        setHeader("第三方啟動器", true);
         contentRoot.removeAllViews();
         contentRoot.addView(launcherSection());
     }
@@ -422,8 +423,7 @@ public class MainActivity extends Activity {
     private void showAdbControlPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_ADB_CONTROL;
-        titleView.setText("ADB 控制中心");
-        backView.setVisibility(View.VISIBLE);
+        setHeader("ADB 控制中心", true);
         contentRoot.removeAllViews();
         contentRoot.addView(wirelessAdbSection());
     }
@@ -431,8 +431,7 @@ public class MainActivity extends Activity {
     private void showThemePage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_THEME;
-        titleView.setText("主題");
-        backView.setVisibility(View.VISIBLE);
+        setHeader("主題", true);
         contentRoot.removeAllViews();
         contentRoot.addView(themeSection());
     }
@@ -502,8 +501,7 @@ public class MainActivity extends Activity {
     private void showQuickEntryPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_QUICK_ENTRY;
-        titleView.setText("快速入口");
-        backView.setVisibility(View.VISIBLE);
+        setHeader("快速入口", true);
         contentRoot.removeAllViews();
         contentRoot.addView(quickEntrySection());
     }
