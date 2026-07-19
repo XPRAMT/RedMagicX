@@ -190,7 +190,7 @@ public class HookEntry implements IXposedHookLoadPackage {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
-                if (!config.themeSelectEnabled || !isThemeWallpaperAndIconsOnly(config)
+                if (!config.themeSelectEnabled || !isThemeWithoutSystemResources(config)
                         || param.args == null || param.args.length < 2
                         || (param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]))) {
                     return;
@@ -200,8 +200,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                             param.args[0], param.args[1]);
                 }
                 if (hasThemeIcons(config)) {
-                    XposedHelpers.callMethod(param.thisObject, "setResourceDirectly",
-                            param.args[0], param.args[1]);
+                    XposedHelpers.callMethod(param.thisObject, "setIconChangeSelfDefine",
+                            param.args[0], param.args[1], "", false);
                 }
                 param.setResult(null);
                 log("Beautify full-theme apply split into wallpaper=" + hasThemeWallpaper(config)
@@ -224,7 +224,7 @@ public class HookEntry implements IXposedHookLoadPackage {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
-                if (!config.themeSelectEnabled || !isThemeWallpaperAndIconsOnly(config)
+                if (!config.themeSelectEnabled || !isThemeWithoutSystemResources(config)
                         || !hasThemeWallpaper(config)) {
                     return;
                 }
@@ -244,9 +244,8 @@ public class HookEntry implements IXposedHookLoadPackage {
         log("Beautify wallpaper completion toast hook installed");
     }
 
-    private boolean isThemeWallpaperAndIconsOnly(Config.Snapshot config) {
-        return !config.themeType1 && !config.themeType4 && !config.themeType16
-                && (hasThemeWallpaper(config) || hasThemeIcons(config));
+    private boolean isThemeWithoutSystemResources(Config.Snapshot config) {
+        return !config.themeType1 && (hasThemeWallpaper(config) || hasThemeIcons(config));
     }
 
     private boolean hasThemeWallpaper(Config.Snapshot config) {
@@ -274,37 +273,19 @@ public class HookEntry implements IXposedHookLoadPackage {
         background.setCornerRadius(dp(context, 8));
         panel.setBackground(background);
 
-        Switch fullTheme = new Switch(context);
-        fullTheme.setText("完整主題");
-        fullTheme.setTextColor(Color.WHITE);
-        fullTheme.setTextSize(15);
-        fullTheme.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        fullTheme.setChecked(config.themeType1);
-        applyThemeAccentTint(context, fullTheme);
-        fullTheme.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        CheckBox systemResources = themeCheckBox(context, "系統資源", config.themeType1);
         CheckBox wallpaper = themeCheckBox(context, "桌布",
                 config.themeType2 || config.themeType6);
-        CheckBox type4 = themeCheckBox(context, "字體", config.themeType4);
-        CheckBox type16 = themeCheckBox(context, "色彩／形狀", config.themeType16);
         CheckBox icons = themeCheckBox(context, "圖標",
                 config.themeType17 || config.themeType23);
-        panel.addView(fullTheme);
-        panel.addView(themeSelectorRow(context, wallpaper, type4));
-        panel.addView(themeSelectorRow(context, type16, icons));
+        panel.addView(themeSelectorRow(context, systemResources, wallpaper));
+        panel.addView(themeSelectorRow(context, icons, null));
 
-        CheckBox[] detailControls = {wallpaper, type4, type16, icons};
-        updateThemeDetailControls(detailControls, !fullTheme.isChecked());
         CompoundButton.OnCheckedChangeListener detailListener = (button, checked) ->
-                saveThemeSelection(context, fullTheme, wallpaper, type4, type16, icons);
+                saveThemeSelection(context, systemResources, wallpaper, icons);
+        systemResources.setOnCheckedChangeListener(detailListener);
         wallpaper.setOnCheckedChangeListener(detailListener);
-        type4.setOnCheckedChangeListener(detailListener);
-        type16.setOnCheckedChangeListener(detailListener);
         icons.setOnCheckedChangeListener(detailListener);
-        fullTheme.setOnCheckedChangeListener((button, checked) -> {
-            updateThemeDetailControls(detailControls, !checked);
-            saveThemeSelection(context, fullTheme, wallpaper, type4, type16, icons);
-        });
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -404,14 +385,14 @@ public class HookEntry implements IXposedHookLoadPackage {
         return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
-    private void saveThemeSelection(Context context, CompoundButton type1, CheckBox wallpaper,
-                                    CheckBox type4, CheckBox type16, CheckBox icons) {
+    private void saveThemeSelection(Context context, CheckBox systemResources,
+                                    CheckBox wallpaper, CheckBox icons) {
         Bundle values = new Bundle();
-        values.putBoolean(Config.KEY_THEME_TYPE_1, type1.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_1, systemResources.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_2, wallpaper.isChecked());
-        values.putBoolean(Config.KEY_THEME_TYPE_4, type4.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_4, false);
         values.putBoolean(Config.KEY_THEME_TYPE_6, wallpaper.isChecked());
-        values.putBoolean(Config.KEY_THEME_TYPE_16, type16.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_16, false);
         values.putBoolean(Config.KEY_THEME_TYPE_17, icons.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_23, icons.isChecked());
         try {
@@ -446,9 +427,6 @@ public class HookEntry implements IXposedHookLoadPackage {
                     return;
                 }
                 int type = (Integer) param.args[0];
-                if (type == 1 && isThemeWallpaperAndIconsOnly(config) && hasThemeIcons(config)) {
-                    return;
-                }
                 if (!config.allowsThemeType(type)) {
                     param.setResult(1);
                     log("Beautify applyResource blocked type=" + type);
