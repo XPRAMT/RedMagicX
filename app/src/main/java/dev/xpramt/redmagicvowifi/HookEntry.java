@@ -197,7 +197,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                 }
                 if (config.themeType1) {
                     applySystemResourcesPreservingIcons(
-                            param.thisObject, param.args[1], !hasThemeIcons(config));
+                            (Context) param.args[0], param.thisObject, param.args[1],
+                            !hasThemeIcons(config));
                 }
                 if (hasThemeWallpaper(config)) {
                     XposedHelpers.callMethod(param.thisObject, "setThemeDesktopWallPaperAsync",
@@ -395,7 +396,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
-    private void applySystemResourcesPreservingIcons(Object manager, Object themeBean,
+    private void applySystemResourcesPreservingIcons(Context context, Object manager, Object themeBean,
                                                       boolean restoreCurrentIcons) {
         ClassLoader classLoader = manager.getClass().getClassLoader();
         Object currentIconBean = null;
@@ -422,12 +423,14 @@ public class HookEntry implements IXposedHookLoadPackage {
         String iconConfig = currentIconConfig == null ? "" : currentIconConfig;
         new Thread(() -> {
             try {
-                XposedHelpers.callMethod(manager, "setTheme", themeBean, false, false);
+                XposedHelpers.callMethod(manager, "setTheme", themeBean, true, false);
                 if (restoreCurrentIcons && iconBean != null) {
                     XposedHelpers.callMethod(
                             manager, "setIconChangeSelfDefine", iconBean, iconConfig, false);
                     log("Beautify restored previous icons after system-resource apply");
                 }
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(context, "已套用系統資源", Toast.LENGTH_SHORT).show());
             } catch (Throwable throwable) {
                 log("Beautify system-resource apply failed: " + throwable);
             }
