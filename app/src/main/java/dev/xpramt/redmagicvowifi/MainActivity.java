@@ -428,7 +428,7 @@ public class MainActivity extends Activity {
         });
         box.addView(enabled);
         box.addView(detailText("開啟後，原廠主題預覽頁會在自我介紹下方顯示多選列表。未勾選的原廠資源類型將不會套用。完整主題本身是單一類型，不會拆分成其它類型。"));
-        addDetailField(box, "可選類型", "完整主題 (1)\n桌布 (2)\n字體 (4)\n動態桌布 (6)\n色彩／形狀 (16)\n圖標形狀 (17)\n圖標風格 (23)");
+        addDetailField(box, "可選類型", "完整主題 (1)\n桌布 (2 / 6)\n字體 (4)\n色彩／形狀 (16)\n圖標 (17 / 23)");
         addDetailField(box, "作用進程", "com.zte.beautify\ncom.zte.beautifyadapter");
         addDetailField(box, "生效條件", "LSPosed 需要勾選上述兩個作用域。變更作用域後請重新開啟原廠主題 App。");
         Button openBeautify = new Button(this);

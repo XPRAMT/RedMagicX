@@ -187,7 +187,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                         || (param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]))) {
                     return;
                 }
-                if (config.themeType2) {
+                if (hasThemeWallpaper(config)) {
                     XposedHelpers.callMethod(param.thisObject, "setThemeDesktopWallPaperAsync",
                             param.args[0], param.args[1]);
                 }
@@ -196,7 +196,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                             param.args[0], param.args[1]);
                 }
                 param.setResult(null);
-                log("Beautify full-theme apply split into wallpaper=" + config.themeType2
+                log("Beautify full-theme apply split into wallpaper=" + hasThemeWallpaper(config)
                         + " icons=" + hasThemeIcons(config));
             }
         });
@@ -204,8 +204,12 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
     private boolean isThemeWallpaperAndIconsOnly(Config.Snapshot config) {
-        return !config.themeType1 && !config.themeType4 && !config.themeType6
-                && !config.themeType16 && (config.themeType2 || hasThemeIcons(config));
+        return !config.themeType1 && !config.themeType4 && !config.themeType16
+                && (hasThemeWallpaper(config) || hasThemeIcons(config));
+    }
+
+    private boolean hasThemeWallpaper(Config.Snapshot config) {
+        return config.themeType2 || config.themeType6;
     }
 
     private boolean hasThemeIcons(Config.Snapshot config) {
@@ -237,26 +241,23 @@ public class HookEntry implements IXposedHookLoadPackage {
         panel.addView(title);
 
         CheckBox type1 = themeCheckBox(context, "完整主題", config.themeType1);
-        CheckBox type2 = themeCheckBox(context, "桌布", config.themeType2);
+        CheckBox wallpaper = themeCheckBox(context, "桌布",
+                config.themeType2 || config.themeType6);
         CheckBox type4 = themeCheckBox(context, "字體", config.themeType4);
-        CheckBox type6 = themeCheckBox(context, "動態桌布", config.themeType6);
         CheckBox type16 = themeCheckBox(context, "色彩／形狀", config.themeType16);
-        CheckBox type17 = themeCheckBox(context, "圖標形狀", config.themeType17);
-        CheckBox type23 = themeCheckBox(context, "圖標風格", config.themeType23);
-        panel.addView(themeSelectorRow(context, type1, type2));
-        panel.addView(themeSelectorRow(context, type4, type6));
-        panel.addView(themeSelectorRow(context, type16, type17));
-        panel.addView(themeSelectorRow(context, type23, null));
+        CheckBox icons = themeCheckBox(context, "圖標",
+                config.themeType17 || config.themeType23);
+        panel.addView(themeSelectorRow(context, type1, wallpaper));
+        panel.addView(themeSelectorRow(context, type4, type16));
+        panel.addView(themeSelectorRow(context, icons, null));
 
         android.widget.CompoundButton.OnCheckedChangeListener listener = (button, checked) ->
-                saveThemeSelection(context, type1, type2, type4, type6, type16, type17, type23);
+                saveThemeSelection(context, type1, wallpaper, type4, type16, icons);
         type1.setOnCheckedChangeListener(listener);
-        type2.setOnCheckedChangeListener(listener);
+        wallpaper.setOnCheckedChangeListener(listener);
         type4.setOnCheckedChangeListener(listener);
-        type6.setOnCheckedChangeListener(listener);
         type16.setOnCheckedChangeListener(listener);
-        type17.setOnCheckedChangeListener(listener);
-        type23.setOnCheckedChangeListener(listener);
+        icons.setOnCheckedChangeListener(listener);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -291,17 +292,16 @@ public class HookEntry implements IXposedHookLoadPackage {
         return checkBox;
     }
 
-    private void saveThemeSelection(Context context, CheckBox type1, CheckBox type2,
-                                    CheckBox type4, CheckBox type6, CheckBox type16,
-                                    CheckBox type17, CheckBox type23) {
+    private void saveThemeSelection(Context context, CheckBox type1, CheckBox wallpaper,
+                                    CheckBox type4, CheckBox type16, CheckBox icons) {
         Bundle values = new Bundle();
         values.putBoolean(Config.KEY_THEME_TYPE_1, type1.isChecked());
-        values.putBoolean(Config.KEY_THEME_TYPE_2, type2.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_2, wallpaper.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_4, type4.isChecked());
-        values.putBoolean(Config.KEY_THEME_TYPE_6, type6.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_6, wallpaper.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_16, type16.isChecked());
-        values.putBoolean(Config.KEY_THEME_TYPE_17, type17.isChecked());
-        values.putBoolean(Config.KEY_THEME_TYPE_23, type23.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_17, icons.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_23, icons.isChecked());
         try {
             Bundle result = context.getContentResolver().call(
                     Uri.parse("content://" + ThemeConfigProvider.AUTHORITY),
