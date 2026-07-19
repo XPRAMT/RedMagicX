@@ -432,15 +432,17 @@ public class MainActivity extends Activity {
         addDetailField(box, "作用進程", "com.zte.beautify\ncom.zte.beautifyadapter");
         addDetailField(box, "生效條件", "LSPosed 需要勾選上述兩個作用域。變更作用域後請重新開啟原廠主題 App。");
         Button openBeautify = new Button(this);
-        openBeautify.setText("打開原廠主題");
+        openBeautify.setText("打開下載佈景主題");
         styleButton(openBeautify, false, false);
         openBeautify.setOnClickListener(view -> {
             Intent intent = new Intent("zte.mfv.intent.action.beauty.main");
             intent.setPackage("com.zte.beautify");
+            intent.putExtra("dev.xpramt.redmagicvowifi.OPEN_DOWNLOADED_THEMES", true);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             try {
                 startActivity(intent);
             } catch (SecurityException | android.content.ActivityNotFoundException exception) {
-                showToast("無法打開原廠主題");
+                showToast("無法打開下載佈景主題");
             }
         });
         box.addView(verticalSpace(14));

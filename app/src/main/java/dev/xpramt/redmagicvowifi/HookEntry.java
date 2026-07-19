@@ -43,6 +43,8 @@ public class HookEntry implements IXposedHookLoadPackage {
     private static final String STOCK_LAUNCHER = "com.zte.mifavor.launcher";
     private static final String BEAUTIFY = "com.zte.beautify";
     private static final String BEAUTIFY_ADAPTER = "com.zte.beautifyadapter";
+    private static final String EXTRA_OPEN_DOWNLOADED_THEMES =
+            "dev.xpramt.redmagicvowifi.OPEN_DOWNLOADED_THEMES";
     private static final String THEME_SELECTOR_TAG = "redmagicx_theme_selector";
     private static final int STREAM_MUSIC = AudioManager.STREAM_MUSIC;
     private static final int ADJUST_LOWER = AudioManager.ADJUST_LOWER;
@@ -104,6 +106,8 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
     private void hookBeautifyThemeSelector(XC_LoadPackage.LoadPackageParam lpparam) {
+        hookBeautifyDownloadedThemesEntry(lpparam);
+        hookBeautifyThemeApplyRoute(lpparam);
         Class<?> adapterClass = findClassIfExists(
                 "com.zte.beautify.view.common.adapter.AdvertiseRecyclerViewAdapter",
                 lpparam.classLoader);
@@ -135,6 +139,66 @@ public class HookEntry implements IXposedHookLoadPackage {
             }
         });
         log("Beautify theme selector adapter hook installed");
+    }
+
+    private void hookBeautifyDownloadedThemesEntry(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> fragmentClass = findClassIfExists(
+                "com.zte.beautify.view.themewallpaper.home.HomePageFragment",
+                lpparam.classLoader);
+        if (fragmentClass == null) {
+            log("Beautify HomePageFragment not found");
+            return;
+        }
+        XposedBridge.hookAllMethods(fragmentClass, "onCreateView", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Object activity = XposedHelpers.callMethod(param.thisObject, "getActivity");
+                if (activity == null) {
+                    return;
+                }
+                Intent intent = (Intent) XposedHelpers.callMethod(activity, "getIntent");
+                if (intent == null || !intent.getBooleanExtra(EXTRA_OPEN_DOWNLOADED_THEMES, false)) {
+                    return;
+                }
+                intent.removeExtra(EXTRA_OPEN_DOWNLOADED_THEMES);
+                Object viewPager = XposedHelpers.getObjectField(param.thisObject, "viewPager");
+                Object tabHost = XposedHelpers.getObjectField(param.thisObject, "tabHost");
+                XposedHelpers.callMethod(viewPager, "setCurrentItem", 1);
+                XposedHelpers.callMethod(tabHost, "setCurrentTab", 1);
+                log("Beautify opened on downloaded themes tab");
+            }
+        });
+        log("Beautify downloaded themes entry hook installed");
+    }
+
+    private void hookBeautifyThemeApplyRoute(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> managerClass = findClassIfExists(
+                "com.zte.beautify.view.base.BaseSetWallPaperManager", lpparam.classLoader);
+        if (managerClass == null) {
+            log("Beautify BaseSetWallPaperManager not found");
+            return;
+        }
+        XposedBridge.hookAllMethods(managerClass, "setThemeAsync", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                Config.Snapshot config = Config.loadForHook();
+                if (!config.themeSelectEnabled || !isThemeIconsOnly(config)
+                        || param.args == null || param.args.length < 2) {
+                    return;
+                }
+                XposedHelpers.callMethod(param.thisObject, "setResourceDirectly",
+                        param.args[0], param.args[1]);
+                param.setResult(null);
+                log("Beautify full-theme apply redirected to built-in icons-only route");
+            }
+        });
+        log("Beautify theme apply route hook installed");
+    }
+
+    private boolean isThemeIconsOnly(Config.Snapshot config) {
+        return !config.themeType1 && !config.themeType2 && !config.themeType4
+                && !config.themeType6 && !config.themeType16
+                && (config.themeType17 || config.themeType23);
     }
 
     private void injectThemeSelector(LinearLayout itemView, Config.Snapshot config) {
@@ -259,6 +323,9 @@ public class HookEntry implements IXposedHookLoadPackage {
                     return;
                 }
                 int type = (Integer) param.args[0];
+                if (type == 1 && isThemeIconsOnly(config)) {
+                    return;
+                }
                 if (!config.allowsThemeType(type)) {
                     param.setResult(1);
                     log("Beautify applyResource blocked type=" + type);
