@@ -182,7 +182,20 @@ public class HookEntry implements IXposedHookLoadPackage {
                 log("Beautify splash skipped");
             }
         });
-        log("Beautify splash hook installed");
+       log("Beautify splash hook installed");
+   }
+
+    private void hookBeautifyAdapterTrial(XC_LoadPackage.LoadPackageParam lpparam) {
+        findAndHookMethod("h.a", lpparam.classLoader, "b", Context.class, int.class, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (Config.loadForHook().removeTrialLimit) {
+                    param.setResult(null);
+                    log("Beautify trial removal: blocked schedule()");
+                }
+            }
+        });
+        log("Beautify adapter trial hook installed");
     }
 
     private void hookBeautifyThemeSelector(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -635,6 +648,7 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
     private void hookBeautifyAdapterResourceTypes(XC_LoadPackage.LoadPackageParam lpparam) {
+        hookBeautifyAdapterTrial(lpparam);
         Class<?> serviceClass = findClassIfExists(
                 "com.zte.beautifyadapter.ThemeApplyService", lpparam.classLoader);
         if (serviceClass == null) {

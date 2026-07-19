@@ -213,6 +213,10 @@ public class MainActivity extends Activity {
             editor.putBoolean(Config.KEY_SKIP_BEAUTIFY_SPLASH, false);
             changed = true;
         }
+        if (!prefs.contains(Config.KEY_REMOVE_TRIAL_LIMIT)) {
+            editor.putBoolean(Config.KEY_REMOVE_TRIAL_LIMIT, false);
+            changed = true;
+        }
         if (!prefs.contains(Config.KEY_THEME_FULL)) {
             editor.putBoolean(Config.KEY_THEME_FULL, false);
             changed = true;
@@ -455,6 +459,19 @@ public class MainActivity extends Activity {
         });
         box.addView(skipSplash);
         box.addView(detailText("啟動原廠主題 App 時跳過蒲公英開屏倒數，直接進入主題首頁。"));
+        box.addView(verticalSpace(22));
+        Switch removeTrial = new Switch(this);
+        removeTrial.setText("移除試用時間限制");
+        removeTrial.setTextSize(18);
+        removeTrial.setTextColor(Color.WHITE);
+        removeTrial.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        removeTrial.setChecked(prefs.getBoolean(Config.KEY_REMOVE_TRIAL_LIMIT, false));
+        removeTrial.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_REMOVE_TRIAL_LIMIT, isChecked).commit();
+            showToast(isChecked ? "已啟用移除試用時間限制" : "已停用移除試用時間限制");
+        });
+        box.addView(removeTrial);
+        box.addView(detailText("免費試用主題、字體、桌布、動態桌布、熄屏時，不會有 5 分鐘時間限制。"));
         addDetailField(box, "可選元素", "系統資源\n圖標\n桌布\n鎖屏");
         addDetailField(box, "作用進程", "com.zte.beautify\ncom.zte.beautifyadapter");
         addDetailField(box, "生效條件", "LSPosed 需要勾選上述兩個作用域。變更作用域後請重新開啟原廠主題 App。");
