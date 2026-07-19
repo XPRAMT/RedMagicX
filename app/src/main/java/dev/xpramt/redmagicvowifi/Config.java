@@ -80,9 +80,9 @@ final class Config {
                 prefs.getBoolean(KEY_THEME_SELECT_ENABLED, false),
                 prefs.getBoolean(KEY_THEME_TYPE_1, true),
                 prefs.getBoolean(KEY_THEME_TYPE_2, true),
-                prefs.getBoolean(KEY_THEME_TYPE_4, true),
+                prefs.getBoolean(KEY_THEME_TYPE_4, false),
                 prefs.getBoolean(KEY_THEME_TYPE_6, true),
-                prefs.getBoolean(KEY_THEME_TYPE_16, true),
+                prefs.getBoolean(KEY_THEME_TYPE_16, false),
                 prefs.getBoolean(KEY_THEME_TYPE_17, true),
                 prefs.getBoolean(KEY_THEME_TYPE_23, true)
         );

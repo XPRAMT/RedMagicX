@@ -200,9 +200,9 @@ public class MainActivity extends Activity {
             editor.putBoolean(Config.KEY_THEME_SELECT_ENABLED, false);
             editor.putBoolean(Config.KEY_THEME_TYPE_1, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_2, true);
-            editor.putBoolean(Config.KEY_THEME_TYPE_4, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_4, false);
             editor.putBoolean(Config.KEY_THEME_TYPE_6, true);
-            editor.putBoolean(Config.KEY_THEME_TYPE_16, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_16, false);
             editor.putBoolean(Config.KEY_THEME_TYPE_17, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_23, true);
             changed = true;

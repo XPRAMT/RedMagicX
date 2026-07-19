@@ -201,7 +201,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                             param.args[0], param.args[1], "", false);
                 }
                 param.setResult(null);
-                log("Beautify full-theme apply split into wallpaper=" + hasThemeWallpaper(config)
+                log("Beautify selective apply wallpaper=" + hasThemeWallpaper(config)
                         + " icons=" + hasThemeIcons(config));
             }
         });
