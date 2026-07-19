@@ -2,6 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+    <uses-permission android:name="theme.permission.LOCAL_RESOURCE" />
 
     <application
         android:allowBackup="false"
@@ -17,8 +18,14 @@
             android:multiprocess="false"
             android:permission="moe.shizuku.manager.permission.API_V23" />
 
+        <provider
+            android:name=".ThemeConfigProvider"
+            android:authorities="${applicationId}.themeconfig"
+            android:enabled="true"
+            android:exported="true" />
+
         <meta-data android:name="xposedmodule" android:value="true" />
-        <meta-data android:name="xposeddescription" android:value="RedMagicX: RedMagic system tweaks for VoWiFi UI, volume step, assistant gesture, and launcher control" />
+        <meta-data android:name="xposeddescription" android:value="RedMagicX: RedMagic system tweaks for VoWiFi UI, volume, assistant, launcher, themes, and ADB" />
         <meta-data android:name="xposedminversion" android:value="93" />
         <meta-data android:name="xposedsharedprefs" android:value="true" />
 

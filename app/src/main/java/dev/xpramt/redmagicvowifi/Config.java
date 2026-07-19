@@ -19,6 +19,14 @@ final class Config {
     static final String KEY_LAUNCHER_OVERRIDE_ENABLED = "launcher_override_enabled";
     static final String KEY_LAUNCHER_COMPONENT = "launcher_component";
     static final String KEY_LAUNCHER_PACKAGE = "launcher_package";
+    static final String KEY_THEME_SELECT_ENABLED = "theme_select_enabled";
+    static final String KEY_THEME_TYPE_1 = "theme_type_1";
+    static final String KEY_THEME_TYPE_2 = "theme_type_2";
+    static final String KEY_THEME_TYPE_4 = "theme_type_4";
+    static final String KEY_THEME_TYPE_6 = "theme_type_6";
+    static final String KEY_THEME_TYPE_16 = "theme_type_16";
+    static final String KEY_THEME_TYPE_17 = "theme_type_17";
+    static final String KEY_THEME_TYPE_23 = "theme_type_23";
     static final String KEY_AUTO_CHECK_UPDATES = "auto_check_updates";
     static final String KEY_WIRELESS_ADB_PORT = "wireless_adb_port";
     static final String KEY_WIRELESS_ADB_ENABLED = "wireless_adb_enabled";
@@ -68,7 +76,15 @@ final class Config {
                 prefs.getString(KEY_ASSISTANT_TARGET, ASSISTANT_TARGET_DEFAULT),
                 prefs.getBoolean(KEY_LAUNCHER_OVERRIDE_ENABLED, false),
                 prefs.getString(KEY_LAUNCHER_COMPONENT, ""),
-                prefs.getString(KEY_LAUNCHER_PACKAGE, "")
+                prefs.getString(KEY_LAUNCHER_PACKAGE, ""),
+                prefs.getBoolean(KEY_THEME_SELECT_ENABLED, false),
+                prefs.getBoolean(KEY_THEME_TYPE_1, true),
+                prefs.getBoolean(KEY_THEME_TYPE_2, true),
+                prefs.getBoolean(KEY_THEME_TYPE_4, true),
+                prefs.getBoolean(KEY_THEME_TYPE_6, true),
+                prefs.getBoolean(KEY_THEME_TYPE_16, true),
+                prefs.getBoolean(KEY_THEME_TYPE_17, true),
+                prefs.getBoolean(KEY_THEME_TYPE_23, true)
         );
     }
 
@@ -89,10 +105,21 @@ final class Config {
         final boolean launcherOverrideEnabled;
         final String launcherComponent;
         final String launcherPackage;
+        final boolean themeSelectEnabled;
+        final boolean themeType1;
+        final boolean themeType2;
+        final boolean themeType4;
+        final boolean themeType6;
+        final boolean themeType16;
+        final boolean themeType17;
+        final boolean themeType23;
 
         Snapshot(boolean enableWfcSettings, boolean enableStatusIcon, String iconStyle, boolean volumeStepEnabled,
                  int volumeStep, boolean assistantRedirectEnabled, String assistantTarget,
-                 boolean launcherOverrideEnabled, String launcherComponent, String launcherPackage) {
+                 boolean launcherOverrideEnabled, String launcherComponent, String launcherPackage,
+                 boolean themeSelectEnabled, boolean themeType1, boolean themeType2,
+                 boolean themeType4, boolean themeType6, boolean themeType16,
+                 boolean themeType17, boolean themeType23) {
             this.enableWfcSettings = enableWfcSettings;
             this.enableStatusIcon = enableStatusIcon;
             this.iconStyle = iconStyle == null ? STYLE_DEFAULT : iconStyle;
@@ -103,6 +130,27 @@ final class Config {
             this.launcherOverrideEnabled = launcherOverrideEnabled;
             this.launcherComponent = launcherComponent == null ? "" : launcherComponent;
             this.launcherPackage = launcherPackage == null ? "" : launcherPackage;
+            this.themeSelectEnabled = themeSelectEnabled;
+            this.themeType1 = themeType1;
+            this.themeType2 = themeType2;
+            this.themeType4 = themeType4;
+            this.themeType6 = themeType6;
+            this.themeType16 = themeType16;
+            this.themeType17 = themeType17;
+            this.themeType23 = themeType23;
+        }
+
+        boolean allowsThemeType(int type) {
+            switch (type) {
+                case 1: return themeType1;
+                case 2: return themeType2;
+                case 4: return themeType4;
+                case 6: return themeType6;
+                case 16: return themeType16;
+                case 17: return themeType17;
+                case 23: return themeType23;
+                default: return true;
+            }
         }
     }
 }

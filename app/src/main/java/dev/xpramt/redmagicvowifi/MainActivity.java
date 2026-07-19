@@ -72,8 +72,9 @@ public class MainActivity extends Activity {
     private static final int PAGE_VOLUME = 2;
     private static final int PAGE_ASSISTANT = 3;
     private static final int PAGE_LAUNCHER = 4;
-    private static final int PAGE_ADB_CONTROL = 5;
-    private static final int PAGE_QUICK_ENTRY = 6;
+    private static final int PAGE_THEME = 5;
+    private static final int PAGE_ADB_CONTROL = 6;
+    private static final int PAGE_QUICK_ENTRY = 7;
     private static final int CARD_COLOR = Color.rgb(18, 18, 24);
     private static final int CARD_SELECTED_COLOR = Color.rgb(23, 33, 44);
     private static final String SETTINGS_FALLBACK_HOME_PACKAGE = "com.android.settings";
@@ -195,6 +196,17 @@ public class MainActivity extends Activity {
             editor.putString(Config.KEY_LAUNCHER_PACKAGE, "");
             changed = true;
         }
+        if (!prefs.contains(Config.KEY_THEME_SELECT_ENABLED)) {
+            editor.putBoolean(Config.KEY_THEME_SELECT_ENABLED, false);
+            editor.putBoolean(Config.KEY_THEME_TYPE_1, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_2, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_4, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_6, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_16, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_17, true);
+            editor.putBoolean(Config.KEY_THEME_TYPE_23, true);
+            changed = true;
+        }
         String launcherComponent = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
         if (isSettingsFallbackHome(launcherComponent)) {
             ComponentName stockLauncher = stockLauncherComponent();
@@ -296,6 +308,11 @@ public class MainActivity extends Activity {
                 view -> showLauncherPage()
         ));
         contentRoot.addView(featureButton(
+                "主題",
+                "在原廠主題預覽頁選擇允許套用的原廠資源類型",
+                view -> showThemePage()
+        ));
+        contentRoot.addView(featureButton(
                 "ADB 控制中心",
                 "快速控制 USB 偵錯、ADB 偽裝與無線 ADB",
                 view -> showAdbControlPage()
@@ -386,6 +403,49 @@ public class MainActivity extends Activity {
         backView.setVisibility(View.VISIBLE);
         contentRoot.removeAllViews();
         contentRoot.addView(wirelessAdbSection());
+    }
+
+    private void showThemePage() {
+        stopWirelessAdbPolling();
+        currentPage = PAGE_THEME;
+        titleView.setText("主題");
+        backView.setVisibility(View.VISIBLE);
+        contentRoot.removeAllViews();
+        contentRoot.addView(themeSection());
+    }
+
+    private LinearLayout themeSection() {
+        LinearLayout box = sectionBox();
+        Switch enabled = new Switch(this);
+        enabled.setText("啟用主題元素選擇");
+        enabled.setTextSize(18);
+        enabled.setTextColor(Color.WHITE);
+        enabled.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        enabled.setChecked(prefs.getBoolean(Config.KEY_THEME_SELECT_ENABLED, false));
+        enabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_THEME_SELECT_ENABLED, isChecked).commit();
+            showToast(isChecked ? "已啟用主題元素選擇" : "已停用主題元素選擇");
+        });
+        box.addView(enabled);
+        box.addView(detailText("開啟後，原廠主題預覽頁會在自我介紹下方顯示多選列表。未勾選的原廠資源類型將不會套用。完整主題本身是單一類型，不會拆分成其它類型。"));
+        addDetailField(box, "可選類型", "完整主題 (1)\n桌布 (2)\n字體 (4)\n動態桌布 (6)\n色彩／形狀 (16)\n圖標形狀 (17)\n圖標風格 (23)");
+        addDetailField(box, "作用進程", "com.zte.beautify\ncom.zte.beautifyadapter");
+        addDetailField(box, "生效條件", "LSPosed 需要勾選上述兩個作用域。變更作用域後請重新開啟原廠主題 App。");
+        Button openBeautify = new Button(this);
+        openBeautify.setText("打開原廠主題");
+        styleButton(openBeautify, false, false);
+        openBeautify.setOnClickListener(view -> {
+            Intent intent = new Intent("zte.mfv.intent.action.beauty.main");
+            intent.setPackage("com.zte.beautify");
+            try {
+                startActivity(intent);
+            } catch (SecurityException | android.content.ActivityNotFoundException exception) {
+                showToast("無法打開原廠主題");
+            }
+        });
+        box.addView(verticalSpace(14));
+        box.addView(openBeautify);
+        return box;
     }
 
     private void showQuickEntryPage() {

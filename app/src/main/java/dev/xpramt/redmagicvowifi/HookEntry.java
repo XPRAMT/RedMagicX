@@ -10,6 +10,16 @@ import android.content.ComponentName;
 import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -31,6 +41,9 @@ public class HookEntry implements IXposedHookLoadPackage {
     private static final String SYSTEM_UI = "com.android.systemui";
     private static final String ANDROID = "android";
     private static final String STOCK_LAUNCHER = "com.zte.mifavor.launcher";
+    private static final String BEAUTIFY = "com.zte.beautify";
+    private static final String BEAUTIFY_ADAPTER = "com.zte.beautifyadapter";
+    private static final String THEME_SELECTOR_TAG = "redmagicx_theme_selector";
     private static final int STREAM_MUSIC = AudioManager.STREAM_MUSIC;
     private static final int ADJUST_LOWER = AudioManager.ADJUST_LOWER;
     private static final int ADJUST_RAISE = AudioManager.ADJUST_RAISE;
@@ -47,7 +60,9 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
         if (!SETTINGS.equals(lpparam.packageName)
                 && !SYSTEM_UI.equals(lpparam.packageName)
-                && !STOCK_LAUNCHER.equals(lpparam.packageName)) {
+                && !STOCK_LAUNCHER.equals(lpparam.packageName)
+                && !BEAUTIFY.equals(lpparam.packageName)
+                && !BEAUTIFY_ADAPTER.equals(lpparam.packageName)) {
             return;
         }
         Config.Snapshot config = Config.loadForHook();
@@ -57,7 +72,16 @@ public class HookEntry implements IXposedHookLoadPackage {
                 + " style=" + config.iconStyle
                 + " volumeStep=" + config.volumeStepEnabled + "/" + config.volumeStep
                 + " assistant=" + config.assistantRedirectEnabled + "/" + config.assistantTarget
-                + " launcher=" + config.launcherOverrideEnabled + "/" + config.launcherPackage);
+                + " launcher=" + config.launcherOverrideEnabled + "/" + config.launcherPackage
+                + " themeSelect=" + config.themeSelectEnabled);
+        if (BEAUTIFY.equals(lpparam.packageName)) {
+            hookBeautifyThemeSelector(lpparam);
+            return;
+        }
+        if (BEAUTIFY_ADAPTER.equals(lpparam.packageName)) {
+            hookBeautifyAdapterResourceTypes(lpparam);
+            return;
+        }
         if (SETTINGS.equals(lpparam.packageName) && config.enableWfcSettings) {
             hookSettingsWfcGate(lpparam);
         }
@@ -77,6 +101,171 @@ public class HookEntry implements IXposedHookLoadPackage {
         if (STOCK_LAUNCHER.equals(lpparam.packageName)) {
             hookLauncherRecentTasksData(lpparam);
         }
+    }
+
+    private void hookBeautifyThemeSelector(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> adapterClass = findClassIfExists(
+                "com.zte.beautify.view.common.adapter.AdvertiseRecyclerViewAdapter",
+                lpparam.classLoader);
+        if (adapterClass == null) {
+            log("Beautify preview adapter not found");
+            return;
+        }
+        XposedBridge.hookAllMethods(adapterClass, "onBindTitleView", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Config.Snapshot config = Config.loadForHook();
+                if (!config.themeSelectEnabled || param.args == null || param.args.length == 0
+                        || !param.thisObject.getClass().getName().contains("ThemePreviewAdapter")) {
+                    return;
+                }
+                Object itemViewValue = XposedHelpers.getObjectField(param.args[0], "itemView");
+                if (!(itemViewValue instanceof LinearLayout)) {
+                    return;
+                }
+                LinearLayout itemView = (LinearLayout) itemViewValue;
+                Context context = itemView.getContext();
+                int introId = context.getResources().getIdentifier("theme_intro", "string", BEAUTIFY);
+                String expectedTitle = introId == 0 ? "" : context.getString(introId);
+                if (itemView.getChildCount() == 0 || !(itemView.getChildAt(0) instanceof TextView)
+                        || !expectedTitle.contentEquals(((TextView) itemView.getChildAt(0)).getText())) {
+                    return;
+                }
+                injectThemeSelector(itemView, config);
+            }
+        });
+        log("Beautify theme selector adapter hook installed");
+    }
+
+    private void injectThemeSelector(LinearLayout itemView, Config.Snapshot config) {
+        Context context = itemView.getContext();
+        for (int i = 0; i < itemView.getChildCount(); i++) {
+            if (THEME_SELECTOR_TAG.equals(itemView.getChildAt(i).getTag())) {
+                return;
+            }
+        }
+
+        LinearLayout panel = new LinearLayout(context);
+        panel.setTag(THEME_SELECTOR_TAG);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(context, 14), dp(context, 10), dp(context, 14), dp(context, 8));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(Color.rgb(18, 18, 24));
+        background.setCornerRadius(dp(context, 8));
+        panel.setBackground(background);
+
+        TextView title = new TextView(context);
+        title.setText("套用元素");
+        title.setTextColor(Color.WHITE);
+        title.setTextSize(16);
+        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        panel.addView(title);
+
+        CheckBox type1 = themeCheckBox(context, "完整主題", config.themeType1);
+        CheckBox type2 = themeCheckBox(context, "桌布", config.themeType2);
+        CheckBox type4 = themeCheckBox(context, "字體", config.themeType4);
+        CheckBox type6 = themeCheckBox(context, "動態桌布", config.themeType6);
+        CheckBox type16 = themeCheckBox(context, "色彩／形狀", config.themeType16);
+        CheckBox type17 = themeCheckBox(context, "圖標形狀", config.themeType17);
+        CheckBox type23 = themeCheckBox(context, "圖標風格", config.themeType23);
+        panel.addView(themeSelectorRow(context, type1, type2));
+        panel.addView(themeSelectorRow(context, type4, type6));
+        panel.addView(themeSelectorRow(context, type16, type17));
+        panel.addView(themeSelectorRow(context, type23, null));
+
+        android.widget.CompoundButton.OnCheckedChangeListener listener = (button, checked) ->
+                saveThemeSelection(context, type1, type2, type4, type6, type16, type17, type23);
+        type1.setOnCheckedChangeListener(listener);
+        type2.setOnCheckedChangeListener(listener);
+        type4.setOnCheckedChangeListener(listener);
+        type6.setOnCheckedChangeListener(listener);
+        type16.setOnCheckedChangeListener(listener);
+        type17.setOnCheckedChangeListener(listener);
+        type23.setOnCheckedChangeListener(listener);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(dp(context, 20), dp(context, 16), dp(context, 20), dp(context, 12));
+        itemView.addView(panel, params);
+        log("Beautify theme selector injected");
+    }
+
+    private LinearLayout themeSelectorRow(Context context, CheckBox first, CheckBox second) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(first);
+        if (second != null) {
+            row.addView(second);
+        } else {
+            View spacer = new View(context);
+            spacer.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1f));
+            row.addView(spacer);
+        }
+        return row;
+    }
+
+    private CheckBox themeCheckBox(Context context, String label, boolean checked) {
+        CheckBox checkBox = new CheckBox(context);
+        checkBox.setText(label);
+        checkBox.setTextColor(Color.WHITE);
+        checkBox.setTextSize(14);
+        checkBox.setChecked(checked);
+        checkBox.setLayoutParams(new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        return checkBox;
+    }
+
+    private void saveThemeSelection(Context context, CheckBox type1, CheckBox type2,
+                                    CheckBox type4, CheckBox type6, CheckBox type16,
+                                    CheckBox type17, CheckBox type23) {
+        Bundle values = new Bundle();
+        values.putBoolean(Config.KEY_THEME_TYPE_1, type1.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_2, type2.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_4, type4.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_6, type6.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_16, type16.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_17, type17.isChecked());
+        values.putBoolean(Config.KEY_THEME_TYPE_23, type23.isChecked());
+        try {
+            Bundle result = context.getContentResolver().call(
+                    Uri.parse("content://" + ThemeConfigProvider.AUTHORITY),
+                    ThemeConfigProvider.METHOD_SET_SELECTION, null, values);
+            if (result == null || !result.getBoolean("saved", false)) {
+                log("Theme selection provider did not confirm save");
+            }
+        } catch (Throwable throwable) {
+            log("Theme selection save failed: " + throwable);
+        }
+    }
+
+    private int dp(Context context, int value) {
+        return Math.round(value * context.getResources().getDisplayMetrics().density);
+    }
+
+    private void hookBeautifyAdapterResourceTypes(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> serviceClass = findClassIfExists(
+                "com.zte.beautifyadapter.ThemeApplyService", lpparam.classLoader);
+        if (serviceClass == null) {
+            log("Beautify adapter ThemeApplyService not found");
+            return;
+        }
+        XposedBridge.hookAllMethods(serviceClass, "x", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                Config.Snapshot config = Config.loadForHook();
+                if (!config.themeSelectEnabled || param.args == null || param.args.length == 0
+                        || !(param.args[0] instanceof Integer)) {
+                    return;
+                }
+                int type = (Integer) param.args[0];
+                if (!config.allowsThemeType(type)) {
+                    param.setResult(1);
+                    log("Beautify applyResource blocked type=" + type);
+                }
+            }
+        });
+        log("Beautify adapter resource type hook installed");
     }
 
     private void hookSystemUiAssistantBroadcast(XC_LoadPackage.LoadPackageParam lpparam) {

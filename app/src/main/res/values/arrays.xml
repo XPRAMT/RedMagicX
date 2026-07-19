@@ -4,5 +4,7 @@
         <item>com.android.settings</item>
         <item>com.android.systemui</item>
         <item>com.zte.mifavor.launcher</item>
+        <item>com.zte.beautify</item>
+        <item>com.zte.beautifyadapter</item>
     </string-array>
 </resources>
