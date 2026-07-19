@@ -125,7 +125,7 @@ public class HookEntry implements IXposedHookLoadPackage {
 
     private void hookLauncherBeautifySplash(XC_LoadPackage.LoadPackageParam lpparam) {
         Class<?> launcherClass = findClassIfExists(
-                "com.android.launcher3.ActivityC1427y2", lpparam.classLoader);
+                "com.android.launcher3.y2", lpparam.classLoader);
         if (launcherClass == null) {
             log("Launcher activity class not found for Beautify redirect");
             return;
