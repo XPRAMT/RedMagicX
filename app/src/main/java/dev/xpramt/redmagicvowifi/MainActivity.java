@@ -307,7 +307,7 @@ public class MainActivity extends Activity {
     private void setHeader(String title, boolean showBack) {
         titleView.setText(title);
         backView.setVisibility(showBack ? View.VISIBLE : View.GONE);
-        titleView.setPadding(showBack ? 0 : dp(26), 0, 0, 0);
+        titleView.setPadding(showBack ? 0 : dp(25), 0, 0, 0);
     }
 
     private void showHome() {
