@@ -61,6 +61,7 @@ public class HookEntry implements IXposedHookLoadPackage {
     private static final String EXTRA_OPEN_DOWNLOADED_THEMES =
             "dev.xpramt.redmagicvowifi.OPEN_DOWNLOADED_THEMES";
     private static final String THEME_SELECTOR_TAG = "redmagicx_theme_selector";
+    private static final String BEAUTIFY_SPLASH_REDIRECTED = "redmagicx_splash_redirected";
     private static final int STREAM_MUSIC = AudioManager.STREAM_MUSIC;
     private static final int ADJUST_LOWER = AudioManager.ADJUST_LOWER;
     private static final int ADJUST_RAISE = AudioManager.ADJUST_RAISE;
@@ -167,23 +168,39 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify LogoActivity not found");
             return;
         }
+        findAndHookMethod(logoActivityClass, "onCreate", Bundle.class, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                redirectBeautifySplash((Activity) param.thisObject, "onCreate");
+            }
+        });
         findAndHookMethod(logoActivityClass, "ShowProgressTask", new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 if (!Config.loadForHook().skipBeautifySplash) {
                     return;
                 }
-                Activity activity = (Activity) param.thisObject;
-                Intent home = new Intent();
-                home.setClassName(BEAUTIFY, "com.zte.beautify.view.beauty.home.HomeActivity");
-                activity.startActivity(home);
-                activity.finish();
+                redirectBeautifySplash((Activity) param.thisObject, "ShowProgressTask");
                 param.setResult(null);
-                log("Beautify splash skipped");
             }
         });
        log("Beautify splash hook installed");
    }
+
+    private void redirectBeautifySplash(Activity activity, String source) {
+        if (!Config.loadForHook().skipBeautifySplash
+                || Boolean.TRUE.equals(XposedHelpers.getAdditionalInstanceField(
+                activity, BEAUTIFY_SPLASH_REDIRECTED))) {
+            return;
+        }
+        XposedHelpers.setAdditionalInstanceField(activity, BEAUTIFY_SPLASH_REDIRECTED, true);
+        Intent home = new Intent();
+        home.setClassName(BEAUTIFY, "com.zte.beautify.view.beauty.home.HomeActivity");
+        activity.startActivity(home);
+        activity.finish();
+        activity.overridePendingTransition(0, 0);
+        log("Beautify splash skipped from " + source);
+    }
 
     private void hookBeautifyAdapterTrial(XC_LoadPackage.LoadPackageParam lpparam) {
         findAndHookMethod("h.a", lpparam.classLoader, "b", Context.class, int.class, new XC_MethodHook() {
