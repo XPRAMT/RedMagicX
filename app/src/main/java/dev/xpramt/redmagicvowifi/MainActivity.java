@@ -16,6 +16,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -718,7 +719,9 @@ public class MainActivity extends Activity {
         seekBar.setProgress(Config.clampVolumeStep(prefs.getInt(Config.KEY_VOLUME_STEP, Config.DEFAULT_VOLUME_STEP)) - Config.MIN_VOLUME_STEP);
         box.addView(seekBar);
 
-        Runnable updateLabel = () -> stepLabel.setText(volumeStepFromSeekBar(seekBar) + " / 10");
+        int volumeSegments = mediaVolumeSegments();
+        Runnable updateLabel = () -> stepLabel.setText(
+                "共 " + volumeSegments + " 段音量，每次步進 " + volumeStepFromSeekBar(seekBar));
         updateLabel.run();
 
         enabled.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
@@ -752,6 +755,13 @@ public class MainActivity extends Activity {
 
     private int volumeStepFromSeekBar(SeekBar seekBar) {
         return Config.MIN_VOLUME_STEP + seekBar.getProgress();
+    }
+
+    private int mediaVolumeSegments() {
+        AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        return audioManager == null
+                ? Config.MAX_VOLUME_STEP
+                : audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
     }
 
     private LinearLayout assistantSection() {
