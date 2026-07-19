@@ -198,6 +198,7 @@ public class MainActivity extends Activity {
         }
         if (!prefs.contains(Config.KEY_THEME_SELECT_ENABLED)) {
             editor.putBoolean(Config.KEY_THEME_SELECT_ENABLED, false);
+            editor.putBoolean(Config.KEY_THEME_FULL, false);
             editor.putBoolean(Config.KEY_THEME_TYPE_1, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_2, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_4, false);
@@ -205,6 +206,10 @@ public class MainActivity extends Activity {
             editor.putBoolean(Config.KEY_THEME_TYPE_16, false);
             editor.putBoolean(Config.KEY_THEME_TYPE_17, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_23, true);
+            changed = true;
+        }
+        if (!prefs.contains(Config.KEY_THEME_FULL)) {
+            editor.putBoolean(Config.KEY_THEME_FULL, false);
             changed = true;
         }
         String launcherComponent = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");

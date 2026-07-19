@@ -22,6 +22,7 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -187,7 +188,8 @@ public class HookEntry implements IXposedHookLoadPackage {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
-                if (!config.themeSelectEnabled || !isThemeWithoutSystemResources(config)
+                if (!config.themeSelectEnabled || config.themeFull
+                        || !isThemeWithoutSystemResources(config)
                         || param.args == null || param.args.length < 2
                         || (param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]))) {
                     return;
@@ -270,19 +272,34 @@ public class HookEntry implements IXposedHookLoadPackage {
         background.setCornerRadius(dp(context, 8));
         panel.setBackground(background);
 
+        Switch fullTheme = new Switch(context);
+        fullTheme.setText("完整主題");
+        fullTheme.setTextColor(Color.WHITE);
+        fullTheme.setTextSize(15);
+        fullTheme.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        fullTheme.setChecked(config.themeFull);
+        fullTheme.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         CheckBox systemResources = themeCheckBox(context, "系統資源", config.themeType1);
         CheckBox wallpaper = themeCheckBox(context, "桌布",
                 config.themeType2 || config.themeType6);
         CheckBox icons = themeCheckBox(context, "圖標",
                 config.themeType17 || config.themeType23);
+        panel.addView(fullTheme);
         panel.addView(themeSelectorRow(context, systemResources, wallpaper));
         panel.addView(themeSelectorRow(context, icons, null));
 
+        CheckBox[] detailControls = {systemResources, wallpaper, icons};
+        updateThemeDetailControls(detailControls, !fullTheme.isChecked());
         CompoundButton.OnCheckedChangeListener detailListener = (button, checked) ->
-                saveThemeSelection(context, systemResources, wallpaper, icons);
+                saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons);
         systemResources.setOnCheckedChangeListener(detailListener);
         wallpaper.setOnCheckedChangeListener(detailListener);
         icons.setOnCheckedChangeListener(detailListener);
+        fullTheme.setOnCheckedChangeListener((button, checked) -> {
+            updateThemeDetailControls(detailControls, !checked);
+            saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons);
+        });
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -317,9 +334,17 @@ public class HookEntry implements IXposedHookLoadPackage {
         return checkBox;
     }
 
-    private void saveThemeSelection(Context context, CheckBox systemResources,
+    private void updateThemeDetailControls(CheckBox[] controls, boolean enabled) {
+        for (CheckBox control : controls) {
+            control.setEnabled(enabled);
+            control.setAlpha(enabled ? 1f : 0.4f);
+        }
+    }
+
+    private void saveThemeSelection(Context context, Switch fullTheme, CheckBox systemResources,
                                     CheckBox wallpaper, CheckBox icons) {
         Bundle values = new Bundle();
+        values.putBoolean(Config.KEY_THEME_FULL, fullTheme.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_1, systemResources.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_2, wallpaper.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_4, false);

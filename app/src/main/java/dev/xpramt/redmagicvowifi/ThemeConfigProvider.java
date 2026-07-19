@@ -22,6 +22,7 @@ public class ThemeConfigProvider extends ContentProvider {
             return Bundle.EMPTY;
         }
         SharedPreferences.Editor editor = Config.appPrefs(getContext()).edit();
+        editor.putBoolean(Config.KEY_THEME_FULL, extras.getBoolean(Config.KEY_THEME_FULL, false));
         editor.putBoolean(Config.KEY_THEME_TYPE_1, extras.getBoolean(Config.KEY_THEME_TYPE_1, true));
         editor.putBoolean(Config.KEY_THEME_TYPE_2, extras.getBoolean(Config.KEY_THEME_TYPE_2, true));
         editor.putBoolean(Config.KEY_THEME_TYPE_4, extras.getBoolean(Config.KEY_THEME_TYPE_4, false));
