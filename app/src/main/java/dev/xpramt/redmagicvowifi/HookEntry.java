@@ -66,7 +66,6 @@ public class HookEntry implements IXposedHookLoadPackage {
         if (ANDROID.equals(lpparam.packageName)) {
             hookAudioService(lpparam);
             hookRecentTasksFilter(lpparam);
-            hookThemeServiceIconApplyGuard(lpparam);
             return;
         }
         if (!SETTINGS.equals(lpparam.packageName)
@@ -197,8 +196,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                     return;
                 }
                 if (config.themeType1) {
-                    XposedHelpers.callMethod(param.thisObject, "setResourceDirectly",
-                            param.args[0], param.args[1]);
+                    applySystemResourcesPreservingIcons(
+                            param.thisObject, param.args[1], !hasThemeIcons(config));
                 }
                 if (hasThemeWallpaper(config)) {
                     XposedHelpers.callMethod(param.thisObject, "setThemeDesktopWallPaperAsync",
@@ -396,24 +395,43 @@ public class HookEntry implements IXposedHookLoadPackage {
         return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
-    private void hookThemeServiceIconApplyGuard(XC_LoadPackage.LoadPackageParam lpparam) {
-        Class<?> themeService = findClassIfExists("com.android.server.ThemeService", lpparam.classLoader);
-        if (themeService == null) {
-            log("ThemeService not found; system-resource icon guard unavailable");
-            return;
-        }
-        XposedBridge.hookAllMethods(themeService, "setIconAndSendResult", new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
-                Config.Snapshot config = Config.loadForHook();
-                if (config.themeSelectEnabled && !config.themeFull
-                        && config.themeType1 && !hasThemeIcons(config)) {
-                    param.setResult(null);
-                    log("ThemeService icon update blocked for system-resource-only apply");
-                }
+    private void applySystemResourcesPreservingIcons(Object manager, Object themeBean,
+                                                      boolean restoreCurrentIcons) {
+        ClassLoader classLoader = manager.getClass().getClassLoader();
+        Object currentIconBean = null;
+        String currentIconConfig = "";
+        if (restoreCurrentIcons) {
+            try {
+                Class<?> utilities = XposedHelpers.findClass(
+                        "com.zte.beautify.view.common.tools.Utilities", classLoader);
+                String currentIconTheme = (String) XposedHelpers.callStaticMethod(
+                        utilities, "getIconFlavorChooseIconId");
+                currentIconConfig = (String) XposedHelpers.callStaticMethod(
+                        utilities, "getCurrentIconConfigId");
+                Class<?> resourceManager = XposedHelpers.findClass(
+                        "com.zte.beautify.model.ResourceManager", classLoader);
+                Object resources = XposedHelpers.callStaticMethod(resourceManager, "getInstance");
+                currentIconBean = XposedHelpers.callMethod(
+                        resources, "getThemeBeanInfoById", currentIconTheme);
+            } catch (Throwable throwable) {
+                log("Unable to capture current icons before system-resource apply: " + throwable);
             }
-        });
-        log("ThemeService system-resource icon guard installed");
+        }
+
+        Object iconBean = currentIconBean;
+        String iconConfig = currentIconConfig == null ? "" : currentIconConfig;
+        new Thread(() -> {
+            try {
+                XposedHelpers.callMethod(manager, "setTheme", themeBean, false, false);
+                if (restoreCurrentIcons && iconBean != null) {
+                    XposedHelpers.callMethod(
+                            manager, "setIconChangeSelfDefine", iconBean, iconConfig, false);
+                    log("Beautify restored previous icons after system-resource apply");
+                }
+            } catch (Throwable throwable) {
+                log("Beautify system-resource apply failed: " + throwable);
+            }
+        }, "RedMagicX-ThemeResources").start();
     }
 
     private void saveThemeSelection(Context context, Switch fullTheme, CheckBox systemResources,
