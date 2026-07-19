@@ -451,23 +451,33 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Unable to read theme lockscreen type: " + throwable);
             return;
         }
+        log("Beautify theme lockscreen type=" + type);
         if ("3".equals(type)) {
             XposedHelpers.callMethod(manager, "setDynamicLockerAsync", context, themeBean);
             log("Beautify dynamic theme lockscreen apply requested");
             return;
         }
         if ("2".equals(type)) {
-            XposedHelpers.callMethod(manager, "setZTELockScreenAsync", context);
-            log("Beautify ZTE lockscreen apply requested");
+            applyStaticThemeLockscreen(context, manager, themeBean, true);
             return;
         }
+        applyStaticThemeLockscreen(context, manager, themeBean, false);
+    }
+
+    private void applyStaticThemeLockscreen(Context context, Object manager, Object themeBean,
+                                            boolean enableZteLockscreen) {
         new Thread(() -> {
             try {
                 Object result = XposedHelpers.callMethod(
                         manager, "setLockScreenWallPaper", context, themeBean);
                 if (Boolean.TRUE.equals(result)) {
-                    new Handler(Looper.getMainLooper()).post(() ->
-                            Toast.makeText(context, "已套用鎖屏", Toast.LENGTH_SHORT).show());
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        if (enableZteLockscreen) {
+                            XposedHelpers.callMethod(manager, "setZTELockScreenAsync", context);
+                            log("Beautify ZTE lockscreen style apply requested");
+                        }
+                        Toast.makeText(context, "已套用鎖屏", Toast.LENGTH_SHORT).show();
+                    });
                 }
             } catch (Throwable throwable) {
                 log("Beautify static theme lockscreen apply failed: " + throwable);
