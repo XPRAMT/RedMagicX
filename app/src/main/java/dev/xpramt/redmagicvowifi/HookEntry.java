@@ -1644,6 +1644,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                 if (target != current) {
                     audioManager.setStreamVolume(STREAM_MUSIC, target, flags);
                 }
+                notifyZteAppVolume(param.thisObject, flags);
                 param.setResult(null);
                 log("music volume " + current + " -> " + target + " step=" + config.volumeStep);
             } catch (Throwable throwable) {
@@ -1651,6 +1652,19 @@ public class HookEntry implements IXposedHookLoadPackage {
             } finally {
                 applyingVolume.remove();
             }
+        }
+    }
+
+    private void notifyZteAppVolume(Object audioService, int flags) {
+        try {
+            Object zAudioService = XposedHelpers.getObjectField(audioService, "mZAudioService");
+            Object volumeController = XposedHelpers.getObjectField(audioService, "mVolumeController");
+            Object controller = XposedHelpers.callMethod(volumeController, "getController");
+            if (zAudioService != null && controller != null) {
+                XposedHelpers.callMethod(zAudioService, "notifyShowAppVolume", controller, flags);
+            }
+        } catch (Throwable throwable) {
+            log("ZTE app volume notification unavailable: " + throwable);
         }
     }
 
