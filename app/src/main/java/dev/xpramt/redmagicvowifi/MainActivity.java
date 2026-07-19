@@ -199,6 +199,7 @@ public class MainActivity extends Activity {
         if (!prefs.contains(Config.KEY_THEME_SELECT_ENABLED)) {
             editor.putBoolean(Config.KEY_THEME_SELECT_ENABLED, false);
             editor.putBoolean(Config.KEY_THEME_FULL, false);
+            editor.putBoolean(Config.KEY_THEME_BEAUTIFY_THIRD_PARTY_ICONS, false);
             editor.putBoolean(Config.KEY_THEME_LOCKSCREEN, false);
             editor.putBoolean(Config.KEY_THEME_TYPE_1, true);
             editor.putBoolean(Config.KEY_THEME_TYPE_2, true);
@@ -219,6 +220,10 @@ public class MainActivity extends Activity {
         }
         if (!prefs.contains(Config.KEY_THEME_FULL)) {
             editor.putBoolean(Config.KEY_THEME_FULL, false);
+            changed = true;
+        }
+        if (!prefs.contains(Config.KEY_THEME_BEAUTIFY_THIRD_PARTY_ICONS)) {
+            editor.putBoolean(Config.KEY_THEME_BEAUTIFY_THIRD_PARTY_ICONS, false);
             changed = true;
         }
         if (!prefs.contains(Config.KEY_THEME_LOCKSCREEN)) {

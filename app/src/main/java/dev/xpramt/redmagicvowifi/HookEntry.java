@@ -40,8 +40,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -67,6 +70,8 @@ public class HookEntry implements IXposedHookLoadPackage {
     private static final int ADJUST_RAISE = AudioManager.ADJUST_RAISE;
 
     private final ThreadLocal<Boolean> applyingVolume = new ThreadLocal<>();
+    private final Map<Object, Boolean> fullThemeIconPolicies =
+            Collections.synchronizedMap(new WeakHashMap<>());
     private boolean torchEnabled;
 
     @Override
@@ -255,8 +260,13 @@ public class HookEntry implements IXposedHookLoadPackage {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
-                if (!config.themeSelectEnabled || config.themeFull
-                        || param.args == null || param.args.length < 2) {
+                if (!config.themeSelectEnabled || param.args == null || param.args.length < 2) {
+                    return;
+                }
+                if (config.themeFull) {
+                    if (!config.themeBeautifyThirdPartyIcons) {
+                        fullThemeIconPolicies.put(param.args[1], true);
+                    }
                     return;
                 }
                 boolean trial = param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]);
@@ -271,7 +281,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                 }
                 if (hasThemeIcons(config)) {
                     XposedHelpers.callMethod(param.thisObject, "setIconChangeSelfDefine",
-                            param.args[0], param.args[1], "", false);
+                            param.args[0], param.args[1], "",
+                            !config.themeBeautifyThirdPartyIcons);
                 }
                 if (config.themeLockscreen) {
                     applyThemeLockscreen((Context) param.args[0], param.thisObject, param.args[1]);
@@ -284,8 +295,45 @@ public class HookEntry implements IXposedHookLoadPackage {
                         + " trial=" + trial);
             }
         });
+        hookBeautifyFullThemeIconPolicy(lpparam);
         hookBeautifyWallpaperCompletion(lpparam);
         log("Beautify theme apply route hook installed");
+    }
+
+    private void hookBeautifyFullThemeIconPolicy(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> taskClass = findClassIfExists(
+                "com.zte.beautify.view.base.BaseSetWallPaperManager$SetThemeAsyncTask",
+                lpparam.classLoader);
+        if (taskClass == null) {
+            log("Beautify full-theme task not found");
+            return;
+        }
+        XposedBridge.hookAllMethods(taskClass, "doCommonBackgroudAction", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Object themeBean = XposedHelpers.getObjectField(param.thisObject, "mBean");
+                if (!Boolean.TRUE.equals(fullThemeIconPolicies.remove(themeBean))) {
+                    return;
+                }
+                Object managerReference = XposedHelpers.getObjectField(param.thisObject, "mManager");
+                Object contextReference = XposedHelpers.getObjectField(param.thisObject, "mContext");
+                if (!(managerReference instanceof WeakReference)
+                        || !(contextReference instanceof WeakReference)) {
+                    log("Beautify full-theme icon policy references unavailable");
+                    return;
+                }
+                Object manager = ((WeakReference<?>) managerReference).get();
+                Object context = ((WeakReference<?>) contextReference).get();
+                if (manager == null || !(context instanceof Context)) {
+                    log("Beautify full-theme icon policy targets unavailable");
+                    return;
+                }
+                XposedHelpers.callMethod(manager, "setIconChangeSelfDefine",
+                        context, themeBean, "", true);
+                log("Beautify full-theme third-party icon beautification disabled");
+            }
+        });
+        log("Beautify full-theme icon policy hook installed");
     }
 
     private void hookBeautifyWallpaperCompletion(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -353,6 +401,14 @@ public class HookEntry implements IXposedHookLoadPackage {
         applyThemeAccentTint(context, fullTheme);
         fullTheme.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        Switch beautifyThirdPartyIcons = new Switch(context);
+        beautifyThirdPartyIcons.setText("美化第三方應用程式圖示");
+        beautifyThirdPartyIcons.setTextColor(Color.WHITE);
+        beautifyThirdPartyIcons.setTextSize(14);
+        beautifyThirdPartyIcons.setChecked(config.themeBeautifyThirdPartyIcons);
+        applyThemeAccentTint(context, beautifyThirdPartyIcons);
+        beautifyThirdPartyIcons.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         CheckBox systemResources = themeCheckBox(context, "系統資源", config.themeType1);
         CheckBox wallpaper = themeCheckBox(context, "桌布",
                 config.themeType2 || config.themeType6);
@@ -360,20 +416,34 @@ public class HookEntry implements IXposedHookLoadPackage {
                 config.themeType17 || config.themeType23);
         CheckBox lockscreen = themeCheckBox(context, "鎖屏", config.themeLockscreen);
         panel.addView(fullTheme);
+        panel.addView(beautifyThirdPartyIcons);
         panel.addView(themeSelectorRow(context, systemResources, icons));
         panel.addView(themeSelectorRow(context, wallpaper, lockscreen));
 
         CheckBox[] detailControls = {systemResources, icons, wallpaper, lockscreen};
         updateThemeDetailControls(detailControls, !fullTheme.isChecked());
+        updateThirdPartyIconControl(beautifyThirdPartyIcons,
+                fullTheme.isChecked() || icons.isChecked());
         CompoundButton.OnCheckedChangeListener detailListener = (button, checked) ->
-                saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons, lockscreen);
+                saveThemeSelection(context, fullTheme, beautifyThirdPartyIcons,
+                        systemResources, wallpaper, icons, lockscreen);
         systemResources.setOnCheckedChangeListener(detailListener);
         wallpaper.setOnCheckedChangeListener(detailListener);
-        icons.setOnCheckedChangeListener(detailListener);
+        icons.setOnCheckedChangeListener((button, checked) -> {
+            updateThirdPartyIconControl(beautifyThirdPartyIcons,
+                    fullTheme.isChecked() || checked);
+            saveThemeSelection(context, fullTheme, beautifyThirdPartyIcons,
+                    systemResources, wallpaper, icons, lockscreen);
+        });
         lockscreen.setOnCheckedChangeListener(detailListener);
+        beautifyThirdPartyIcons.setOnCheckedChangeListener((button, checked) ->
+                saveThemeSelection(context, fullTheme, beautifyThirdPartyIcons,
+                        systemResources, wallpaper, icons, lockscreen));
         fullTheme.setOnCheckedChangeListener((button, checked) -> {
             updateThemeDetailControls(detailControls, !checked);
-            saveThemeSelection(context, fullTheme, systemResources, wallpaper, icons, lockscreen);
+            updateThirdPartyIconControl(beautifyThirdPartyIcons, checked || icons.isChecked());
+            saveThemeSelection(context, fullTheme, beautifyThirdPartyIcons,
+                    systemResources, wallpaper, icons, lockscreen);
         });
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -414,6 +484,11 @@ public class HookEntry implements IXposedHookLoadPackage {
             control.setEnabled(enabled);
             control.setAlpha(enabled ? 1f : 0.4f);
         }
+    }
+
+    private void updateThirdPartyIconControl(Switch control, boolean enabled) {
+        control.setEnabled(enabled);
+        control.setAlpha(enabled ? 1f : 0.4f);
     }
 
     private void applyThemeAccentTint(Context context, Switch control) {
@@ -600,10 +675,14 @@ public class HookEntry implements IXposedHookLoadPackage {
         return Integer.MAX_VALUE;
     }
 
-    private void saveThemeSelection(Context context, Switch fullTheme, CheckBox systemResources,
-                                    CheckBox wallpaper, CheckBox icons, CheckBox lockscreen) {
+    private void saveThemeSelection(Context context, Switch fullTheme,
+                                    Switch beautifyThirdPartyIcons,
+                                    CheckBox systemResources, CheckBox wallpaper,
+                                    CheckBox icons, CheckBox lockscreen) {
         Bundle values = new Bundle();
         values.putBoolean(Config.KEY_THEME_FULL, fullTheme.isChecked());
+        values.putBoolean(Config.KEY_THEME_BEAUTIFY_THIRD_PARTY_ICONS,
+                beautifyThirdPartyIcons.isChecked());
         values.putBoolean(Config.KEY_THEME_LOCKSCREEN, lockscreen.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_1, systemResources.isChecked());
         values.putBoolean(Config.KEY_THEME_TYPE_2, wallpaper.isChecked());

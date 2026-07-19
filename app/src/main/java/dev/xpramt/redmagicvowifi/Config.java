@@ -23,6 +23,8 @@ final class Config {
     static final String KEY_SKIP_BEAUTIFY_SPLASH = "skip_beautify_splash";
     static final String KEY_REMOVE_TRIAL_LIMIT = "remove_trial_limit";
     static final String KEY_THEME_FULL = "theme_full";
+    static final String KEY_THEME_BEAUTIFY_THIRD_PARTY_ICONS =
+            "theme_beautify_third_party_icons";
     static final String KEY_THEME_LOCKSCREEN = "theme_lockscreen";
     static final String KEY_THEME_TYPE_1 = "theme_type_1";
     static final String KEY_THEME_TYPE_2 = "theme_type_2";
@@ -85,6 +87,7 @@ final class Config {
                 prefs.getBoolean(KEY_SKIP_BEAUTIFY_SPLASH, false),
                 prefs.getBoolean(KEY_REMOVE_TRIAL_LIMIT, false),
                 prefs.getBoolean(KEY_THEME_FULL, false),
+                prefs.getBoolean(KEY_THEME_BEAUTIFY_THIRD_PARTY_ICONS, false),
                 prefs.getBoolean(KEY_THEME_LOCKSCREEN, false),
                 prefs.getBoolean(KEY_THEME_TYPE_1, true),
                 prefs.getBoolean(KEY_THEME_TYPE_2, true),
@@ -117,6 +120,7 @@ final class Config {
         final boolean skipBeautifySplash;
         final boolean removeTrialLimit;
         final boolean themeFull;
+        final boolean themeBeautifyThirdPartyIcons;
         final boolean themeLockscreen;
         final boolean themeType1;
         final boolean themeType2;
@@ -131,7 +135,8 @@ final class Config {
                  boolean launcherOverrideEnabled, String launcherComponent, String launcherPackage,
                  boolean themeSelectEnabled, boolean skipBeautifySplash,
                  boolean removeTrialLimit,
-                 boolean themeFull, boolean themeLockscreen,
+                 boolean themeFull, boolean themeBeautifyThirdPartyIcons,
+                 boolean themeLockscreen,
                  boolean themeType1, boolean themeType2,
                  boolean themeType4, boolean themeType6, boolean themeType16,
                  boolean themeType17, boolean themeType23) {
@@ -149,6 +154,7 @@ final class Config {
             this.skipBeautifySplash = skipBeautifySplash;
             this.removeTrialLimit = removeTrialLimit;
             this.themeFull = themeFull;
+            this.themeBeautifyThirdPartyIcons = themeBeautifyThirdPartyIcons;
             this.themeLockscreen = themeLockscreen;
             this.themeType1 = themeType1;
             this.themeType2 = themeType2;
