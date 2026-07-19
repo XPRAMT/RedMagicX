@@ -276,10 +276,10 @@ public class HookEntry implements IXposedHookLoadPackage {
             protected void beforeHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
                 if (!config.themeSelectEnabled || config.themeFull
-                        || param.args == null || param.args.length < 2
-                        || (param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]))) {
+                        || param.args == null || param.args.length < 2) {
                     return;
                 }
+                boolean trial = param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]);
                 if (config.themeType1) {
                     applySystemResourcesPreservingIcons(
                             (Context) param.args[0], param.thisObject, param.args[1],
@@ -300,7 +300,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                 log("Beautify selective apply systemResources=" + config.themeType1
                         + " wallpaper=" + hasThemeWallpaper(config)
                         + " icons=" + hasThemeIcons(config)
-                        + " lockscreen=" + config.themeLockscreen);
+                        + " lockscreen=" + config.themeLockscreen
+                        + " trial=" + trial);
             }
         });
         hookBeautifyWallpaperCompletion(lpparam);
