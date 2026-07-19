@@ -209,6 +209,10 @@ public class MainActivity extends Activity {
             editor.putBoolean(Config.KEY_THEME_TYPE_23, true);
             changed = true;
         }
+        if (!prefs.contains(Config.KEY_SKIP_BEAUTIFY_SPLASH)) {
+            editor.putBoolean(Config.KEY_SKIP_BEAUTIFY_SPLASH, false);
+            changed = true;
+        }
         if (!prefs.contains(Config.KEY_THEME_FULL)) {
             editor.putBoolean(Config.KEY_THEME_FULL, false);
             changed = true;
@@ -438,6 +442,19 @@ public class MainActivity extends Activity {
         });
         box.addView(enabled);
         box.addView(detailText("開啟後，原廠主題預覽頁會在自我介紹下方顯示系統資源、圖標、桌布與鎖屏選項，可分別選擇要套用的元素。"));
+        box.addView(verticalSpace(22));
+        Switch skipSplash = new Switch(this);
+        skipSplash.setText("跳過開屏畫面");
+        skipSplash.setTextSize(18);
+        skipSplash.setTextColor(Color.WHITE);
+        skipSplash.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        skipSplash.setChecked(prefs.getBoolean(Config.KEY_SKIP_BEAUTIFY_SPLASH, false));
+        skipSplash.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_SKIP_BEAUTIFY_SPLASH, isChecked).commit();
+            showToast(isChecked ? "已啟用跳過開屏畫面" : "已停用跳過開屏畫面");
+        });
+        box.addView(skipSplash);
+        box.addView(detailText("啟動原廠主題 App 時跳過蒲公英開屏倒數，直接進入主題首頁。"));
         addDetailField(box, "可選元素", "系統資源\n圖標\n桌布\n鎖屏");
         addDetailField(box, "作用進程", "com.zte.beautify\ncom.zte.beautifyadapter");
         addDetailField(box, "生效條件", "LSPosed 需要勾選上述兩個作用域。變更作用域後請重新開啟原廠主題 App。");

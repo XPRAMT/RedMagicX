@@ -20,6 +20,7 @@ final class Config {
     static final String KEY_LAUNCHER_COMPONENT = "launcher_component";
     static final String KEY_LAUNCHER_PACKAGE = "launcher_package";
     static final String KEY_THEME_SELECT_ENABLED = "theme_select_enabled";
+    static final String KEY_SKIP_BEAUTIFY_SPLASH = "skip_beautify_splash";
     static final String KEY_THEME_FULL = "theme_full";
     static final String KEY_THEME_LOCKSCREEN = "theme_lockscreen";
     static final String KEY_THEME_TYPE_1 = "theme_type_1";
@@ -80,6 +81,7 @@ final class Config {
                 prefs.getString(KEY_LAUNCHER_COMPONENT, ""),
                 prefs.getString(KEY_LAUNCHER_PACKAGE, ""),
                 prefs.getBoolean(KEY_THEME_SELECT_ENABLED, false),
+                prefs.getBoolean(KEY_SKIP_BEAUTIFY_SPLASH, false),
                 prefs.getBoolean(KEY_THEME_FULL, false),
                 prefs.getBoolean(KEY_THEME_LOCKSCREEN, false),
                 prefs.getBoolean(KEY_THEME_TYPE_1, true),
@@ -110,6 +112,7 @@ final class Config {
         final String launcherComponent;
         final String launcherPackage;
         final boolean themeSelectEnabled;
+        final boolean skipBeautifySplash;
         final boolean themeFull;
         final boolean themeLockscreen;
         final boolean themeType1;
@@ -123,7 +126,8 @@ final class Config {
         Snapshot(boolean enableWfcSettings, boolean enableStatusIcon, String iconStyle, boolean volumeStepEnabled,
                  int volumeStep, boolean assistantRedirectEnabled, String assistantTarget,
                  boolean launcherOverrideEnabled, String launcherComponent, String launcherPackage,
-                 boolean themeSelectEnabled, boolean themeFull, boolean themeLockscreen,
+                 boolean themeSelectEnabled, boolean skipBeautifySplash,
+                 boolean themeFull, boolean themeLockscreen,
                  boolean themeType1, boolean themeType2,
                  boolean themeType4, boolean themeType6, boolean themeType16,
                  boolean themeType17, boolean themeType23) {
@@ -138,6 +142,7 @@ final class Config {
             this.launcherComponent = launcherComponent == null ? "" : launcherComponent;
             this.launcherPackage = launcherPackage == null ? "" : launcherPackage;
             this.themeSelectEnabled = themeSelectEnabled;
+            this.skipBeautifySplash = skipBeautifySplash;
             this.themeFull = themeFull;
             this.themeLockscreen = themeLockscreen;
             this.themeType1 = themeType1;

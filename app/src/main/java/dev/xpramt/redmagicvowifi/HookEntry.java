@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ComponentName;
+import android.app.Activity;
 import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
 import android.app.WallpaperManager;
@@ -89,8 +90,10 @@ public class HookEntry implements IXposedHookLoadPackage {
                 + " volumeStep=" + config.volumeStepEnabled + "/" + config.volumeStep
                 + " assistant=" + config.assistantRedirectEnabled + "/" + config.assistantTarget
                 + " launcher=" + config.launcherOverrideEnabled + "/" + config.launcherPackage
-                + " themeSelect=" + config.themeSelectEnabled);
+                + " themeSelect=" + config.themeSelectEnabled
+                + " skipBeautifySplash=" + config.skipBeautifySplash);
         if (BEAUTIFY.equals(lpparam.packageName)) {
+            hookBeautifySplash(lpparam);
             hookBeautifyThemeSelector(lpparam);
             return;
         }
@@ -117,6 +120,32 @@ public class HookEntry implements IXposedHookLoadPackage {
         if (STOCK_LAUNCHER.equals(lpparam.packageName)) {
             hookLauncherRecentTasksData(lpparam);
         }
+    }
+
+    private void hookBeautifySplash(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> logoActivityClass = findClassIfExists(
+                "com.zte.beautify.view.beauty.splashscreen.LogoActivity",
+                lpparam.classLoader);
+        if (logoActivityClass == null) {
+            log("Beautify LogoActivity not found");
+            return;
+        }
+        findAndHookMethod(logoActivityClass, "ShowProgressTask", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (!Config.loadForHook().skipBeautifySplash) {
+                    return;
+                }
+                Activity activity = (Activity) param.thisObject;
+                Intent home = new Intent();
+                home.setClassName(BEAUTIFY, "com.zte.beautify.view.beauty.home.HomeActivity");
+                activity.startActivity(home);
+                activity.finish();
+                param.setResult(null);
+                log("Beautify splash skipped");
+            }
+        });
+        log("Beautify splash hook installed");
     }
 
     private void hookBeautifyThemeSelector(XC_LoadPackage.LoadPackageParam lpparam) {
