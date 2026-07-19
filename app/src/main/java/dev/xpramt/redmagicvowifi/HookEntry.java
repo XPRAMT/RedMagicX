@@ -10,12 +10,14 @@ import android.content.ComponentName;
 import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -64,6 +66,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         if (ANDROID.equals(lpparam.packageName)) {
             hookAudioService(lpparam);
             hookRecentTasksFilter(lpparam);
+            hookThemeServiceIconApplyGuard(lpparam);
             return;
         }
         if (!SETTINGS.equals(lpparam.packageName)
@@ -189,10 +192,13 @@ public class HookEntry implements IXposedHookLoadPackage {
             protected void beforeHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
                 if (!config.themeSelectEnabled || config.themeFull
-                        || !isThemeWithoutSystemResources(config)
                         || param.args == null || param.args.length < 2
                         || (param.args.length >= 4 && Boolean.TRUE.equals(param.args[3]))) {
                     return;
+                }
+                if (config.themeType1) {
+                    XposedHelpers.callMethod(param.thisObject, "setResourceDirectly",
+                            param.args[0], param.args[1]);
                 }
                 if (hasThemeWallpaper(config)) {
                     XposedHelpers.callMethod(param.thisObject, "setThemeDesktopWallPaperAsync",
@@ -203,7 +209,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                             param.args[0], param.args[1], "", false);
                 }
                 param.setResult(null);
-                log("Beautify selective apply wallpaper=" + hasThemeWallpaper(config)
+                log("Beautify selective apply systemResources=" + config.themeType1
+                        + " wallpaper=" + hasThemeWallpaper(config)
                         + " icons=" + hasThemeIcons(config));
             }
         });
@@ -223,8 +230,7 @@ public class HookEntry implements IXposedHookLoadPackage {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 Config.Snapshot config = Config.loadForHook();
-                if (!config.themeSelectEnabled || !isThemeWithoutSystemResources(config)
-                        || !hasThemeWallpaper(config)) {
+                if (!config.themeSelectEnabled || config.themeFull || !hasThemeWallpaper(config)) {
                     return;
                 }
                 Object reference = XposedHelpers.getObjectField(param.thisObject, "mContext");
@@ -241,10 +247,6 @@ public class HookEntry implements IXposedHookLoadPackage {
             }
         });
         log("Beautify wallpaper completion toast hook installed");
-    }
-
-    private boolean isThemeWithoutSystemResources(Config.Snapshot config) {
-        return !config.themeType1 && (hasThemeWallpaper(config) || hasThemeIcons(config));
     }
 
     private boolean hasThemeWallpaper(Config.Snapshot config) {
@@ -278,6 +280,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         fullTheme.setTextSize(15);
         fullTheme.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         fullTheme.setChecked(config.themeFull);
+        applyThemeAccentTint(context, fullTheme);
         fullTheme.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         CheckBox systemResources = themeCheckBox(context, "系統資源", config.themeType1);
@@ -339,6 +342,78 @@ public class HookEntry implements IXposedHookLoadPackage {
             control.setEnabled(enabled);
             control.setAlpha(enabled ? 1f : 0.4f);
         }
+    }
+
+    private void applyThemeAccentTint(Context context, Switch control) {
+        int colorId = context.getResources().getIdentifier(
+                "mfvc_primary_main_color", "color", BEAUTIFY);
+        Integer accent = colorId == 0 ? null : context.getColor(colorId);
+        if (accent == null) {
+            accent = resolveThemeColor(context, android.R.attr.colorAccent);
+        }
+        if (accent == null) {
+            return;
+        }
+        int[][] states = {
+                new int[]{-android.R.attr.state_enabled},
+                new int[]{android.R.attr.state_checked},
+                new int[]{}
+        };
+        ColorStateList oldThumb = control.getThumbTintList();
+        ColorStateList oldTrack = control.getTrackTintList();
+        control.setThumbTintList(new ColorStateList(states, new int[]{
+                tintColorForState(oldThumb, states[0], 0xFF666666),
+                accent,
+                tintColorForState(oldThumb, states[2], 0xFFBDBDBD)
+        }));
+        control.setTrackTintList(new ColorStateList(states, new int[]{
+                tintColorForState(oldTrack, states[0], 0x33666666),
+                withAlpha(accent, 0x66),
+                tintColorForState(oldTrack, states[2], 0x4DFFFFFF)
+        }));
+    }
+
+    private Integer resolveThemeColor(Context context, int attrId) {
+        TypedValue value = new TypedValue();
+        if (!context.getTheme().resolveAttribute(attrId, value, true)) {
+            return null;
+        }
+        if (value.resourceId != 0) {
+            return context.getColor(value.resourceId);
+        }
+        if (value.type >= TypedValue.TYPE_FIRST_COLOR_INT
+                && value.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+            return value.data;
+        }
+        return null;
+    }
+
+    private int tintColorForState(ColorStateList colors, int[] state, int fallback) {
+        return colors == null ? fallback : colors.getColorForState(state, colors.getDefaultColor());
+    }
+
+    private int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | (alpha << 24);
+    }
+
+    private void hookThemeServiceIconApplyGuard(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> themeService = findClassIfExists("com.android.server.ThemeService", lpparam.classLoader);
+        if (themeService == null) {
+            log("ThemeService not found; system-resource icon guard unavailable");
+            return;
+        }
+        XposedBridge.hookAllMethods(themeService, "setIconAndSendResult", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                Config.Snapshot config = Config.loadForHook();
+                if (config.themeSelectEnabled && !config.themeFull
+                        && config.themeType1 && !hasThemeIcons(config)) {
+                    param.setResult(null);
+                    log("ThemeService icon update blocked for system-resource-only apply");
+                }
+            }
+        });
+        log("ThemeService system-resource icon guard installed");
     }
 
     private void saveThemeSelection(Context context, Switch fullTheme, CheckBox systemResources,
