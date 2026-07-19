@@ -119,45 +119,8 @@ public class HookEntry implements IXposedHookLoadPackage {
             }
         }
         if (STOCK_LAUNCHER.equals(lpparam.packageName)) {
-            hookLauncherBeautifySplash(lpparam);
             hookLauncherRecentTasksData(lpparam);
         }
-    }
-
-    private void hookLauncherBeautifySplash(XC_LoadPackage.LoadPackageParam lpparam) {
-        Class<?> launcherClass = findClassIfExists(
-                "com.android.launcher3.y2", lpparam.classLoader);
-        if (launcherClass == null) {
-            log("Launcher activity class not found for Beautify redirect");
-            return;
-        }
-        XposedBridge.hookAllMethods(launcherClass, "startActivitySafely", new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
-                if (!Config.loadForHook().skipBeautifySplash || param.args == null) {
-                    return;
-                }
-                for (Object arg : param.args) {
-                    if (!(arg instanceof Intent)) {
-                        continue;
-                    }
-                    Intent intent = (Intent) arg;
-                    ComponentName component = intent.getComponent();
-                    if (component == null || !BEAUTIFY.equals(component.getPackageName())
-                            || !"com.zte.beautify.view.beauty.splashscreen.LogoActivity"
-                            .equals(component.getClassName())) {
-                        return;
-                    }
-                    intent.setAction("com.zte.beautify.view.beauty.home");
-                    intent.setComponent(new ComponentName(
-                            BEAUTIFY, "com.zte.beautify.view.beauty.home.HomeActivity"));
-                    intent.removeCategory(Intent.CATEGORY_LAUNCHER);
-                    log("Launcher redirected Beautify icon to HomeActivity");
-                    return;
-                }
-            }
-        });
-        log("Launcher Beautify splash redirect hook installed");
     }
 
     private void hookBeautifySplash(XC_LoadPackage.LoadPackageParam lpparam) {
