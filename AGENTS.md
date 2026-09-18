@@ -37,6 +37,7 @@
 
 - Verified on 2026-09-18 that the connected NX809J has `global.adb_enabled=2`, `system.adb_install_enabled=1`, and root access through `su`.
 - The installed RedMagicX package is `dev.xpramt.redmagicvowifi`; the current installed package uses the normal `/data/app` path.
+- Every time a new APK is built, install it directly to the connected phone and launch RedMagicX for runtime verification. Do not stop after a successful build.
 - Do not assume `adb install -r` is the correct deployment path for this device. Prefer the explicit device-side package-manager flow when host-side installation is rejected:
 
 ```powershell
@@ -45,3 +46,10 @@
 ```
 
 - Verify the returned package-manager result and `dumpsys package dev.xpramt.redmagicvowifi` after installation. Do not reboot the phone as part of installation verification.
+- Launch the app without `adb shell monkey`, because `monkey` can change automatic rotation on NX809J:
+
+```powershell
+& 'C:\APP\scrcpy-win64-v3.3.1\adb.exe' -s '192.168.1.9:5555' shell am start -n 'dev.xpramt.redmagicvowifi/.MainActivity'
+```
+
+- After launching, verify that the activity starts successfully and inspect the targeted feature or logcat for the changed behavior. If a reboot is required for a feature, explain why and ask the user to reboot; never reboot automatically.
