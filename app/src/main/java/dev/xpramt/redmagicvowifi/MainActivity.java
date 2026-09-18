@@ -91,6 +91,7 @@ public class MainActivity extends Activity {
     private static final String STOCK_DIALER_CLASS = "com.android.contacts.activities.DialtactsActivity";
     private static final int SHIZUKU_REQUEST_CODE_HOME = 1001;
     private static final int SHIZUKU_REQUEST_CODE_QUICK_ENTRY = 1002;
+    private static final int SHIZUKU_REQUEST_CODE_SCREEN_TIMEOUT = 1003;
     private static final String RELEASES_LATEST_URL = "https://api.github.com/repos/XPRAMT/RedMagicX/releases/latest";
     private static final Pattern JSON_STRING_FIELD = Pattern.compile("\\\"(tag_name|html_url)\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
 
@@ -106,6 +107,10 @@ public class MainActivity extends Activity {
     private String pendingHomeErrorMessage;
     private String pendingQuickEntryCommand;
     private String pendingQuickEntrySuccessMessage;
+    private String pendingScreenTimeoutCommand;
+    private int pendingScreenTimeoutMinutes;
+    private SeekBar pendingScreenTimeoutSeekBar;
+    private TextView pendingScreenTimeoutValueLabel;
     private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService rootExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -140,6 +145,22 @@ public class MainActivity extends Activity {
                 pendingQuickEntryCommand = null;
                 pendingQuickEntrySuccessMessage = null;
             };
+    private final Shizuku.OnRequestPermissionResultListener screenTimeoutShizukuPermissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != SHIZUKU_REQUEST_CODE_SCREEN_TIMEOUT) {
+                    return;
+                }
+                String command = pendingScreenTimeoutCommand;
+                int minutes = pendingScreenTimeoutMinutes;
+                SeekBar seekBar = pendingScreenTimeoutSeekBar;
+                TextView valueLabel = pendingScreenTimeoutValueLabel;
+                clearPendingScreenTimeout();
+                if (grantResult == PackageManager.PERMISSION_GRANTED && command != null) {
+                    runScreenTimeoutWithShizuku(command, minutes, seekBar, valueLabel);
+                } else {
+                    finishScreenTimeoutApply(seekBar, valueLabel, "螢幕亮屏時間套用失敗：Shizuku 未授權");
+                }
+            };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,6 +170,7 @@ public class MainActivity extends Activity {
         prefs = Config.appPrefs(this);
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
         Shizuku.addRequestPermissionResultListener(quickEntryShizukuPermissionListener);
+        Shizuku.addRequestPermissionResultListener(screenTimeoutShizukuPermissionListener);
         ensureDefaults();
         setContentView(createShell());
         setSystemBarIconColors(getWindow());
@@ -163,6 +185,7 @@ public class MainActivity extends Activity {
         stopWirelessAdbPolling();
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
         Shizuku.removeRequestPermissionResultListener(quickEntryShizukuPermissionListener);
+        Shizuku.removeRequestPermissionResultListener(screenTimeoutShizukuPermissionListener);
         updateExecutor.shutdownNow();
         rootExecutor.shutdownNow();
         super.onDestroy();
@@ -528,7 +551,7 @@ public class MainActivity extends Activity {
     private LinearLayout otherSection() {
         LinearLayout box = sectionBox();
         box.addView(text("螢幕亮屏時間設定", 18, true));
-        box.addView(detailText("設定螢幕無操作後維持亮屏的時間，範圍為 1 到 60 分鐘。每次進入此頁面時會重新讀取系統目前值。套用需要 root 權限。"));
+        box.addView(detailText("設定螢幕無操作後維持亮屏的時間，範圍為 1 到 60 分鐘。每次進入此頁面時會重新讀取系統目前值。套用優先使用 root；沒有 root 時改用 Shizuku。"));
 
         TextView valueLabel = text("", 16, true);
         valueLabel.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -603,18 +626,92 @@ public class MainActivity extends Activity {
                     "su", "-c", "settings put system screen_off_timeout " + timeoutMillis
             ));
             int actualMinutes = readScreenOffTimeoutMinutes();
-            mainHandler.post(() -> {
-                if (isFinishing() || isDestroyed()) {
-                    return;
-                }
-                seekBar.setProgress(toScreenOffSeekProgress(actualMinutes));
-                seekBar.setEnabled(true);
-                valueLabel.setText("螢幕關閉時間：" + actualMinutes + " 分鐘");
-                showToast(exitCode == 0 && actualMinutes == minutes
-                        ? "已設定螢幕亮屏時間：" + actualMinutes + " 分鐘"
-                        : "螢幕亮屏時間套用失敗，請確認 root 權限");
-            });
+            if (exitCode == 0 && actualMinutes == minutes) {
+                mainHandler.post(() -> finishScreenTimeoutApply(
+                        seekBar, valueLabel, "已設定螢幕亮屏時間：" + actualMinutes + " 分鐘（root）"));
+                return;
+            }
+            mainHandler.post(() -> runScreenTimeoutFallback(
+                    "settings put system screen_off_timeout " + timeoutMillis,
+                    minutes,
+                    seekBar,
+                    valueLabel
+            ));
         });
+    }
+
+    private void runScreenTimeoutFallback(
+            String command,
+            int minutes,
+            SeekBar seekBar,
+            TextView valueLabel
+    ) {
+        if (!isShizukuAvailable()) {
+            finishScreenTimeoutApply(seekBar, valueLabel, "套用失敗：無 root，且 Shizuku 未連線");
+            return;
+        }
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            pendingScreenTimeoutCommand = command;
+            pendingScreenTimeoutMinutes = minutes;
+            pendingScreenTimeoutSeekBar = seekBar;
+            pendingScreenTimeoutValueLabel = valueLabel;
+            Shizuku.requestPermission(SHIZUKU_REQUEST_CODE_SCREEN_TIMEOUT);
+            showToast("請授權 Shizuku 後自動套用");
+            return;
+        }
+        runScreenTimeoutWithShizuku(command, minutes, seekBar, valueLabel);
+    }
+
+    private void runScreenTimeoutWithShizuku(
+            String command,
+            int minutes,
+            SeekBar seekBar,
+            TextView valueLabel
+    ) {
+        rootExecutor.execute(() -> {
+            int exitCode = -1;
+            try {
+                Method newProcess = Shizuku.class.getDeclaredMethod(
+                        "newProcess", String[].class, String[].class, String.class);
+                newProcess.setAccessible(true);
+                Process process = (Process) newProcess.invoke(
+                        null,
+                        new String[]{"sh", "-c", command},
+                        null,
+                        null
+                );
+                exitCode = process.waitFor();
+            } catch (Throwable ignored) {
+                // Keep the verified setting value as the source of truth below.
+            }
+            int actualMinutes = readScreenOffTimeoutMinutes();
+            String message = exitCode == 0 && actualMinutes == minutes
+                    ? "已設定螢幕亮屏時間：" + actualMinutes + " 分鐘（Shizuku）"
+                    : "螢幕亮屏時間套用失敗：Shizuku " + exitCode;
+            mainHandler.post(() -> finishScreenTimeoutApply(seekBar, valueLabel, message));
+        });
+    }
+
+    private void finishScreenTimeoutApply(SeekBar seekBar, TextView valueLabel, String message) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        int actualMinutes = readScreenOffTimeoutMinutes();
+        if (seekBar != null) {
+            seekBar.setProgress(toScreenOffSeekProgress(actualMinutes));
+            seekBar.setEnabled(true);
+        }
+        if (valueLabel != null) {
+            valueLabel.setText("螢幕關閉時間：" + actualMinutes + " 分鐘");
+        }
+        showToast(message);
+    }
+
+    private void clearPendingScreenTimeout() {
+        pendingScreenTimeoutCommand = null;
+        pendingScreenTimeoutMinutes = 0;
+        pendingScreenTimeoutSeekBar = null;
+        pendingScreenTimeoutValueLabel = null;
     }
 
     private LinearLayout quickEntrySection() {

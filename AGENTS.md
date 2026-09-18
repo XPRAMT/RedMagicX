@@ -13,8 +13,9 @@
 - `其它` currently contains `螢幕亮屏時間設定`.
 - The slider range is 1 to 60 minutes with 1-minute steps.
 - Entering the page reads `Settings.System.SCREEN_OFF_TIMEOUT` again so the slider reflects the current system value rather than a cached value.
-- Applying a value writes `Settings.System.screen_off_timeout` through `su`; no device reboot is required.
-- The slider is disabled while the root write is running and then reflects the verified value.
+- Applying a value first writes `Settings.System.screen_off_timeout` through `su`; no device reboot is required.
+- If root is unavailable or the root write cannot be verified, the app falls back to Shizuku. When Shizuku is not yet authorized, it requests permission and automatically retries after permission is granted.
+- The slider is disabled while the root/Shizuku write is running and then reflects the verified value. The displayed result identifies whether root or Shizuku performed the write.
 
 ## Build
 
