@@ -1,0 +1,33 @@
+# RedMagicX Project Notes
+
+## Current State
+
+- Android application and LSPosed module for RedMagicOS features.
+- Main UI is implemented programmatically in `app/src/main/java/dev/xpramt/redmagicvowifi/MainActivity.java`.
+- Current feature pages include VoWiFi UI, volume step, assistant gesture, launcher, theme, ADB control, quick entry, and other system settings.
+- The application version remains `0.3.1` unless a release request changes it.
+
+## Other Settings Page
+
+- Home page includes an `其它` card below `快速入口`.
+- `其它` currently contains `螢幕亮屏時間設定`.
+- The slider range is 1 to 60 minutes with 1-minute steps.
+- Entering the page reads `Settings.System.SCREEN_OFF_TIMEOUT` again so the slider reflects the current system value rather than a cached value.
+- Applying a value writes `Settings.System.screen_off_timeout` through `su`; no device reboot is required.
+- The slider is disabled while the root write is running and then reflects the verified value.
+
+## Build
+
+- Gradle wrapper is not checked into this repository.
+- Known local Gradle command:
+
+```powershell
+& 'C:\Users\XPRAMT\.gradle\wrapper\dists\gradle-8.13-bin\5xuhj0ry160q40clulazy9h7d\gradle-8.13\bin\gradle.bat' -p 'D:\Android\ZTE\VoWiFI\lsposed-redmagic-vowifi' assembleDebug
+```
+
+- Debug APK output: `app/build/outputs/apk/debug/app-debug.apk`.
+
+## Device Safety
+
+- Do not reboot the phone automatically.
+- Avoid `adb shell monkey`; on NX809J it can change automatic rotation. Use explicit `am start` when launching RedMagicX.

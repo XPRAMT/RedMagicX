@@ -20,6 +20,7 @@ import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.Layout;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -76,6 +77,10 @@ public class MainActivity extends Activity {
     private static final int PAGE_THEME = 5;
     private static final int PAGE_ADB_CONTROL = 6;
     private static final int PAGE_QUICK_ENTRY = 7;
+    private static final int PAGE_OTHER = 8;
+    private static final int MIN_SCREEN_OFF_MINUTES = 1;
+    private static final int MAX_SCREEN_OFF_MINUTES = 60;
+    private static final int DEFAULT_SCREEN_OFF_MINUTES = 10;
     private static final int CARD_COLOR = Color.rgb(18, 18, 24);
     private static final int CARD_SELECTED_COLOR = Color.rgb(23, 33, 44);
     private static final String SETTINGS_FALLBACK_HOME_PACKAGE = "com.android.settings";
@@ -351,6 +356,11 @@ public class MainActivity extends Activity {
                 "自動撥號進入工程模式與手機資訊入口",
                 view -> showQuickEntryPage()
         ));
+        contentRoot.addView(featureButton(
+                "其它",
+                "未分類的系統設定與未來可擴充功能",
+                view -> showOtherPage()
+        ));
     }
 
     private void showVoWifiPage() {
@@ -505,6 +515,106 @@ public class MainActivity extends Activity {
         setHeader("快速入口", true);
         contentRoot.removeAllViews();
         contentRoot.addView(quickEntrySection());
+    }
+
+    private void showOtherPage() {
+        stopWirelessAdbPolling();
+        currentPage = PAGE_OTHER;
+        setHeader("其它", true);
+        contentRoot.removeAllViews();
+        contentRoot.addView(otherSection());
+    }
+
+    private LinearLayout otherSection() {
+        LinearLayout box = sectionBox();
+        box.addView(text("螢幕亮屏時間設定", 18, true));
+        box.addView(detailText("設定螢幕無操作後維持亮屏的時間，範圍為 1 到 60 分鐘。每次進入此頁面時會重新讀取系統目前值。套用需要 root 權限。"));
+
+        TextView valueLabel = text("", 16, true);
+        valueLabel.setGravity(Gravity.CENTER_HORIZONTAL);
+        valueLabel.setPadding(0, dp(18), 0, 0);
+        box.addView(valueLabel);
+
+        SeekBar seekBar = new SeekBar(this);
+        seekBar.setMax(MAX_SCREEN_OFF_MINUTES - MIN_SCREEN_OFF_MINUTES);
+        seekBar.setContentDescription("螢幕亮屏時間");
+        int currentMinutes = readScreenOffTimeoutMinutes();
+        seekBar.setProgress(toScreenOffSeekProgress(currentMinutes));
+        box.addView(seekBar);
+
+        Runnable updateLabel = () -> valueLabel.setText(
+                "螢幕關閉時間：" + screenOffMinutesFromSeekBar(seekBar) + " 分鐘"
+        );
+        updateLabel.run();
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                updateLabel.run();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar bar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar bar) {
+                int minutes = screenOffMinutesFromSeekBar(bar);
+                applyScreenOffTimeout(minutes, seekBar, valueLabel);
+            }
+        });
+
+        addDetailField(box, "系統參數", "Settings.System.screen_off_timeout");
+        return box;
+    }
+
+    private int readScreenOffTimeoutMinutes() {
+        int timeoutMillis;
+        try {
+            timeoutMillis = Settings.System.getInt(
+                    getContentResolver(),
+                    Settings.System.SCREEN_OFF_TIMEOUT,
+                    DEFAULT_SCREEN_OFF_MINUTES * 60_000
+            );
+        } catch (SecurityException exception) {
+            timeoutMillis = DEFAULT_SCREEN_OFF_MINUTES * 60_000;
+        }
+        int minutes = Math.round(timeoutMillis / 60_000f);
+        return Math.max(MIN_SCREEN_OFF_MINUTES, Math.min(MAX_SCREEN_OFF_MINUTES, minutes));
+    }
+
+    private int toScreenOffSeekProgress(int minutes) {
+        return Math.max(0, Math.min(
+                MAX_SCREEN_OFF_MINUTES - MIN_SCREEN_OFF_MINUTES,
+                minutes - MIN_SCREEN_OFF_MINUTES
+        ));
+    }
+
+    private int screenOffMinutesFromSeekBar(SeekBar seekBar) {
+        return MIN_SCREEN_OFF_MINUTES + seekBar.getProgress();
+    }
+
+    private void applyScreenOffTimeout(int minutes, SeekBar seekBar, TextView valueLabel) {
+        int timeoutMillis = minutes * 60_000;
+        seekBar.setEnabled(false);
+        valueLabel.setText("套用中...");
+        rootExecutor.execute(() -> {
+            int exitCode = runProcess(new ProcessBuilder(
+                    "su", "-c", "settings put system screen_off_timeout " + timeoutMillis
+            ));
+            int actualMinutes = readScreenOffTimeoutMinutes();
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                seekBar.setProgress(toScreenOffSeekProgress(actualMinutes));
+                seekBar.setEnabled(true);
+                valueLabel.setText("螢幕關閉時間：" + actualMinutes + " 分鐘");
+                showToast(exitCode == 0 && actualMinutes == minutes
+                        ? "已設定螢幕亮屏時間：" + actualMinutes + " 分鐘"
+                        : "螢幕亮屏時間套用失敗，請確認 root 權限");
+            });
+        });
     }
 
     private LinearLayout quickEntrySection() {
