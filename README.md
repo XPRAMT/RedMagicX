@@ -140,13 +140,13 @@ A separate KernelSU module in [`ksu-bt-hires-mixer/`](ksu-bt-hires-mixer). It is
 
 On the stock ROM the system mixer is locked at 48 kHz, so every track is resampled to 48 kHz before it reaches Bluetooth or wired headphones. This module lets the mixer follow the sample rate of the audio file.
 
-Tested only on RedMagic NX809J, RedMagicOS 11.0.22 (incremental `20260204.095106`), Android 16, KernelSU. The installer verifies the SHA-256 of every file it touches and aborts on any other build; after an OTA the module disables itself at boot.
+Supports the RedMagic NX809J on Android 16: the installer checks the model and the Android version and refuses to install on anything else. It was developed and tested on RedMagicOS 11.0.22 (incremental `20260204.095106`); other builds of the same model are untested. The installer finds the patch sites by their instruction bytes and aborts if they are not found exactly as expected, and at boot the module disables itself if the system files it was built from have changed (for example after an OTA); install it again afterwards.
 
 | Part | Change |
 |---|---|
 | `audio_module_config_primary.xml` (audio HAL config) | One deep-buffer mix port per sample rate: 44.1 / 48 / 88.2 / 96 kHz on Bluetooth A2DP, and additionally 176.4 / 192 kHz on wired headphones. |
 | `libaudiopolicymanagerdefault.so` (2 bytes) | AOSP only compares the sample rate for requests above 48 kHz, so 44.1 / 48 kHz tracks land on whichever output opened first. The patch scores every request, so each track picks the port with its own rate. |
-| `libaudiocorehal.qti.so` (32 bytes) | The deep-buffer size is 40 ms of frames, which is 1764 / 3528 frames at 44.1 / 88.2 kHz, not a multiple of 16. AudioFlinger rounds up to 16 and splits every write in two, which crackles. The patch rounds the HAL size up to a multiple of 16. |
+| `libaudiocorehal.qti.so` (2 sites, 32 bytes each) | The deep-buffer size is 40 ms of frames, which is 1764 / 3528 frames at 44.1 / 88.2 kHz, not a multiple of 16. AudioFlinger rounds up to 16 and splits every write in two, which crackles. The patch rounds the HAL size up to a multiple of 16. |
 
 Measured on the phone:
 
@@ -166,7 +166,9 @@ Install:
 2. Install it in the KernelSU manager and reboot.
 3. If there is no sound after a reboot, disable the module in the KernelSU manager (or boot into KernelSU safe mode) and reboot again.
 
-The zip contains no vendor binaries: the installer copies the phone's own libraries, patches a few bytes, and checks the result against the expected SHA-256.
+To update an installed module the installer reuses the backup of the stock config it keeps in `/data/adb/bt_hires_mixer_stock/`. If that backup is missing (upgrading from a version without it), disable the module, reboot, and install again.
+
+The zip contains no vendor files: the installer copies the phone's own libraries, patches a few bytes, generates the mix-port config from the phone's own config, and verifies the result.
 
 The sample-rate gate in AOSP was reported upstream as [Issue Tracker 578577149](https://issuetracker.google.com/issues/578577149) with a work-in-progress change [4396965](https://android-review.googlesource.com/c/platform/frameworks/av/+/4396965).
 

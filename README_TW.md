@@ -140,13 +140,13 @@ ADB 控制中心的所有動作都需要 root 權限。
 
 原廠 ROM 的系統混音固定 48 kHz，所有音軌都會先被重新取樣成 48 kHz，才送到藍牙或有線耳機。此模組讓混音器跟隨音檔本身的取樣率。
 
-只在 RedMagic NX809J、RedMagicOS 11.0.22（incremental `20260204.095106`）、Android 16、KernelSU 上測試。安裝程式會驗證所有要修改檔案的 SHA-256，版本不符就中止安裝；OTA 更新後模組會在開機時自動停用。
+支援 Android 16 的 RedMagic NX809J：安裝程式會檢查機型與 Android 版本，不符就拒絕安裝。開發與測試環境是 RedMagicOS 11.0.22（incremental `20260204.095106`），同機型的其他版本沒有測試。安裝程式依指令位元組找補丁位置，找不到預期結果就中止安裝；開機時若模組所依據的系統檔案已改變（例如 OTA 更新後），模組會自動停用，之後需重新安裝。
 
 | 項目 | 修改內容 |
 |---|---|
 | `audio_module_config_primary.xml`（音訊 HAL 設定） | 每個取樣率一個 deep-buffer 混音埠：藍牙 A2DP 為 44.1 / 48 / 88.2 / 96 kHz，有線耳機另加 176.4 / 192 kHz。 |
 | `libaudiopolicymanagerdefault.so`（2 bytes） | AOSP 只在請求高於 48 kHz 時比較取樣率，所以 44.1 / 48 kHz 音軌會落在最先開啟的輸出。補丁讓所有請求都參與評分，每個音軌都選到自己取樣率的埠。 |
-| `libaudiocorehal.qti.so`（32 bytes） | deep-buffer 大小是 40 ms 的 frame 數，44.1 / 88.2 kHz 時為 1764 / 3528 frames，不是 16 的倍數。AudioFlinger 會進位到 16 的倍數，使每次寫入被拆成兩次而產生爆音。補丁把 HAL 的大小進位到 16 的倍數。 |
+| `libaudiocorehal.qti.so`（2 處，各 32 bytes） | deep-buffer 大小是 40 ms 的 frame 數，44.1 / 88.2 kHz 時為 1764 / 3528 frames，不是 16 的倍數。AudioFlinger 會進位到 16 的倍數，使每次寫入被拆成兩次而產生爆音。補丁把 HAL 的大小進位到 16 的倍數。 |
 
 手機上的實測：
 
@@ -166,7 +166,9 @@ ADB 控制中心的所有動作都需要 root 權限。
 2. 在 KernelSU 管理器安裝後重新開機。
 3. 若重開機後沒有聲音，在 KernelSU 管理器停用模組（或進入 KernelSU 安全模式）再重開機。
 
-zip 內不含任何廠商二進位檔：安裝程式會複製手機自己的函式庫、修改幾個位元組，再用預期的 SHA-256 驗證結果。
+更新已安裝的模組時，安裝程式會使用它保存在 `/data/adb/bt_hires_mixer_stock/` 的原廠設定備份。若沒有這個備份（從沒有備份功能的舊版升級），請先停用模組、重開機，再重新安裝。
+
+zip 內不含任何廠商檔案：安裝程式會複製手機自己的函式庫並修改幾個位元組，依手機自己的設定檔產生混音埠設定，再驗證結果。
 
 AOSP 的這個取樣率判斷已回報上游：[Issue Tracker 578577149](https://issuetracker.google.com/issues/578577149)，另有進行中的草稿變更 [4396965](https://android-review.googlesource.com/c/platform/frameworks/av/+/4396965)。
 
