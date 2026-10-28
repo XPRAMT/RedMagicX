@@ -59,3 +59,11 @@
 ```
 
 - After launching, verify that the activity starts successfully and inspect the targeted feature or logcat for the changed behavior. If a reboot is required for a feature, explain why and ask the user to reboot; never reboot automatically.
+
+## KernelSU Module (ksu-bt-hires-mixer)
+
+- `ksu-bt-hires-mixer/` is a separate KernelSU module (not an LSPosed module, not part of the APK) that lets the NX809J system mixer follow the audio file's sample rate on Bluetooth and wired headphones. Details and measurements are in the README section "KernelSU Module: Hi-Res Mixer" (English and Traditional Chinese, keep both in sync).
+- The module is versioned independently of the app (module `v0.6.1`, app `0.3.1`). Its releases use the tag `hires-mixer-vX.Y.Z`, are not marked Latest, and attach only the module zip.
+- Never commit or attach vendor binaries (stock or patched `.so`, stock config). The installer builds the patched libraries on the phone from its own files and verifies SHA-256 before and after; `original/` is git-ignored for files pulled from the phone.
+- Tested only on NX809J RedMagicOS 11.0.22 (incremental `20260204.095106`). Any other build aborts the install by design.
+- The development history, the investigation data and the measurement tools live outside this repository (workspace `D:\Android\ZTE\VoWiFI`, own Git repository `ksu-bt-hires-mixer`).

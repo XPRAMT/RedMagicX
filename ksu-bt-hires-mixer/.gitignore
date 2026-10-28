@@ -1,0 +1,4 @@
+*.zip
+__pycache__/
+# vendor files pulled from the phone, never commit them
+original/

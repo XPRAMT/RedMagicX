@@ -1,0 +1,4 @@
+* text eol=lf
+*.so binary
+*.stock.so binary
+*.zip binary

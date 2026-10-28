@@ -1,6 +1,6 @@
 # RedMagicX
 
-Language: English | [繁體中文](readme_TW.md)
+[English](README.md) | [繁體中文](README_TW.md)
 
 RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, third-party launcher control, ADB control, and quick access to engineering mode and phone information.
 
@@ -21,6 +21,7 @@ Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models 
   - [Third-Party Launcher](#third-party-launcher)
   - [ADB Control Center](#adb-control-center)
   - [Quick Entry](#quick-entry)
+- [KernelSU Module: Hi-Res Mixer](#kernelsu-module-hi-res-mixer)
 - [Build](#build)
 - [Notes](#notes)
 
@@ -132,6 +133,44 @@ Provides automatic dialing for RedMagic engineering mode and a direct phone-info
 - Dialer validation: verifies that `com.android.contacts/.activities.DialtactsActivity` exists and is enabled before injecting input. Missing or failed dialer launches stop immediately instead of reporting success.
 - Permission path: root is tried first; when root is unavailable, Shizuku shell permission is used.
 - Phone information: directly opens `com.android.phone/.settings.RadioInfo` without root or Shizuku on the tested NX809J ROM.
+
+## KernelSU Module: Hi-Res Mixer
+
+A separate KernelSU module in [`ksu-bt-hires-mixer/`](ksu-bt-hires-mixer). It is not an LSPosed module and not part of the APK.
+
+On the stock ROM the system mixer is locked at 48 kHz, so every track is resampled to 48 kHz before it reaches Bluetooth or wired headphones. This module lets the mixer follow the sample rate of the audio file.
+
+Tested only on RedMagic NX809J, RedMagicOS 11.0.22 (incremental `20260204.095106`), Android 16, KernelSU. The installer verifies the SHA-256 of every file it touches and aborts on any other build; after an OTA the module disables itself at boot.
+
+| Part | Change |
+|---|---|
+| `audio_module_config_primary.xml` (audio HAL config) | One deep-buffer mix port per sample rate: 44.1 / 48 / 88.2 / 96 kHz on Bluetooth A2DP, and additionally 176.4 / 192 kHz on wired headphones. |
+| `libaudiopolicymanagerdefault.so` (2 bytes) | AOSP only compares the sample rate for requests above 48 kHz, so 44.1 / 48 kHz tracks land on whichever output opened first. The patch scores every request, so each track picks the port with its own rate. |
+| `libaudiocorehal.qti.so` (32 bytes) | The deep-buffer size is 40 ms of frames, which is 1764 / 3528 frames at 44.1 / 88.2 kHz, not a multiple of 16. AudioFlinger rounds up to 16 and splits every write in two, which crackles. The patch rounds the HAL size up to a multiple of 16. |
+
+Measured on the phone:
+
+- Bluetooth (LDAC): each track runs on a mixer thread with its own rate (44.1 / 48 / 88.2 / 96 kHz). The LDAC DSP backend rate stays at 96 kHz.
+- Wired headphones: the mixer and the PAL headphone device configuration follow 44.1 to 192 kHz. The DAC clock itself was not measured.
+- Crackle fix at 44.1 kHz: HAL write jitter (standard deviation) 18.7 ms to 4.5 ms; at 88.2 kHz 18.4 ms to 3.8 ms, the same level as the 48 / 96 kHz controls. Listening tests on Bluetooth and wired headphones are clean.
+
+Limits:
+
+- The speaker and earpiece stay at 48 kHz (fixed hardware backend, smart amplifier).
+- The wired headphone backend runs one rate at a time, so a sample-rate change at a song boundary delays the start by about 2 seconds.
+- Rates above 192 kHz and Bluetooth codecs other than LDAC were not tested.
+
+Install:
+
+1. Download `bt_hires_mixer_v0.6.1.zip` from [GitHub Releases](https://github.com/XPRAMT/RedMagicX/releases) (tag `hires-mixer-v0.6.1`).
+2. Install it in the KernelSU manager and reboot.
+3. If there is no sound after a reboot, disable the module in the KernelSU manager (or boot into KernelSU safe mode) and reboot again.
+
+The zip contains no vendor binaries: the installer copies the phone's own libraries, patches a few bytes, and checks the result against the expected SHA-256.
+
+The sample-rate gate in AOSP was reported upstream as [Issue Tracker 578577149](https://issuetracker.google.com/issues/578577149) with a work-in-progress change [4396965](https://android-review.googlesource.com/c/platform/frameworks/av/+/4396965).
+
+Use at your own risk. This is an unofficial project and is not affiliated with RedMagic, Nubia, ZTE, or Qualcomm.
 
 ## Build
 

@@ -1,6 +1,6 @@
 # RedMagicX
 
-語言：[English](README.md) | 繁體中文
+[English](README.md) | [繁體中文](README_TW.md)
 
 RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制、ADB 控制，以及工程模式與手機資訊快速入口。
 
@@ -21,6 +21,7 @@ RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、ro
   - [第三方啟動器](#第三方啟動器)
   - [ADB 控制中心](#adb-控制中心)
   - [快速入口](#快速入口)
+- [KernelSU 模組：高取樣率混音](#kernelsu-模組高取樣率混音)
 - [編譯](#編譯)
 - [注意事項](#注意事項)
 
@@ -132,6 +133,44 @@ ADB 控制中心的所有動作都需要 root 權限。
 - 撥號盤檢查：注入輸入前會確認 `com.android.contacts/.activities.DialtactsActivity` 存在且已啟用；找不到或啟動失敗時立即停止，不會誤報成功。
 - 權限方式：優先使用 root；無 root 時可透過 Shizuku shell 權限操作。
 - 手機資訊：在已測試的 NX809J ROM 可直接開啟 `com.android.phone/.settings.RadioInfo`，不需要 root 或 Shizuku。
+
+## KernelSU 模組：高取樣率混音
+
+獨立的 KernelSU 模組，放在 [`ksu-bt-hires-mixer/`](ksu-bt-hires-mixer)。它不是 LSPosed 模組，也不在 APK 內。
+
+原廠 ROM 的系統混音固定 48 kHz，所有音軌都會先被重新取樣成 48 kHz，才送到藍牙或有線耳機。此模組讓混音器跟隨音檔本身的取樣率。
+
+只在 RedMagic NX809J、RedMagicOS 11.0.22（incremental `20260204.095106`）、Android 16、KernelSU 上測試。安裝程式會驗證所有要修改檔案的 SHA-256，版本不符就中止安裝；OTA 更新後模組會在開機時自動停用。
+
+| 項目 | 修改內容 |
+|---|---|
+| `audio_module_config_primary.xml`（音訊 HAL 設定） | 每個取樣率一個 deep-buffer 混音埠：藍牙 A2DP 為 44.1 / 48 / 88.2 / 96 kHz，有線耳機另加 176.4 / 192 kHz。 |
+| `libaudiopolicymanagerdefault.so`（2 bytes） | AOSP 只在請求高於 48 kHz 時比較取樣率，所以 44.1 / 48 kHz 音軌會落在最先開啟的輸出。補丁讓所有請求都參與評分，每個音軌都選到自己取樣率的埠。 |
+| `libaudiocorehal.qti.so`（32 bytes） | deep-buffer 大小是 40 ms 的 frame 數，44.1 / 88.2 kHz 時為 1764 / 3528 frames，不是 16 的倍數。AudioFlinger 會進位到 16 的倍數，使每次寫入被拆成兩次而產生爆音。補丁把 HAL 的大小進位到 16 的倍數。 |
+
+手機上的實測：
+
+- 藍牙（LDAC）：每個音軌都在自己取樣率的混音執行緒上（44.1 / 48 / 88.2 / 96 kHz）。LDAC 的 DSP 後端取樣率維持 96 kHz。
+- 有線耳機：混音器與 PAL 耳機裝置設定都跟隨 44.1 到 192 kHz；DAC 時脈本身沒有量測。
+- 44.1 kHz 爆音修復：HAL 寫入抖動（標準差）從 18.7 ms 降到 4.5 ms；88.2 kHz 從 18.4 ms 降到 3.8 ms，與 48 / 96 kHz 對照組相同。藍牙與有線耳機的聆聽測試皆無爆音。
+
+限制：
+
+- 喇叭與聽筒維持 48 kHz（固定的硬體後端與智慧功放）。
+- 有線耳機後端一次只能跑一個取樣率，所以歌曲交界處取樣率改變時，會延遲約 2 秒才開始播放。
+- 高於 192 kHz 的取樣率，以及 LDAC 以外的藍牙編碼，沒有測試。
+
+安裝：
+
+1. 從 [GitHub Releases](https://github.com/XPRAMT/RedMagicX/releases) 下載 `bt_hires_mixer_v0.6.1.zip`（標籤 `hires-mixer-v0.6.1`）。
+2. 在 KernelSU 管理器安裝後重新開機。
+3. 若重開機後沒有聲音，在 KernelSU 管理器停用模組（或進入 KernelSU 安全模式）再重開機。
+
+zip 內不含任何廠商二進位檔：安裝程式會複製手機自己的函式庫、修改幾個位元組，再用預期的 SHA-256 驗證結果。
+
+AOSP 的這個取樣率判斷已回報上游：[Issue Tracker 578577149](https://issuetracker.google.com/issues/578577149)，另有進行中的草稿變更 [4396965](https://android-review.googlesource.com/c/platform/frameworks/av/+/4396965)。
+
+使用風險自負。本專案為非官方專案，與 RedMagic、Nubia、ZTE、Qualcomm 無關。
 
 ## 編譯
 
