@@ -12,5 +12,12 @@ if [ "$ok" = 1 ]; then
   { [ "$cx" = "$XML_STOCK_SHA" ] || [ "$cx" = "$XML_OUT_SHA" ]; } || ok=0
   [ "$(stock_sha /system/lib64/libaudiopolicymanagerdefault.so "$APM_OLD_OCT" $APM_OFFS)" = "$APM_STOCK_SHA" ] || ok=0
   [ "$(stock_sha /vendor/lib64/hw/libaudiocorehal.qti.so "$HAL_OLD_OCT" $HAL_OFFS)" = "$HAL_STOCK_SHA" ] || ok=0
+  [ "$(stock_sha /system/bin/audioserver "$AS_OLD_OCT" $AS_OFFS)" = "$AS_STOCK_SHA" ] || ok=0
 fi
-if [ "$ok" = 1 ]; then rm -f "$MODDIR/skip_mount"; else touch "$MODDIR/skip_mount"; fi
+if [ "$ok" = 1 ]; then
+  rm -f "$MODDIR/skip_mount"
+  RP=$(command -v resetprop || echo /data/adb/ksu/bin/resetprop)
+  "$RP" -n ro.audio.flinger_standbytime_ms "$STANDBY_MS"      # read by audioserver when it starts
+else
+  touch "$MODDIR/skip_mount"
+fi

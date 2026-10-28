@@ -29,6 +29,17 @@ HAL_NEW_HEX=08c9208ba9ef87d2a9c6abf21f2003d54937c9f28941e0f2084d1d91087dc99b00ed
 HAL_OLD_OCT='\351\371\236\322\151\152\274\362\010\361\175\323\251\164\323\362\211\030\344\362\010\375\103\323\010\175\311\233\000\375\104\323'
 HAL_NEW_OCT='\251\357\207\322\251\306\253\362\037\040\003\325\111\067\311\362\211\101\340\362\010\115\035\221\010\175\311\233\000\355\174\222'
 
+# audioserver (AudioFlinger), PlaybackThread::cacheParameters_l(): connected to A2DP, the standby delay
+# is raised to at least 3 s (kDefaultStandbyTimeInNsecs). Pattern (24 bytes):
+#   ldr x9,[x19,#0x2698] ; mov w8,#0x5e00 ; movk w8,#0xb2d0,lsl#16 ; cmp x9,x8 ; b.ge +8 ; str x8,[x19,#0x2698]
+# The patch turns the b.ge (at +16) into an unconditional b +8, so the floor is never applied and the
+# thread uses ro.audio.flinger_standbytime_ms (set below).
+AS_OLD_HEX=694e53f908c08b52085ab6723f0108eb4a000054684e13f9
+AS_NEW_HEX=694e53f908c08b52085ab6723f0108eb02000014684e13f9
+AS_OLD_OCT='\112\000\000\124'
+AS_NEW_OCT='\002\000\000\024'
+STANDBY_MS=500      # ro.audio.flinger_standbytime_ms applied at boot
+
 # patch_at <file> <printf octal bytes> <offset> [<offset> ...]
 patch_at() {
   f=$1; b=$2; shift 2

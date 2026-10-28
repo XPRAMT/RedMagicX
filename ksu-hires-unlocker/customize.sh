@@ -7,6 +7,7 @@ SRCDIR=${MODPATH:-${0%/*}}
 : "${XML:=/vendor/etc/audio/sku_canoe/audio_module_config_primary.xml}"
 : "${LIB:=/system/lib64/libaudiopolicymanagerdefault.so}"
 : "${HAL:=/vendor/lib64/hw/libaudiocorehal.qti.so}"
+: "${AS:=/system/bin/audioserver}"
 : "${STOCKDIR:=/data/adb/bt_hires_mixer_stock}"
 : "${MODEL:=$(getprop ro.product.model)}"
 : "${SDK:=$(getprop ro.build.version.sdk)}"
@@ -99,12 +100,15 @@ gen_xml() {
 
 GUARD="$SRCDIR/guard.conf"
 : > "$GUARD"
-ui_print "- Hi-Res Unlocker v0.7.0 ($MODEL, Android 16)"
+ui_print "- Hi-Res Unlocker v0.8.0 ($MODEL, Android 16)"
 
 ui_print "  * audio policy library"
 build_lib "$LIB" "$SRCDIR/system/lib64/libaudiopolicymanagerdefault.so" "$APM_OLD_HEX" "$APM_NEW_HEX" "$APM_OLD_OCT" "$APM_NEW_OCT" 0 1 APM
 ui_print "  * audio HAL library"
 build_lib "$HAL" "$SRCDIR/system/vendor/lib64/hw/libaudiocorehal.qti.so" "$HAL_OLD_HEX" "$HAL_NEW_HEX" "$HAL_OLD_OCT" "$HAL_NEW_OCT" 4 2 HAL
+
+ui_print "  * audio server (A2DP standby floor)"
+build_lib "$AS" "$SRCDIR/system/bin/audioserver" "$AS_OLD_HEX" "$AS_NEW_HEX" "$AS_OLD_OCT" "$AS_NEW_OCT" 16 1 AS
 
 ui_print "  * audio HAL config"
 mkdir -p "$STOCKDIR"
@@ -123,6 +127,8 @@ echo "XML_OUT_SHA=$(sha256sum "$OUTXML" | cut -d' ' -f1)" >> "$GUARD"
 ui_print "  * per-rate deep-buffer mix ports: 44.1/48/88.2/96 kHz for Bluetooth A2DP, plus 176.4/192 kHz for wired headphones and USB audio"
 ui_print "  * audio policy: score the sampling rate for requests <= 48 kHz too"
 ui_print "  * audio HAL: deep-buffer buffer rounded up to 16 frames (fixes 44.1/88.2 kHz crackle)"
+ui_print "  * AudioFlinger: standby delay ${STANDBY_MS} ms (also on Bluetooth) so a new sample rate starts sooner"
 set_perm_recursive "$SRCDIR/system/vendor/etc/audio" 0 0 0755 0644 u:object_r:vendor_configs_file:s0
 set_perm "$SRCDIR/system/lib64/libaudiopolicymanagerdefault.so" 0 0 0644 u:object_r:system_lib_file:s0
 set_perm "$SRCDIR/system/vendor/lib64/hw/libaudiocorehal.qti.so" 0 0 0644 u:object_r:vendor_file:s0
+set_perm "$SRCDIR/system/bin/audioserver" 0 2000 0755 u:object_r:audioserver_exec:s0
