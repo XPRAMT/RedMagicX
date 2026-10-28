@@ -3,6 +3,7 @@
         <item>android</item>
         <item>com.android.settings</item>
         <item>com.android.systemui</item>
+        <item>com.android.bluetooth</item>
         <item>com.zte.mifavor.launcher</item>
         <item>com.zte.beautify</item>
         <item>com.zte.beautifyadapter</item>

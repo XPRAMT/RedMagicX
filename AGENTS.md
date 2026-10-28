@@ -17,6 +17,16 @@
 - If root is unavailable or the root write cannot be verified, the app falls back to Shizuku. When Shizuku is not yet authorized, it requests permission and automatically retries after permission is granted.
 - The slider is disabled while the root/Shizuku write is running and then reflects the verified value. The displayed result identifies whether root or Shizuku performed the write.
 
+## Bluetooth Receiver Page
+
+- Home page has a `藍牙接收器` card between `音量步進調整` and `魔姬手勢替換`. The page lets the phone act as an A2DP receiver (another phone streams audio to it) instead of an A2DP source (headphones). The two roles are mutually exclusive because the Android Bluetooth stack on the NX809J did not run them together reliably.
+- Implementation: LSPosed hook in `com.android.bluetooth` (`HookEntry.hookBluetoothRoles`). In receiver mode `A2dpSinkService.isEnabled()` returns true and `A2dpService.isEnabled()` returns false; these two static methods are the only readers of the sink/source system properties in the Bluetooth app, and `Config.PROFILE_SERVICES_AND_FLAGS` is built from them when the process starts. Normal mode installs no role hooks. The choice is read once at process start, so a mode change needs the Bluetooth stack restarted.
+- Settings (prefs `module`): `bt_receiver_enabled` (default off) and `bt_auto_restart` (default off). The mode persists across reboots until switched off. With `bt_auto_restart` on, every mode switch restarts Bluetooth through root (`su`), falling back to Shizuku: `cmd bluetooth_manager disable`, wait for `STATE_OFF`, `enable`, wait for `STATE_ON`; it only runs when Bluetooth is currently on. A manual `立即重啟藍牙` button does the same.
+- Status: the hook reports the mode it started in by broadcast (`dev.xpramt.redmagicvowifi.BT_MODE_REPORT`, handled by `BtModeReceiver`, stored as `bt_active_mode` / `bt_active_at`), and the page compares it with the configured mode. The receiver needs an `intent-filter` for that action, because the hook sends an action + package broadcast, not a component broadcast.
+- LSPosed scope: `com.android.bluetooth` must be ticked for RedMagicX (it is in the recommended `xposed_scope` array, but the user has to enable it in the LSPosed manager).
+- Limits: only SBC and AAC are decoded by the stack; the other phone still sees a phone-class device; headphones cannot connect in receiver mode.
+- Not tested on a device yet: the hook itself (needs the scope), the page flow with root and with Shizuku, and the interplay with the experimental KernelSU module `ksu-hires-unlocker` (branch `a2dp-sink-experiment`, which sets the same two properties through `btmode.sh`); do not use both at the same time.
+
 ## Build
 
 - Gradle wrapper is not checked into this repository.

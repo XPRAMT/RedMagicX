@@ -24,8 +24,17 @@
             android:enabled="true"
             android:exported="true" />
 
+        <receiver
+            android:name=".BtModeReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="dev.xpramt.redmagicvowifi.BT_MODE_REPORT" />
+            </intent-filter>
+        </receiver>
+
         <meta-data android:name="xposedmodule" android:value="true" />
-        <meta-data android:name="xposeddescription" android:value="RedMagicX: RedMagic system tweaks for VoWiFi UI, volume, assistant, launcher, themes, and ADB" />
+        <meta-data android:name="xposeddescription" android:value="RedMagicX: RedMagic system tweaks for VoWiFi UI, volume, Bluetooth receiver, assistant, launcher, themes, and ADB" />
         <meta-data android:name="xposedminversion" android:value="93" />
         <meta-data android:name="xposedsharedprefs" android:value="true" />
 

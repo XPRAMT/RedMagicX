@@ -3,6 +3,7 @@ package dev.xpramt.redmagicvowifi;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 import static de.robv.android.xposed.XposedHelpers.findClassIfExists;
 
+import android.app.Application;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
@@ -50,6 +51,7 @@ import java.util.zip.ZipInputStream;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -58,6 +60,7 @@ public class HookEntry implements IXposedHookLoadPackage {
     private static final String SETTINGS = "com.android.settings";
     private static final String SYSTEM_UI = "com.android.systemui";
     private static final String ANDROID = "android";
+    private static final String BLUETOOTH = "com.android.bluetooth";
     private static final String STOCK_LAUNCHER = "com.zte.mifavor.launcher";
     private static final String BEAUTIFY = "com.zte.beautify";
     private static final String BEAUTIFY_ADAPTER = "com.zte.beautifyadapter";
@@ -85,7 +88,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                 && !SYSTEM_UI.equals(lpparam.packageName)
                 && !STOCK_LAUNCHER.equals(lpparam.packageName)
                 && !BEAUTIFY.equals(lpparam.packageName)
-                && !BEAUTIFY_ADAPTER.equals(lpparam.packageName)) {
+                && !BEAUTIFY_ADAPTER.equals(lpparam.packageName)
+                && !BLUETOOTH.equals(lpparam.packageName)) {
             return;
         }
         Config.Snapshot config = Config.loadForHook();
@@ -97,7 +101,12 @@ public class HookEntry implements IXposedHookLoadPackage {
                 + " assistant=" + config.assistantRedirectEnabled + "/" + config.assistantTarget
                 + " launcher=" + config.launcherOverrideEnabled + "/" + config.launcherPackage
                 + " themeSelect=" + config.themeSelectEnabled
-                + " skipBeautifySplash=" + config.skipBeautifySplash);
+                + " skipBeautifySplash=" + config.skipBeautifySplash
+                + " btReceiver=" + config.btReceiverEnabled);
+        if (BLUETOOTH.equals(lpparam.packageName)) {
+            hookBluetoothRoles(lpparam, config.btReceiverEnabled);
+            return;
+        }
         if (BEAUTIFY.equals(lpparam.packageName)) {
             hookBeautifySplash(lpparam);
             hookBeautifyThemeSelector(lpparam);
@@ -125,6 +134,62 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
         if (STOCK_LAUNCHER.equals(lpparam.packageName)) {
             hookLauncherRecentTasksData(lpparam);
+        }
+    }
+
+    /**
+     * Bluetooth receiver mode. The Android Bluetooth stack on this phone does not run the A2DP source role
+     * (headphones) and the A2DP sink role (other phones stream to this one) together reliably, so the two
+     * profile services are mutually exclusive. The Bluetooth app decides which profile services to start in
+     * Config.PROFILE_SERVICES_AND_FLAGS, built from the two static isEnabled() methods below (the only
+     * readers of the sink/source system properties in the app). In normal mode nothing is hooked except the
+     * status report; the choice is read once when the Bluetooth process starts, so a mode change needs the
+     * Bluetooth stack to be restarted.
+     */
+    private void hookBluetoothRoles(XC_LoadPackage.LoadPackageParam lpparam, boolean receiver) {
+        reportBluetoothMode(receiver ? Config.BT_MODE_RECEIVER : Config.BT_MODE_NORMAL);
+        if (!receiver) {
+            log("Bluetooth: normal (A2DP source) mode, no role hooks");
+            return;
+        }
+        try {
+            Class<?> sink = XposedHelpers.findClass(
+                    "com.android.bluetooth.a2dpsink.A2dpSinkService", lpparam.classLoader);
+            Class<?> source = XposedHelpers.findClass(
+                    "com.android.bluetooth.a2dp.A2dpService", lpparam.classLoader);
+            findAndHookMethod(sink, "isEnabled", XC_MethodReplacement.returnConstant(Boolean.TRUE));
+            findAndHookMethod(source, "isEnabled", XC_MethodReplacement.returnConstant(Boolean.FALSE));
+            log("Bluetooth: receiver (A2DP sink) mode, A2dpSinkService on and A2dpService off");
+        } catch (Throwable throwable) {
+            log("Bluetooth receiver hooks failed: " + throwable);
+        }
+    }
+
+    /** Tells RedMagicX which mode this Bluetooth process started in (shown on the receiver page). */
+    private void reportBluetoothMode(String mode) {
+        try {
+            findAndHookMethod(Application.class, "onCreate", new XC_MethodHook() {
+                private boolean sent;
+
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    if (sent) {
+                        return;
+                    }
+                    sent = true;
+                    try {
+                        Context context = (Context) param.thisObject;
+                        Intent intent = new Intent(Config.ACTION_BT_MODE_REPORT);
+                        intent.setPackage(Config.PACKAGE_NAME);
+                        intent.putExtra(Config.EXTRA_BT_MODE, mode);
+                        context.sendBroadcast(intent);
+                    } catch (Throwable throwable) {
+                        log("Bluetooth mode report failed: " + throwable);
+                    }
+                }
+            });
+        } catch (Throwable throwable) {
+            log("Bluetooth mode report hook failed: " + throwable);
         }
     }
 

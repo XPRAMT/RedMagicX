@@ -37,6 +37,15 @@ final class Config {
     static final String KEY_WIRELESS_ADB_PORT = "wireless_adb_port";
     static final String KEY_WIRELESS_ADB_ENABLED = "wireless_adb_enabled";
     static final String KEY_ADB_SPOOF_ENABLED = "adb_spoof_enabled";
+    static final String KEY_BT_RECEIVER_ENABLED = "bt_receiver_enabled";
+    static final String KEY_BT_AUTO_RESTART = "bt_auto_restart";
+    // Written by BtModeReceiver from the report that the hook sends out of com.android.bluetooth.
+    static final String KEY_BT_ACTIVE_MODE = "bt_active_mode";
+    static final String KEY_BT_ACTIVE_AT = "bt_active_at";
+    static final String BT_MODE_RECEIVER = "receiver";
+    static final String BT_MODE_NORMAL = "normal";
+    static final String ACTION_BT_MODE_REPORT = "dev.xpramt.redmagicvowifi.BT_MODE_REPORT";
+    static final String EXTRA_BT_MODE = "mode";
 
     static final String STYLE_DEFAULT = "default";
     static final String STYLE_GEN_BD = "gen_bd";
@@ -95,7 +104,8 @@ final class Config {
                 prefs.getBoolean(KEY_THEME_TYPE_6, true),
                 prefs.getBoolean(KEY_THEME_TYPE_16, false),
                 prefs.getBoolean(KEY_THEME_TYPE_17, true),
-                prefs.getBoolean(KEY_THEME_TYPE_23, true)
+                prefs.getBoolean(KEY_THEME_TYPE_23, true),
+                prefs.getBoolean(KEY_BT_RECEIVER_ENABLED, false)
         );
     }
 
@@ -129,6 +139,7 @@ final class Config {
         final boolean themeType16;
         final boolean themeType17;
         final boolean themeType23;
+        final boolean btReceiverEnabled;
 
         Snapshot(boolean enableWfcSettings, boolean enableStatusIcon, String iconStyle, boolean volumeStepEnabled,
                  int volumeStep, boolean assistantRedirectEnabled, String assistantTarget,
@@ -139,7 +150,8 @@ final class Config {
                  boolean themeLockscreen,
                  boolean themeType1, boolean themeType2,
                  boolean themeType4, boolean themeType6, boolean themeType16,
-                 boolean themeType17, boolean themeType23) {
+                 boolean themeType17, boolean themeType23,
+                 boolean btReceiverEnabled) {
             this.enableWfcSettings = enableWfcSettings;
             this.enableStatusIcon = enableStatusIcon;
             this.iconStyle = iconStyle == null ? STYLE_DEFAULT : iconStyle;
@@ -163,6 +175,7 @@ final class Config {
             this.themeType16 = themeType16;
             this.themeType17 = themeType17;
             this.themeType23 = themeType23;
+            this.btReceiverEnabled = btReceiverEnabled;
         }
 
         boolean allowsThemeType(int type) {

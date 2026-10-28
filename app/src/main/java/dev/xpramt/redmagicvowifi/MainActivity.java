@@ -55,6 +55,8 @@ import java.net.HttpURLConnection;
 import java.net.NetworkInterface;
 import java.net.URL;
 import java.lang.reflect.Method;
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -78,6 +80,7 @@ public class MainActivity extends Activity {
     private static final int PAGE_ADB_CONTROL = 6;
     private static final int PAGE_QUICK_ENTRY = 7;
     private static final int PAGE_OTHER = 8;
+    private static final int PAGE_BT_RECEIVER = 9;
     private static final int MIN_SCREEN_OFF_MINUTES = 1;
     private static final int MAX_SCREEN_OFF_MINUTES = 60;
     private static final int DEFAULT_SCREEN_OFF_MINUTES = 10;
@@ -92,6 +95,16 @@ public class MainActivity extends Activity {
     private static final int SHIZUKU_REQUEST_CODE_HOME = 1001;
     private static final int SHIZUKU_REQUEST_CODE_QUICK_ENTRY = 1002;
     private static final int SHIZUKU_REQUEST_CODE_SCREEN_TIMEOUT = 1003;
+    private static final int SHIZUKU_REQUEST_CODE_BT_RESTART = 1004;
+    // Restart the Bluetooth stack only when it is on; wait for the real adapter states with a time limit.
+    private static final String BT_RESTART_COMMAND =
+            "if [ \"$(settings get global bluetooth_on)\" = \"1\" ]; then "
+                    + "cmd bluetooth_manager disable; "
+                    + "timeout 25 cmd bluetooth_manager wait-for-state:STATE_OFF; "
+                    + "sleep 2; "
+                    + "cmd bluetooth_manager enable; "
+                    + "timeout 40 cmd bluetooth_manager wait-for-state:STATE_ON; "
+                    + "fi";
     private static final String RELEASES_LATEST_URL = "https://api.github.com/repos/XPRAMT/RedMagicX/releases/latest";
     private static final Pattern JSON_STRING_FIELD = Pattern.compile("\\\"(tag_name|html_url)\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
 
@@ -111,6 +124,9 @@ public class MainActivity extends Activity {
     private int pendingScreenTimeoutMinutes;
     private SeekBar pendingScreenTimeoutSeekBar;
     private TextView pendingScreenTimeoutValueLabel;
+    private boolean pendingBtRestart;
+    private boolean btRestartRunning;
+    private TextView btStatusView;
     private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService rootExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -162,6 +178,27 @@ public class MainActivity extends Activity {
                 }
             };
 
+    private final Shizuku.OnRequestPermissionResultListener btRestartShizukuPermissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != SHIZUKU_REQUEST_CODE_BT_RESTART) {
+                    return;
+                }
+                boolean pending = pendingBtRestart;
+                pendingBtRestart = false;
+                if (grantResult == PackageManager.PERMISSION_GRANTED && pending) {
+                    runBtRestartWithShizuku();
+                } else {
+                    finishBtRestart("藍牙重啟失敗：Shizuku 未授權，請手動把藍牙關閉再開啟");
+                }
+            };
+    // Updates the receiver page when the Bluetooth process reports the mode it started in.
+    private final SharedPreferences.OnSharedPreferenceChangeListener btStatusPrefsListener =
+            (sharedPreferences, key) -> {
+                if (Config.KEY_BT_ACTIVE_MODE.equals(key) || Config.KEY_BT_ACTIVE_AT.equals(key)) {
+                    mainHandler.post(this::refreshBtStatus);
+                }
+            };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -171,6 +208,8 @@ public class MainActivity extends Activity {
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
         Shizuku.addRequestPermissionResultListener(quickEntryShizukuPermissionListener);
         Shizuku.addRequestPermissionResultListener(screenTimeoutShizukuPermissionListener);
+        Shizuku.addRequestPermissionResultListener(btRestartShizukuPermissionListener);
+        prefs.registerOnSharedPreferenceChangeListener(btStatusPrefsListener);
         ensureDefaults();
         setContentView(createShell());
         setSystemBarIconColors(getWindow());
@@ -186,6 +225,8 @@ public class MainActivity extends Activity {
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
         Shizuku.removeRequestPermissionResultListener(quickEntryShizukuPermissionListener);
         Shizuku.removeRequestPermissionResultListener(screenTimeoutShizukuPermissionListener);
+        Shizuku.removeRequestPermissionResultListener(btRestartShizukuPermissionListener);
+        prefs.unregisterOnSharedPreferenceChangeListener(btStatusPrefsListener);
         updateExecutor.shutdownNow();
         rootExecutor.shutdownNow();
         super.onDestroy();
@@ -355,6 +396,11 @@ public class MainActivity extends Activity {
                 view -> showVolumePage()
         ));
         contentRoot.addView(featureButton(
+                "藍牙接收器",
+                "讓手機變成藍牙喇叭，其他手機可串流音樂過來（與藍牙耳機互斥），可自動重啟藍牙",
+                view -> showBtReceiverPage()
+        ));
+        contentRoot.addView(featureButton(
                 "魔姬手勢替換",
                 "攔截 SystemUI 的小白條長按 Assistant 入口，改啟動系統動作、使用者 App 或系統 App",
                 view -> showAssistantPage()
@@ -436,6 +482,167 @@ public class MainActivity extends Activity {
         setHeader("音量步進調整", true);
         contentRoot.removeAllViews();
         contentRoot.addView(volumeSection());
+    }
+
+    private void showBtReceiverPage() {
+        stopWirelessAdbPolling();
+        currentPage = PAGE_BT_RECEIVER;
+        setHeader("藍牙接收器", true);
+        contentRoot.removeAllViews();
+        contentRoot.addView(btReceiverSection());
+        refreshBtStatus();
+    }
+
+    private LinearLayout btReceiverSection() {
+        LinearLayout box = sectionBox();
+
+        Switch receiver = new Switch(this);
+        receiver.setText("藍牙接收器模式");
+        receiver.setTextSize(18);
+        receiver.setTextColor(Color.WHITE);
+        receiver.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        receiver.setChecked(prefs.getBoolean(Config.KEY_BT_RECEIVER_ENABLED, false));
+        box.addView(receiver);
+        box.addView(detailText("開啟後，這支手機會變成藍牙喇叭：其他手機配對後可以把音樂串流過來（SBC 或 AAC）。"
+                + "此模式下手機無法連接藍牙耳機，因為 Android 的藍牙堆疊無法同時穩定地擔任耳機端與喇叭端。"
+                + "設定會一直保留，重開機後仍然有效，直到你關閉為止。"));
+
+        box.addView(verticalSpace(14));
+        Switch autoRestart = new Switch(this);
+        autoRestart.setText("自動重啟藍牙");
+        autoRestart.setTextSize(18);
+        autoRestart.setTextColor(Color.WHITE);
+        autoRestart.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        autoRestart.setChecked(prefs.getBoolean(Config.KEY_BT_AUTO_RESTART, false));
+        box.addView(autoRestart);
+        box.addView(detailText("打開後，每次切換接收器模式都會自動把藍牙關閉再開啟，新模式立刻生效。"
+                + "需要 root 或 Shizuku；藍牙原本是關閉時不會被自動打開。"
+                + "關閉此選項時，切換模式後請自己把藍牙關閉再開啟。"));
+
+        box.addView(verticalSpace(14));
+        btStatusView = text("", 14, true);
+        box.addView(btStatusView);
+
+        Button restartNow = new Button(this);
+        restartNow.setText("立即重啟藍牙");
+        styleButton(restartNow, false, false);
+        restartNow.setOnClickListener(view -> restartBluetooth());
+        box.addView(restartNow);
+
+        addDetailField(box, "使用方式", "1. 開啟「藍牙接收器模式」，並讓藍牙重啟。"
+                + "2. 在這支手機的系統設定開啟「藍牙 > 配對新裝置」，讓它可被搜尋。"
+                + "3. 在另一支手機配對這支手機並選它當音訊輸出。"
+                + "4. 要用耳機時，關閉接收器模式並讓藍牙重啟。");
+        addDetailField(box, "LSPosed 作用域", "藍牙（com.android.bluetooth）。第一次使用請在 LSPosed 為 RedMagicX 勾選此作用域，"
+                + "然後讓藍牙重啟。");
+        addDetailField(box, "限制", "只能解 SBC / AAC（沒有 LDAC、aptX、LHDC 的接收解碼）。"
+                + "對方看到的裝置類型仍是手機。接收模式下藍牙耳機無法連線。");
+
+        receiver.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_BT_RECEIVER_ENABLED, isChecked).commit();
+            if (prefs.getBoolean(Config.KEY_BT_AUTO_RESTART, false)) {
+                restartBluetooth();
+            } else {
+                showToast("已保存。請把藍牙關閉再開啟，新模式才會生效");
+            }
+            refreshBtStatus();
+        });
+        autoRestart.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_BT_AUTO_RESTART, isChecked).commit();
+            showToast(isChecked ? "已開啟：切換模式時會自動重啟藍牙" : "已關閉自動重啟藍牙");
+        });
+        return box;
+    }
+
+    /** Shows the configured mode next to the mode the running Bluetooth process reported. */
+    private void refreshBtStatus() {
+        if (btStatusView == null || currentPage != PAGE_BT_RECEIVER) {
+            return;
+        }
+        boolean wantReceiver = prefs.getBoolean(Config.KEY_BT_RECEIVER_ENABLED, false);
+        String active = prefs.getString(Config.KEY_BT_ACTIVE_MODE, "");
+        long at = prefs.getLong(Config.KEY_BT_ACTIVE_AT, 0L);
+        String message;
+        if (btRestartRunning) {
+            message = "藍牙重啟中…";
+        } else if (active.isEmpty()) {
+            message = "藍牙目前實際模式：尚未收到回報。請確認 LSPosed 已勾選藍牙作用域，並讓藍牙重啟一次。";
+        } else {
+            boolean activeReceiver = Config.BT_MODE_RECEIVER.equals(active);
+            String activeName = activeReceiver ? "接收器模式" : "一般模式（可連耳機）";
+            String time = DateFormat.getTimeInstance(DateFormat.MEDIUM).format(new Date(at));
+            if (activeReceiver == wantReceiver) {
+                message = "藍牙目前實際模式：" + activeName + "（已生效，" + time + " 啟動）";
+            } else {
+                message = "已設定為" + (wantReceiver ? "接收器模式" : "一般模式")
+                        + "，但藍牙目前仍是" + activeName + "（" + time + " 啟動）。請重啟藍牙。";
+            }
+        }
+        btStatusView.setText(message);
+    }
+
+    private void restartBluetooth() {
+        if (btRestartRunning) {
+            showToast("藍牙正在重啟中");
+            return;
+        }
+        btRestartRunning = true;
+        refreshBtStatus();
+        showToast("正在重啟藍牙…");
+        rootExecutor.execute(() -> {
+            int exitCode = runProcess(new ProcessBuilder("su", "-c", BT_RESTART_COMMAND));
+            if (exitCode == 0) {
+                mainHandler.post(() -> finishBtRestart("藍牙已重啟（root）"));
+            } else {
+                mainHandler.post(this::restartBluetoothFallback);
+            }
+        });
+    }
+
+    private void restartBluetoothFallback() {
+        if (!isShizukuAvailable()) {
+            finishBtRestart("藍牙重啟失敗：無 root，且 Shizuku 未連線，請手動把藍牙關閉再開啟");
+            return;
+        }
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            pendingBtRestart = true;
+            Shizuku.requestPermission(SHIZUKU_REQUEST_CODE_BT_RESTART);
+            showToast("請授權 Shizuku 後自動重啟藍牙");
+            return;
+        }
+        runBtRestartWithShizuku();
+    }
+
+    private void runBtRestartWithShizuku() {
+        rootExecutor.execute(() -> {
+            int exitCode = -1;
+            try {
+                Method newProcess = Shizuku.class.getDeclaredMethod(
+                        "newProcess", String[].class, String[].class, String.class);
+                newProcess.setAccessible(true);
+                Process process = (Process) newProcess.invoke(
+                        null,
+                        new String[]{"sh", "-c", BT_RESTART_COMMAND},
+                        null,
+                        null
+                );
+                exitCode = process.waitFor();
+            } catch (Throwable ignored) {
+                // The exit code below reports the failure.
+            }
+            int finalExitCode = exitCode;
+            mainHandler.post(() -> finishBtRestart(finalExitCode == 0
+                    ? "藍牙已重啟（Shizuku）"
+                    : "藍牙重啟失敗：Shizuku " + finalExitCode));
+        });
+    }
+
+    private void finishBtRestart(String message) {
+        btRestartRunning = false;
+        showToast(message);
+        refreshBtStatus();
+        // The Bluetooth process reports its mode a moment after it starts.
+        mainHandler.postDelayed(this::refreshBtStatus, 3000);
     }
 
     private void showAssistantPage() {
