@@ -138,27 +138,34 @@ Provides automatic dialing for RedMagic engineering mode and a direct phone-info
 
 A separate KernelSU module in [`ksu-hires-unlocker/`](ksu-hires-unlocker). It is not an LSPosed module and not part of the APK.
 
-On the stock ROM the system mixer is locked at 48 kHz, so every track is resampled to 48 kHz before it reaches Bluetooth or wired headphones. This module lets the mixer follow the sample rate of the audio file.
+On the stock ROM the system mixer is locked at 48 kHz, so every track is resampled to 48 kHz before it reaches Bluetooth, wired headphones or USB audio. This module lets the mixer follow the sample rate of the audio file.
 
 Supports the RedMagic NX809J on Android 16: the installer checks the model and the Android version and refuses to install on anything else. It was developed and tested on RedMagicOS 11.0.22 (incremental `20260204.095106`); other builds of the same model are untested. The installer finds the patch sites by their instruction bytes and aborts if they are not found exactly as expected, and at boot the module disables itself if the system files it was built from have changed (for example after an OTA); install it again afterwards.
 
 | Part | Change |
 |---|---|
-| `audio_module_config_primary.xml` (audio HAL config) | One deep-buffer mix port per sample rate: 44.1 / 48 / 88.2 / 96 kHz on Bluetooth A2DP, and additionally 176.4 / 192 kHz on wired headphones. |
+| `audio_module_config_primary.xml` (audio HAL config) | One deep-buffer mix port per sample rate: 44.1 / 48 / 88.2 / 96 kHz on Bluetooth A2DP, and additionally 176.4 / 192 kHz on wired headphones and USB audio. |
 | `libaudiopolicymanagerdefault.so` (2 bytes) | AOSP only compares the sample rate for requests above 48 kHz, so 44.1 / 48 kHz tracks land on whichever output opened first. The patch scores every request, so each track picks the port with its own rate. |
 | `libaudiocorehal.qti.so` (2 sites, 32 bytes each) | The deep-buffer size is 40 ms of frames, which is 1764 / 3528 frames at 44.1 / 88.2 kHz, not a multiple of 16. AudioFlinger rounds up to 16 and splits every write in two, which crackles. The patch rounds the HAL size up to a multiple of 16. |
 
-Measured on the phone:
+Comparison of the three outputs (measured on the phone):
 
-- Bluetooth (LDAC): each track runs on a mixer thread with its own rate (44.1 / 48 / 88.2 / 96 kHz). The LDAC DSP backend rate stays at 96 kHz.
-- Wired headphones: the mixer and the PAL headphone device configuration follow 44.1 to 192 kHz. The DAC clock itself was not measured.
-- Crackle fix at 44.1 kHz: HAL write jitter (standard deviation) 18.7 ms to 4.5 ms; at 88.2 kHz 18.4 ms to 3.8 ms, the same level as the 48 / 96 kHz controls. Listening tests on Bluetooth and wired headphones are clean.
+| | Bluetooth (A2DP) | Wired 3.5 mm headphones | USB audio (DAC) |
+|---|---|---|---|
+| Sample rates the mixer follows | 44.1 / 48 / 88.2 / 96 kHz | 44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz | 44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz |
+| Ports above 96 kHz | No (LDAC tops out at 96 kHz) | Yes | Yes |
+| What sets the final output rate | The Bluetooth codec configuration: the LDAC DSP backend stays at 96 kHz on the tested phone | The PAL headphone device follows the stream rate | The PAL `USB_AUDIO-RX` backend follows the stream rate, limited to what the DAC supports (tested DAC: 32 to 384 kHz, 16 / 24 / 32 bit) |
+| Sample-rate change at a song boundary | Not measured | Start delayed by about 2 seconds (the backend runs one rate at a time) | No delay seen (four back-to-back combinations, no start errors) |
+| 44.1 / 88.2 kHz crackle fix | Listening test clean | HAL write jitter (std) 18.7 ms to 2.0 ms at 44.1 kHz; listening clean | Jitter (std) 4.2 to 4.9 ms at every rate; listening clean |
+| How it was checked | Mixer thread of each track, LDAC backend log, listening | Mixer thread, PAL device configuration, jitter statistics, listening | Mixer thread, PAL USB media configuration, jitter statistics, back-to-back playback, listening |
+| Not verified | Codecs other than LDAC | The DAC clock itself | The DAC clock itself (ADSP offload hides it from ALSA); only one DAC tested |
 
 Limits:
 
 - The speaker and earpiece stay at 48 kHz (fixed hardware backend, smart amplifier).
-- The wired headphone backend runs one rate at a time, so a sample-rate change at a song boundary delays the start by about 2 seconds.
-- Rates above 192 kHz and Bluetooth codecs other than LDAC were not tested.
+- Apps cannot ask for more than 192 kHz through `AudioTrack`; the 384 kHz `hifi_playback` output that exists on USB is unchanged.
+- Only one USB DAC (Sony Audio) was tested.
+- When 3.5 mm headphones and a USB DAC are connected together, Android plays through the 3.5 mm headphones.
 
 Install:
 

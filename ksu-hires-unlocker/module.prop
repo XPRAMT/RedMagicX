@@ -3,4 +3,4 @@ name=Hi-Res Unlocker (NX809J)
 version=v0.6.1
 versionCode=8
 author=XPRAMT
-description=Hi-res mixer for NX809J (Android 16): per-rate deep-buffer mix ports for Bluetooth A2DP and wired headphones, an audio policy patch so every track picks the port with its own rate, and a HAL patch that rounds the deep-buffer size up to 16 frames (no 44.1/88.2 kHz crackle). The patched libraries and the config are built on the phone at install time from its own files.
+description=Hi-res mixer for NX809J (Android 16): per-rate deep-buffer mix ports for Bluetooth A2DP, wired headphones and USB audio, an audio policy patch so every track picks the port with its own rate, and a HAL patch that rounds the deep-buffer size up to 16 frames (no 44.1/88.2 kHz crackle). The patched libraries and the config are built on the phone at install time from its own files.

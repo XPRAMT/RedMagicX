@@ -62,7 +62,7 @@
 
 ## KernelSU Module (ksu-hires-unlocker)
 
-- `ksu-hires-unlocker/` is a separate KernelSU module (not an LSPosed module, not part of the APK) that lets the NX809J system mixer follow the audio file's sample rate on Bluetooth and wired headphones. Details and measurements are in the README section "KernelSU Module: Hi-Res Unlocker" (English and Traditional Chinese, keep both in sync).
+- `ksu-hires-unlocker/` is a separate KernelSU module (not an LSPosed module, not part of the APK) that lets the NX809J system mixer follow the audio file's sample rate on Bluetooth, wired headphones and USB audio. Details and measurements are in the README section "KernelSU Module: Hi-Res Unlocker" (English and Traditional Chinese, keep both in sync).
 - The module is versioned independently of the app (module `v0.6.1`, app `0.3.1`). Its releases use the tag `hires-mixer-vX.Y.Z`, are not marked Latest, and attach only the module zip.
 - Never commit or attach vendor files (stock or patched `.so`, stock or generated config). The installer builds the patched libraries and the mix-port config on the phone from its own files; `original/` is git-ignored for files pulled from the phone.
 - Supported: model NX809J on Android 16 (checked by the installer and at boot). Tested only on RedMagicOS 11.0.22 (incremental `20260204.095106`); the installer finds patch sites by instruction bytes and aborts when they are not found as expected.
