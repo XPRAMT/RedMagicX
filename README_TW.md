@@ -21,7 +21,7 @@ RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、ro
   - [第三方啟動器](#第三方啟動器)
   - [ADB 控制中心](#adb-控制中心)
   - [快速入口](#快速入口)
-- [KernelSU 模組：高取樣率混音](#kernelsu-模組高取樣率混音)
+- [KernelSU 模組：高取樣率解鎖](#kernelsu-模組高取樣率解鎖)
 - [編譯](#編譯)
 - [注意事項](#注意事項)
 
@@ -134,9 +134,9 @@ ADB 控制中心的所有動作都需要 root 權限。
 - 權限方式：優先使用 root；無 root 時可透過 Shizuku shell 權限操作。
 - 手機資訊：在已測試的 NX809J ROM 可直接開啟 `com.android.phone/.settings.RadioInfo`，不需要 root 或 Shizuku。
 
-## KernelSU 模組：高取樣率混音
+## KernelSU 模組：高取樣率解鎖
 
-獨立的 KernelSU 模組，放在 [`ksu-bt-hires-mixer/`](ksu-bt-hires-mixer)。它不是 LSPosed 模組，也不在 APK 內。
+獨立的 KernelSU 模組，放在 [`ksu-hires-unlocker/`](ksu-hires-unlocker)。它不是 LSPosed 模組，也不在 APK 內。
 
 原廠 ROM 的系統混音固定 48 kHz，所有音軌都會先被重新取樣成 48 kHz，才送到藍牙或有線耳機。此模組讓混音器跟隨音檔本身的取樣率。
 

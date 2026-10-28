@@ -99,7 +99,7 @@ gen_xml() {
 
 GUARD="$SRCDIR/guard.conf"
 : > "$GUARD"
-ui_print "- BT Hi-Res Mixer v0.6.1 ($MODEL, Android 16)"
+ui_print "- Hi-Res Unlocker v0.6.1 ($MODEL, Android 16)"
 
 ui_print "  * audio policy library"
 build_lib "$LIB" "$SRCDIR/system/lib64/libaudiopolicymanagerdefault.so" "$APM_OLD_HEX" "$APM_NEW_HEX" "$APM_OLD_OCT" "$APM_NEW_OCT" 0 1 APM

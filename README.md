@@ -21,7 +21,7 @@ Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models 
   - [Third-Party Launcher](#third-party-launcher)
   - [ADB Control Center](#adb-control-center)
   - [Quick Entry](#quick-entry)
-- [KernelSU Module: Hi-Res Mixer](#kernelsu-module-hi-res-mixer)
+- [KernelSU Module: Hi-Res Unlocker](#kernelsu-module-hi-res-unlocker)
 - [Build](#build)
 - [Notes](#notes)
 
@@ -134,9 +134,9 @@ Provides automatic dialing for RedMagic engineering mode and a direct phone-info
 - Permission path: root is tried first; when root is unavailable, Shizuku shell permission is used.
 - Phone information: directly opens `com.android.phone/.settings.RadioInfo` without root or Shizuku on the tested NX809J ROM.
 
-## KernelSU Module: Hi-Res Mixer
+## KernelSU Module: Hi-Res Unlocker
 
-A separate KernelSU module in [`ksu-bt-hires-mixer/`](ksu-bt-hires-mixer). It is not an LSPosed module and not part of the APK.
+A separate KernelSU module in [`ksu-hires-unlocker/`](ksu-hires-unlocker). It is not an LSPosed module and not part of the APK.
 
 On the stock ROM the system mixer is locked at 48 kHz, so every track is resampled to 48 kHz before it reaches Bluetooth or wired headphones. This module lets the mixer follow the sample rate of the audio file.
 
