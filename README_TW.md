@@ -169,7 +169,7 @@ ADB 控制中心的所有動作都需要 root 權限。
 
 安裝：
 
-1. 從 [GitHub Releases](https://github.com/XPRAMT/RedMagicX/releases) 下載 `bt_hires_mixer_v0.6.1.zip`（標籤 `hires-mixer-v0.6.1`）。
+1. 從 [GitHub Releases](https://github.com/XPRAMT/RedMagicX/releases) 下載 `bt_hires_mixer_v0.7.0.zip`（標籤 `hires-mixer-v0.7.0`）。
 2. 在 KernelSU 管理器安裝後重新開機。
 3. 若重開機後沒有聲音，在 KernelSU 管理器停用模組（或進入 KernelSU 安全模式）再重開機。
 

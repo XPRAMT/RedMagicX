@@ -169,7 +169,7 @@ Limits:
 
 Install:
 
-1. Download `bt_hires_mixer_v0.6.1.zip` from [GitHub Releases](https://github.com/XPRAMT/RedMagicX/releases) (tag `hires-mixer-v0.6.1`).
+1. Download `bt_hires_mixer_v0.7.0.zip` from [GitHub Releases](https://github.com/XPRAMT/RedMagicX/releases) (tag `hires-mixer-v0.7.0`).
 2. Install it in the KernelSU manager and reboot.
 3. If there is no sound after a reboot, disable the module in the KernelSU manager (or boot into KernelSU safe mode) and reboot again.
 
