@@ -2,9 +2,9 @@
 
 [English](README.md) | [繁體中文](README_TW.md)
 
-RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、小白條助手手勢替換、第三方啟動器控制、ADB 控制，以及工程模式與手機資訊快速入口。
+RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、藍牙接收器模式、小白條助手手勢替換、第三方啟動器控制、ADB 控制，以及工程模式與手機資訊快速入口。
 
-目前版本：`0.3.1`
+目前版本：`0.4.0`
 
 測試裝置：RedMagic / Nubia NX809J 中國版 ROM。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
 
@@ -17,6 +17,7 @@ RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、ro
 - [功能](#功能)
   - [VoWiFi UI 修正](#vowifi-ui-修正)
   - [音量步進調整](#音量步進調整)
+  - [藍牙接收器](#藍牙接收器)
   - [魔姬手勢替換](#魔姬手勢替換)
   - [第三方啟動器](#第三方啟動器)
   - [ADB 控制中心](#adb-控制中心)
@@ -47,6 +48,7 @@ Root 只用於需要執行 shell 指令的動作，例如重啟 Settings/SystemU
 | ------------ | --------------------------------------------- |
 | VoWiFi UI 修正 | `com.android.settings`、`com.android.systemui` |
 | 音量步進調整       | `android` / System Framework                  |
+| 藍牙接收器 | `com.android.bluetooth` |
 | 魔姬手勢替換       | `com.android.systemui`                        |
 | 第三方啟動器最近任務隱藏 | `com.zte.mifavor.launcher`                    |
 
@@ -90,6 +92,18 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 - Hook 目標：`com.android.server.audio.AudioService`
 - 修改行為：媒體音量鍵升降步進
 - 生效方式：開啟功能並設定步進值後，重啟手機讓 system_server 載入 LSPosed 模組
+
+### 藍牙接收器
+
+讓手機變成藍牙喇叭：另一支手機配對後，可以把音樂串流到這支手機。手機一次只能擔任一種藍牙音訊角色，因為在測試的手機上，Android 藍牙堆疊無法穩定地同時擔任耳機端（A2DP source）與喇叭端（A2DP sink）。接收器模式下，藍牙耳機無法連線。
+
+- **藍牙接收器模式**開關（預設關閉）。設定會一直保留，重開機後仍然有效，直到你關閉為止。
+- **自動重啟藍牙**開關（預設關閉）。開啟後，每次切換模式都會自動把藍牙關閉再開啟，新模式立刻生效。需要 root 或 Shizuku，藍牙原本是關閉時不會被自動打開。關閉此選項時，切換後請自己把藍牙關閉再開啟。另有**立即重啟藍牙**按鈕可隨時手動重啟。
+- 狀態列：顯示藍牙行程實際回報的模式與設定的模式，可以看出切換是否已生效。
+- 作用域：`com.android.bluetooth`
+- Hook 目標：`A2dpSinkService.isEnabled()` 與 `A2dpService.isEnabled()`，它們在藍牙行程啟動時決定要啟動哪些設定檔服務（所以切換模式後需要重啟藍牙）。一般模式不會安裝任何角色 hook。
+- 使用方式：開啟模式並讓藍牙重啟，在這支手機開啟「設定 > 藍牙 > 配對新裝置」，再從另一支手機配對並播放。要用耳機時，關閉模式並讓藍牙重啟。
+- 限制：只能接收 SBC 與 AAC（堆疊沒有 LDAC、aptX、LHDC 的解碼器）。對方看到的裝置類型仍是手機。只在 NX809J 搭配一支傳送手機測試過。
 
 ### 魔姬手勢替換
 

@@ -2,9 +2,9 @@
 
 [English](README.md) | [繁體中文](README_TW.md)
 
-RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, bottom gesture-bar assistant redirection, third-party launcher control, ADB control, and quick access to engineering mode and phone information.
+RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, Bluetooth receiver mode, bottom gesture-bar assistant redirection, third-party launcher control, ADB control, and quick access to engineering mode and phone information.
 
-Current version: `0.3.1`
+Current version: `0.4.0`
 
 Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
 
@@ -17,6 +17,7 @@ Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models 
 - [Features](#features)
   - [VoWiFi UI Fix](#vowifi-ui-fix)
   - [Volume Step Control](#volume-step-control)
+  - [Bluetooth Receiver](#bluetooth-receiver)
   - [Assistant Gesture Redirect](#assistant-gesture-redirect)
   - [Third-Party Launcher](#third-party-launcher)
   - [ADB Control Center](#adb-control-center)
@@ -47,6 +48,7 @@ Enable RedMagicX in LSPosed, then select scopes based on the features you use:
 |---|---|
 | VoWiFi UI Fix | `com.android.settings`, `com.android.systemui` |
 | Volume Step Control | `android` / System Framework |
+| Bluetooth Receiver | `com.android.bluetooth` |
 | Assistant Gesture Redirect | `com.android.systemui` |
 | Third-Party Launcher recent-task hiding | `com.zte.mifavor.launcher` |
 
@@ -90,6 +92,18 @@ Customizes how many media-volume levels one hardware volume-key press changes.
 - Hook target: `com.android.server.audio.AudioService`
 - Hooked behavior: media-volume key up/down step size
 - Activation: enable the switch, set the step value, then reboot so system_server loads the LSPosed module
+
+### Bluetooth Receiver
+
+Turns the phone into a Bluetooth speaker: another phone pairs with it and streams audio to it. The phone can only take one Bluetooth audio role at a time, because the Android Bluetooth stack on the tested phone did not run the headphone role (A2DP source) and the speaker role (A2DP sink) together reliably. In receiver mode Bluetooth headphones cannot connect.
+
+- **Bluetooth receiver mode** switch (default off). The setting is kept across reboots until you switch it off.
+- **Auto restart Bluetooth** switch (default off). When on, every mode switch turns Bluetooth off and on by itself, so the new mode takes effect immediately. It needs root or Shizuku, and it never turns Bluetooth on if it was off. When off, turn Bluetooth off and on yourself after switching. A **Restart Bluetooth now** button does the same on demand.
+- Status line: shows the mode the running Bluetooth process reports next to the configured mode, so you can see whether a switch has taken effect.
+- Scope: `com.android.bluetooth`
+- Hook targets: `A2dpSinkService.isEnabled()` and `A2dpService.isEnabled()`, which decide the profile services when the Bluetooth process starts (so a mode change needs a Bluetooth restart). Normal mode installs no role hooks.
+- Use: switch the mode on and let Bluetooth restart, open Settings > Bluetooth > Pair new device on this phone, then pair and play from the other phone. Switch it off and restart Bluetooth to use headphones again.
+- Limits: only SBC and AAC can be received (the stack has no LDAC, aptX or LHDC decoder). The other phone still sees a phone-class device. Tested on the NX809J with one sending phone only.
 
 ### Assistant Gesture Redirect
 
