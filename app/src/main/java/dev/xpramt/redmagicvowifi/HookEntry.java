@@ -98,6 +98,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                 + " icon=" + config.enableStatusIcon
                 + " style=" + config.iconStyle
                 + " volumeStep=" + config.volumeStepEnabled + "/" + config.volumeStep
+                + " aospVolumeDialog=" + config.aospVolumeDialog
                 + " assistant=" + config.assistantRedirectEnabled + "/" + config.assistantTarget
                 + " launcher=" + config.launcherOverrideEnabled + "/" + config.launcherPackage
                 + " themeSelect=" + config.themeSelectEnabled
@@ -122,6 +123,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         if (SYSTEM_UI.equals(lpparam.packageName)) {
             hookSystemUiStartAssist(lpparam);
             hookSystemUiAssistantBroadcast(lpparam);
+            hookAospVolumeDialog(lpparam);
             log("Recent UI hooks disabled to avoid Recents restart loop");
             if (config.enableStatusIcon) {
                 hookSystemUiAbroad(lpparam);
@@ -1776,6 +1778,43 @@ public class HookEntry implements IXposedHookLoadPackage {
                 "ro.vendor.feature.zte_feature_need_wfc_for_domestic",
                 true
         );
+    }
+
+
+    /**
+     * Force AOSP/legacy volume dialog by making VolumeDialogImplAdapt.enabled() return false.
+     * enabled() lives on ClassAdaptor; only override for VolumeDialogImplAdapt instances so other
+     * MiFavor adapters keep working.
+     */
+    private void hookAospVolumeDialog(XC_LoadPackage.LoadPackageParam lpparam) {
+        Class<?> adaptClass = findClassIfExists(
+                "com.zte.adapt.mifavor.volume.VolumeDialogImplAdapt", lpparam.classLoader);
+        if (adaptClass == null) {
+            log("VolumeDialogImplAdapt not found; AOSP volume dialog hook skipped");
+            return;
+        }
+        Class<?> adaptorBase = adaptClass.getSuperclass();
+        if (adaptorBase == null) {
+            log("VolumeDialogImplAdapt has no superclass; AOSP volume dialog hook skipped");
+            return;
+        }
+        try {
+            XposedHelpers.findAndHookMethod(adaptorBase, "enabled", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (param.thisObject == null || !adaptClass.isInstance(param.thisObject)) {
+                        return;
+                    }
+                    Config.Snapshot config = Config.loadForHook();
+                    if (config.aospVolumeDialog) {
+                        param.setResult(false);
+                    }
+                }
+            });
+            log("AOSP volume dialog hook installed on " + adaptorBase.getName() + "#enabled");
+        } catch (Throwable throwable) {
+            log("AOSP volume dialog hook failed: " + throwable);
+        }
     }
 
     private void hookSystemUiAbroad(XC_LoadPackage.LoadPackageParam lpparam) {

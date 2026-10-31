@@ -4,8 +4,17 @@
 
 - Android application and LSPosed module for RedMagicOS features.
 - Main UI is implemented programmatically in `app/src/main/java/dev/xpramt/redmagicvowifi/MainActivity.java`.
-- Current feature pages include VoWiFi UI, volume step, assistant gesture, launcher, theme, ADB control, quick entry, and other system settings.
+- Current feature pages include VoWiFi UI, volume bar (step + AOSP dialog), assistant gesture, launcher, theme, ADB control, quick entry, Bluetooth receiver, and other system settings.
 - The application version remains `0.4.0` unless a release request changes it.
+
+
+## Volume Bar Page
+
+- Home card title is `音量條` (renamed from `音量步進調整`).
+- Prefs key `aosp_volume_dialog` (default **off**): when enabled, the LSPosed hook in `com.android.systemui` forces `VolumeDialogImplAdapt` (via `ClassAdaptor.enabled()` with an instanceof guard) to return false so SystemUI uses AOSP/`volume_dialog_legacy` + `volume_dialog_row` instead of MFV/`ColorSeekBarZTE`.
+- Prefs keys `volume_step_enabled` / `volume_step` are unchanged: custom media volume key step still hooks `AudioService` in the `android` process.
+- Changing the AOSP volume dialog switch requires restarting SystemUI (or a reboot) before it takes effect. Do not reboot automatically; tell the user.
+- `xposed_scope` already includes `com.android.systemui`.
 
 ## Other Settings Page
 

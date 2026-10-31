@@ -16,7 +16,7 @@ RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、ro
 - [LSPosed 作用域](#lsposed-作用域)
 - [功能](#功能)
   - [VoWiFi UI 修正](#vowifi-ui-修正)
-  - [音量步進調整](#音量步進調整)
+  - [音量條](#音量條)
   - [藍牙接收器](#藍牙接收器)
   - [魔姬手勢替換](#魔姬手勢替換)
   - [第三方啟動器](#第三方啟動器)
@@ -47,7 +47,7 @@ Root 只用於需要執行 shell 指令的動作，例如重啟 Settings/SystemU
 | 功能           | 需要作用域                                         |
 | ------------ | --------------------------------------------- |
 | VoWiFi UI 修正 | `com.android.settings`、`com.android.systemui` |
-| 音量步進調整       | `android` / System Framework                  |
+| 音量條       | `android` / System Framework                  |
 | 藍牙接收器 | `com.android.bluetooth` |
 | 魔姬手勢替換       | `com.android.systemui`                        |
 | 第三方啟動器最近任務隱藏 | `com.zte.mifavor.launcher`                    |
@@ -81,11 +81,11 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 
 <img src="img/icons/bd_stat_vowifi.svg" alt="BD bd_stat_vowifi 圖標" width="220">
 
-### 音量步進調整
+### 音量條
 
 自訂按一次實體音量鍵時，媒體音量增減的格數。
 
-<img src="img/app截圖2.jpg" alt="音量步進調整設定" width="360">
+<img src="img/app截圖2.jpg" alt="音量條設定" width="360">
 
 - 範圍：`1` 到 `10`
 - 作用域：`android` / System Framework

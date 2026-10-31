@@ -255,6 +255,10 @@ public class MainActivity extends Activity {
             editor.putInt(Config.KEY_VOLUME_STEP, Config.DEFAULT_VOLUME_STEP);
             changed = true;
         }
+        if (!prefs.contains(Config.KEY_AOSP_VOLUME_DIALOG)) {
+            editor.putBoolean(Config.KEY_AOSP_VOLUME_DIALOG, false);
+            changed = true;
+        }
         if (!prefs.contains(Config.KEY_ASSISTANT_REDIRECT_ENABLED)) {
             editor.putBoolean(Config.KEY_ASSISTANT_REDIRECT_ENABLED, false);
             editor.putString(Config.KEY_ASSISTANT_TARGET, Config.ASSISTANT_TARGET_DEFAULT);
@@ -391,8 +395,8 @@ public class MainActivity extends Activity {
                 view -> showVoWifiPage()
         ));
         contentRoot.addView(featureButton(
-                "音量步進調整",
-                "自訂音量鍵每次增減 1 到 10 格，作用於媒體音量",
+                "音量條",
+                "自訂音量鍵步進，或改用 AOSP 音量條",
                 view -> showVolumePage()
         ));
         contentRoot.addView(featureButton(
@@ -479,7 +483,7 @@ public class MainActivity extends Activity {
     private void showVolumePage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_VOLUME;
-        setHeader("音量步進調整", true);
+        setHeader("音量條", true);
         contentRoot.removeAllViews();
         contentRoot.addView(volumeSection());
     }
@@ -1116,6 +1120,23 @@ public class MainActivity extends Activity {
 
     private LinearLayout volumeSection() {
         LinearLayout box = sectionBox();
+
+        Switch aospDialog = new Switch(this);
+        aospDialog.setText("使用AOSP音量條");
+        aospDialog.setTextSize(18);
+        aospDialog.setTextColor(Color.WHITE);
+        aospDialog.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        aospDialog.setChecked(prefs.getBoolean(Config.KEY_AOSP_VOLUME_DIALOG, false));
+        box.addView(aospDialog);
+        aospDialog.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_AOSP_VOLUME_DIALOG, isChecked).commit();
+            showToast("已寫入 AOSP 音量條開關；需重啟 SystemUI 後生效");
+        });
+        box.addView(detailText("開啟後強制 SystemUI 使用 AOSP／legacy 音量條，避開紅魔 MFV 的 ColorSeekBarZTE。"
+                + "可改善音量鍵彈出後短暫無法拖曳、拖曳不順的問題。變更後請重啟 SystemUI。"));
+        addDetailField(box, "作用進程", "com.android.systemui");
+        addDetailField(box, "攔截方法", "VolumeDialogImplAdapt.enabled");
+
         Switch enabled = new Switch(this);
         enabled.setText("啟用自訂音量步進");
         enabled.setTextSize(18);

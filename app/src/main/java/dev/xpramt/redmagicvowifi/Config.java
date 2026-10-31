@@ -14,6 +14,7 @@ final class Config {
     static final String KEY_ICON_STYLE = "icon_style";
     static final String KEY_VOLUME_STEP_ENABLED = "volume_step_enabled";
     static final String KEY_VOLUME_STEP = "volume_step";
+    static final String KEY_AOSP_VOLUME_DIALOG = "aosp_volume_dialog";
     static final String KEY_ASSISTANT_REDIRECT_ENABLED = "assistant_redirect_enabled";
     static final String KEY_ASSISTANT_TARGET = "assistant_target";
     static final String KEY_LAUNCHER_OVERRIDE_ENABLED = "launcher_override_enabled";
@@ -87,6 +88,7 @@ final class Config {
                 prefs.getString(KEY_ICON_STYLE, STYLE_DEFAULT),
                 prefs.getBoolean(KEY_VOLUME_STEP_ENABLED, false),
                 prefs.getInt(KEY_VOLUME_STEP, DEFAULT_VOLUME_STEP),
+                prefs.getBoolean(KEY_AOSP_VOLUME_DIALOG, false),
                 prefs.getBoolean(KEY_ASSISTANT_REDIRECT_ENABLED, false),
                 prefs.getString(KEY_ASSISTANT_TARGET, ASSISTANT_TARGET_DEFAULT),
                 prefs.getBoolean(KEY_LAUNCHER_OVERRIDE_ENABLED, false),
@@ -121,6 +123,7 @@ final class Config {
         final String iconStyle;
         final boolean volumeStepEnabled;
         final int volumeStep;
+        final boolean aospVolumeDialog;
         final boolean assistantRedirectEnabled;
         final String assistantTarget;
         final boolean launcherOverrideEnabled;
@@ -142,7 +145,7 @@ final class Config {
         final boolean btReceiverEnabled;
 
         Snapshot(boolean enableWfcSettings, boolean enableStatusIcon, String iconStyle, boolean volumeStepEnabled,
-                 int volumeStep, boolean assistantRedirectEnabled, String assistantTarget,
+                 int volumeStep, boolean aospVolumeDialog, boolean assistantRedirectEnabled, String assistantTarget,
                  boolean launcherOverrideEnabled, String launcherComponent, String launcherPackage,
                  boolean themeSelectEnabled, boolean skipBeautifySplash,
                  boolean removeTrialLimit,
@@ -157,6 +160,7 @@ final class Config {
             this.iconStyle = iconStyle == null ? STYLE_DEFAULT : iconStyle;
             this.volumeStepEnabled = volumeStepEnabled;
             this.volumeStep = clampVolumeStep(volumeStep);
+            this.aospVolumeDialog = aospVolumeDialog;
             this.assistantRedirectEnabled = assistantRedirectEnabled;
             this.assistantTarget = assistantTarget == null ? ASSISTANT_TARGET_DEFAULT : assistantTarget;
             this.launcherOverrideEnabled = launcherOverrideEnabled;
