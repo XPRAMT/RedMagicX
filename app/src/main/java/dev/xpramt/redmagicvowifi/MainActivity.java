@@ -255,6 +255,10 @@ public class MainActivity extends Activity {
             editor.putInt(Config.KEY_VOLUME_STEP, Config.DEFAULT_VOLUME_STEP);
             changed = true;
         }
+        if (!prefs.contains(Config.KEY_VOLUME_BROADCAST_UNDELAY)) {
+            editor.putBoolean(Config.KEY_VOLUME_BROADCAST_UNDELAY, true);
+            changed = true;
+        }
         if (!prefs.contains(Config.KEY_AOSP_VOLUME_DIALOG)) {
             editor.putBoolean(Config.KEY_AOSP_VOLUME_DIALOG, false);
             changed = true;
@@ -1186,6 +1190,22 @@ public class MainActivity extends Activity {
         box.addView(detailText("攔截媒體音量的音量鍵升降步進值，可設為 1 到 10。第一次載入可能需要重啟手機才能生效。"));
         addDetailField(box, "作用進程", "android / System Framework");
         addDetailField(box, "攔截方法", "adjustStreamVolume\nadjustSuggestedStreamVolume");
+
+        Switch undelay = new Switch(this);
+        undelay.setText("音量變化通知即時送達");
+        undelay.setTextSize(18);
+        undelay.setTextColor(Color.WHITE);
+        undelay.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        undelay.setChecked(prefs.getBoolean(Config.KEY_VOLUME_BROADCAST_UNDELAY, true));
+        box.addView(undelay);
+        undelay.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_VOLUME_BROADCAST_UNDELAY, isChecked).commit();
+            showToast("已寫入音量變化通知開關，重新開機後生效");
+        });
+        box.addView(detailText("讓背景的音量面板 App（如 Ultra Volume）即時收到音量變化通知，不再被系統延後約 0.5 秒。"
+                + "只影響音量變化通知（VOLUME_CHANGED_ACTION），不影響其他廣播。修改後需重新開機生效。"));
+        addDetailField(box, "作用進程", "android / System Framework");
+        addDetailField(box, "攔截方法", "BroadcastProcessQueue.updateRunnableAt");
         return box;
     }
 

@@ -15,6 +15,7 @@ final class Config {
     static final String KEY_VOLUME_STEP_ENABLED = "volume_step_enabled";
     static final String KEY_VOLUME_STEP = "volume_step";
     static final String KEY_AOSP_VOLUME_DIALOG = "aosp_volume_dialog";
+    static final String KEY_VOLUME_BROADCAST_UNDELAY = "volume_broadcast_undelay";
     static final String KEY_ASSISTANT_REDIRECT_ENABLED = "assistant_redirect_enabled";
     static final String KEY_ASSISTANT_TARGET = "assistant_target";
     static final String KEY_LAUNCHER_OVERRIDE_ENABLED = "launcher_override_enabled";
@@ -76,6 +77,17 @@ final class Config {
             return context.getSharedPreferences(PREFS_NAME, Context.MODE_WORLD_READABLE);
         } catch (SecurityException exception) {
             return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        }
+    }
+
+    /** Default true; any failure to read the pref is treated as true. */
+    static boolean loadVolumeBroadcastUndelayForHook() {
+        try {
+            XSharedPreferences prefs = new XSharedPreferences(PACKAGE_NAME, PREFS_NAME);
+            prefs.reload();
+            return prefs.getBoolean(KEY_VOLUME_BROADCAST_UNDELAY, true);
+        } catch (Throwable t) {
+            return true;
         }
     }
 

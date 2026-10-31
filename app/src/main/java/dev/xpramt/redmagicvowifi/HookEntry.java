@@ -1042,6 +1042,10 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
      * broadcasts are untouched.
      */
     private void hookVolumeChangedBroadcastDelay(XC_LoadPackage.LoadPackageParam lpparam) {
+        if (!Config.loadVolumeBroadcastUndelayForHook()) {
+            log("VOLUME_CHANGED_ACTION broadcast undelay disabled by pref; hook not installed");
+            return;
+        }
         try {
             Class<?> queueClass = XposedHelpers.findClass("com.android.server.am.BroadcastProcessQueue", lpparam.classLoader);
             XposedBridge.hookAllMethods(queueClass, "updateRunnableAt", new XC_MethodHook() {

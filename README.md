@@ -102,6 +102,7 @@ Customizes how many media-volume levels one hardware volume-key press changes.
 - Scope: `android` / System Framework
 - Hook target: `com.android.server.audio.AudioService`
 - Hooked behavior: media-volume key up/down step size
+- Instant volume-change notifications (on by default): background volume-panel apps (such as Ultra Volume) receive volume-change notifications immediately instead of being delayed about 0.5 s by the system; only affects volume-change notifications (`VOLUME_CHANGED_ACTION`); reboot required after changing
 - Activation: enable the switch, set the step value, then reboot so system_server loads the LSPosed module
 
 ### Bluetooth Receiver

@@ -102,6 +102,7 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 - 作用域：`android` / System Framework
 - Hook 目標：`com.android.server.audio.AudioService`
 - 修改行為：媒體音量鍵升降步進
+- 音量變化通知即時送達（預設開啟）：讓背景的音量面板 App（如 Ultra Volume）即時收到音量變化通知，不再被系統延後約 0.5 秒；只影響音量變化通知（`VOLUME_CHANGED_ACTION`）；修改後需重新開機生效
 - 生效方式：開啟功能並設定步進值後，重啟手機讓 system_server 載入 LSPosed 模組
 
 ### 藍牙接收器
