@@ -1153,23 +1153,6 @@ public class MainActivity extends Activity {
     private LinearLayout volumeSection() {
         LinearLayout box = sectionBox();
 
-        Switch aospDialog = new Switch(this);
-        aospDialog.setText("使用AOSP音量條");
-        aospDialog.setTextSize(18);
-        aospDialog.setTextColor(Color.WHITE);
-        aospDialog.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        aospDialog.setChecked(prefs.getBoolean(Config.KEY_AOSP_VOLUME_DIALOG, false));
-        box.addView(aospDialog);
-        aospDialog.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_AOSP_VOLUME_DIALOG, isChecked).commit();
-            showToast("已寫入 AOSP 音量條開關；需重啟 SystemUI 後生效");
-        });
-        box.addView(detailText("開啟後改用 AOSP／legacy 音量條 layout（volume_dialog_legacy + volume_dialog_row），"
-                + "並跳過 MFV 專用初始化，避開 ColorSeekBarZTE。不會再強制 Adapt.enabled()=false。"
-                + "變更後請重啟 SystemUI。"));
-        addDetailField(box, "作用進程", "com.android.systemui");
-        addDetailField(box, "攔截方法", "getDialogLayoutResId / getRowLayoutResId\nmfvInitDialog / prepareDialog");
-
         Switch enabled = new Switch(this);
         enabled.setText("啟用自訂音量步進");
         enabled.setTextSize(18);
@@ -1234,7 +1217,71 @@ public class MainActivity extends Activity {
                 + "只影響音量變化通知（VOLUME_CHANGED_ACTION），不影響其他廣播。修改後需重新開機生效。"));
         addDetailField(box, "作用進程", "android / System Framework");
         addDetailField(box, "攔截方法", "BroadcastProcessQueue.updateRunnableAt");
+
+        Switch aospDialog = new Switch(this);
+        aospDialog.setText("使用AOSP音量條");
+        aospDialog.setTextSize(18);
+        aospDialog.setTextColor(Color.WHITE);
+        aospDialog.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        aospDialog.setChecked(prefs.getBoolean(Config.KEY_AOSP_VOLUME_DIALOG, false));
+        box.addView(aospDialog);
+        aospDialog.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
+            prefs.edit().putBoolean(Config.KEY_AOSP_VOLUME_DIALOG, isChecked).commit();
+            showToast("已寫入 AOSP 音量條開關；按下方「重啟 SystemUI」或重新開機後生效");
+        });
+        box.addView(detailText("開啟後改用 AOSP／legacy 音量條 layout（volume_dialog_legacy + volume_dialog_row），"
+                + "並跳過 MFV 專用初始化，避開 ColorSeekBarZTE。不會再強制 Adapt.enabled()=false。"
+                + "變更後按下方「重啟 SystemUI」或重新開機套用。"));
+        addDetailField(box, "作用進程", "com.android.systemui");
+        addDetailField(box, "攔截方法", "getDialogLayoutResId / getRowLayoutResId\nmfvInitDialog / prepareDialog");
+
+        Button restartSystemUi = new Button(this);
+        restartSystemUi.setText("重啟 SystemUI");
+        styleButton(restartSystemUi, false, false);
+        restartSystemUi.setOnClickListener(view -> confirmRestartSystemUi());
+        box.addView(restartSystemUi);
         return box;
+    }
+
+    private void confirmRestartSystemUi() {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("重啟 SystemUI")
+                .setMessage("將以 root 重啟 SystemUI，狀態列與導覽列會暫時消失數秒後自動恢復。確定要重啟嗎？")
+                .setPositiveButton("重啟", (d, which) -> restartSystemUi())
+                .setNegativeButton("取消", null)
+                .create();
+        showThemedDialog(dialog);
+    }
+
+    private void restartSystemUi() {
+        new Thread(() -> {
+            String result;
+            try {
+                Process process = new ProcessBuilder("su", "-c",
+                        "p=$(pidof com.android.systemui); if [ -z \"$p\" ]; then echo 'SystemUI not running'; exit 2; fi; kill $p")
+                        .redirectErrorStream(true).start();
+                StringBuilder out = new StringBuilder();
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (out.length() > 0) out.append(' ');
+                        out.append(line.trim());
+                    }
+                }
+                int exitCode = process.waitFor();
+                result = exitCode == 0
+                        ? "已重啟 SystemUI"
+                        : "重啟 SystemUI 失敗（" + exitCode + "）" + (out.length() > 0 ? "：" + out : "");
+            } catch (IOException exception) {
+                result = "重啟 SystemUI 失敗：無法取得 root（" + exception.getMessage() + "）";
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                result = "重啟 SystemUI 失敗：執行中斷";
+            }
+            String message = result;
+            runOnUiThread(() -> showToast(message));
+        }, "restart-systemui").start();
     }
 
     private int volumeStepFromSeekBar(SeekBar seekBar) {
