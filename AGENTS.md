@@ -99,9 +99,8 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 
 ## KernelSU Module (ksu-hires-unlocker)
 
-- The Hi-Res Unlocker KernelSU module lives in its own repository, https://github.com/XPRAMT/ksu-hires-unlocker (local `D:\Android\ksu-hires-unlocker`): code, docs, releases (including `hires-mixer-v0.7.0` / `hires-mixer-v0.8.0`) and future versions. It is not part of the APK.
-- The README here only links to that repository. The `ksu-hires-unlocker/` folder in this repository is an old copy (v0.8.0), kept until the user decides to remove it; do not develop it here.
-- The old releases `hires-mixer-v0.7.0` / `hires-mixer-v0.8.0` and their tags still exist in this repository; do not delete them without asking the user.
+- The Hi-Res Unlocker KernelSU module lives in its own repository, https://github.com/XPRAMT/ksu-hires-unlocker (local `D:\Android\ksu-hires-unlocker`): code, docs, releases (`hires-mixer-v0.7.0`, `hires-mixer-v0.8.0`, later `nx809j-vX.Y.Z` / `liuqin-vX.Y.Z`). It is not part of the APK.
+- This repository contains no module files and no module releases; the README only links to the standalone repository.
 
 
 ## Wireless ADB Boot Restore
