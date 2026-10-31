@@ -4,7 +4,7 @@
 
 RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, Bluetooth receiver mode, bottom gesture-bar assistant redirection, third-party launcher control, ADB control, and quick access to engineering mode and phone information.
 
-Current version: `0.4.0`
+Current version: `0.5.0`
 
 Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
 

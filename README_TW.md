@@ -4,7 +4,7 @@
 
 RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、藍牙接收器模式、小白條助手手勢替換、第三方啟動器控制、ADB 控制，以及工程模式與手機資訊快速入口。
 
-目前版本：`0.4.0`
+目前版本：`0.5.0`
 
 測試裝置：RedMagic / Nubia NX809J 中國版 ROM。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
 
