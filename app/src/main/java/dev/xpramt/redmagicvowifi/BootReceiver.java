@@ -17,6 +17,8 @@ import android.util.Log;
 public final class BootReceiver extends BroadcastReceiver {
     private static final String TAG = "RedMagicX-Boot";
     private static final String STOCK_LAUNCHER_PACKAGE = "com.zte.mifavor.launcher";
+    private static final String STOCK_LAUNCHER_COMPONENT =
+            "com.zte.mifavor.launcher/com.android.launcher3.uioverrides.QuickstepLauncher";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -97,6 +99,11 @@ public final class BootReceiver extends BroadcastReceiver {
         try {
             Thread.sleep(5000);
             for (int attempt = 0; attempt < 5; attempt++) {
+                // Toggle via the stock launcher first: re-setting the same HOME is a no-op, and the stock
+                // Quickstep only switches to fallback (RecentsActivity -> default HOME) when the default changes.
+                Result stock = su("cmd package set-home-activity --user 0 '" + STOCK_LAUNCHER_COMPONENT + "'");
+                Log.i(TAG, "stock home set exit=" + stock.exit + " " + stock.out);
+                Thread.sleep(1000);
                 Result set = su("cmd package set-home-activity --user 0 '" + component + "'");
                 if (set.exit == 0) {
                     Result start = su("am start --user 0 -a android.intent.action.MAIN"
