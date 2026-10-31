@@ -99,7 +99,7 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 
 ## KernelSU Module (ksu-hires-unlocker)
 
-- The Hi-Res Unlocker KernelSU module lives in its own repository, https://github.com/XPRAMT/ksu-hires-unlocker (local `D:\Android\ksu-hires-unlocker`): code, docs, releases (`hires-mixer-v0.7.0`, `hires-mixer-v0.8.0`, later `nx809j-vX.Y.Z` / `liuqin-vX.Y.Z`). It is not part of the APK.
+- The Hi-Res Unlocker KernelSU module lives in its own repository, https://github.com/XPRAMT/ksu-hires-unlocker (local `D:\Android\ksu-hires-unlocker`): code, docs, releases (`hires-mixer-v0.7.0`, `hires-mixer-v0.8.0`, later `vX.Y.Z` (one release with every device's zip)). It is not part of the APK.
 - This repository contains no module files and no module releases; the README only links to the standalone repository.
 
 

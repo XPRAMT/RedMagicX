@@ -134,6 +134,7 @@ public class MainActivity extends Activity {
                     + "timeout 40 cmd bluetooth_manager wait-for-state:STATE_ON; "
                     + "fi";
     private static final String RELEASES_LATEST_URL = "https://api.github.com/repos/XPRAMT/RedMagicX/releases/latest";
+    private static final String RELEASES_PAGE_URL = "https://github.com/XPRAMT/RedMagicX/releases";
     private static final Pattern JSON_STRING_FIELD = Pattern.compile("\\\"(tag_name|html_url)\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
 
     private SharedPreferences prefs;
@@ -2316,7 +2317,7 @@ public class MainActivity extends Activity {
                 .setMessage("RedMagicX " + release.tagName + " 已發布，目前版本為 " + versionName())
                 .setNegativeButton("稍後", null)
                 .setPositiveButton("前往下載", (ignoredDialog, which) -> {
-                    Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(release.htmlUrl));
+                    Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(RELEASES_PAGE_URL));
                     startActivity(browser);
                 })
                 .create();
