@@ -8,8 +8,15 @@
 - The application version remains `0.4.0` unless a release request changes it.
 
 
-- UI spacing: `sectionBox()` returns a LinearLayout whose `addView` adds a 20dp top margin (`SECTION_TITLE_TOP_SPACING_DP`) before every section title (bold TextView/Switch >= 17sp) except the box's first child. All pages get it centrally.
+## UI Spacing
 
+All MainActivity spacing uses the constants at the top of `MainActivity` (dp); never hardcode `dp(N)` for margin/padding/gaps. Scale 4/8/12/16/20/24 (`SPACE_XS..SPACE_XXL`).
+- Page: `PAGE_MARGIN_H`=20, `PAGE_MARGIN_TOP`=16, `PAGE_MARGIN_BOTTOM`=24. Toolbar: `TOOLBAR_PADDING_H/V`=8, `TOOLBAR_TITLE_INDENT`=24.
+- Section (`sectionBox()`): `SECTION_PADDING_TOP`=16, `SECTION_PADDING_BOTTOM`=8; `SECTION_TITLE_TOP_SPACING_DP`=20 added automatically by `sectionBox().addView` before every title (bold TextView/Switch >= 17sp) except the first child.
+- Items: `ITEM_GAP`=12 (`verticalSpace`, row buttons), `GROUP_GAP`=24, `FIELD_LABEL_TOP`=8 (`addDetailField` labels).
+- Cards (`featureButton`, list cards): `CARD_PADDING_H`=16, `CARD_PADDING_V`=12, `CARD_MARGIN_TOP`=8, `CARD_MARGIN_BOTTOM`=4, `ICON_GAP`=12.
+- Inputs/buttons/dialogs: `INPUT_PADDING_H`=12, `BUTTON_PADDING_H`=16, `DIALOG_PADDING_H`=24, `DIALOG_PADDING_TOP`=8.
+- Sizes (48dp touch targets, 44dp icons, corner radius 8) are not spacing and stay literal. HookEntry's injected SystemUI panel has its own dp values, outside this spec.
 ## Volume Bar Page
 
 - Home card title is `音量條` (renamed from `音量步進調整`).

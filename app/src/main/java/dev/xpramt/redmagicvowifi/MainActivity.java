@@ -70,6 +70,34 @@ import java.util.regex.Pattern;
 import rikka.shizuku.Shizuku;
 
 public class MainActivity extends Activity {
+    // ---- Spacing spec (dp). Scale: 4 / 8 / 12 / 16 / 20 / 24. See AGENTS.md "UI Spacing". ----
+    private static final int SPACE_XS = 4;
+    private static final int SPACE_S = 8;
+    private static final int SPACE_M = 12;
+    private static final int SPACE_L = 16;
+    private static final int SPACE_XL = 20;
+    private static final int SPACE_XXL = 24;
+    private static final int PAGE_MARGIN_H = SPACE_XL;
+    private static final int PAGE_MARGIN_TOP = SPACE_L;
+    private static final int PAGE_MARGIN_BOTTOM = SPACE_XXL;
+    private static final int TOOLBAR_PADDING_H = SPACE_S;
+    private static final int TOOLBAR_PADDING_V = SPACE_S;
+    private static final int TOOLBAR_TITLE_INDENT = SPACE_XXL;
+    private static final int SECTION_PADDING_TOP = SPACE_L;
+    private static final int SECTION_PADDING_BOTTOM = SPACE_S;
+    private static final int SECTION_TITLE_TOP_SPACING_DP = SPACE_XL;
+    private static final int ITEM_GAP = SPACE_M;
+    private static final int GROUP_GAP = SPACE_XXL;
+    private static final int FIELD_LABEL_TOP = SPACE_S;
+    private static final int CARD_PADDING_H = SPACE_L;
+    private static final int CARD_PADDING_V = SPACE_M;
+    private static final int CARD_MARGIN_TOP = SPACE_S;
+    private static final int CARD_MARGIN_BOTTOM = SPACE_XS;
+    private static final int ICON_GAP = SPACE_M;
+    private static final int INPUT_PADDING_H = SPACE_M;
+    private static final int BUTTON_PADDING_H = SPACE_L;
+    private static final int DIALOG_PADDING_H = SPACE_XXL;
+    private static final int DIALOG_PADDING_TOP = SPACE_S;
     private static final int APP_BAR_COLOR = Color.rgb(23, 33, 44);
     private static final int PAGE_HOME = 0;
     private static final int PAGE_VOWIFI = 1;
@@ -335,7 +363,7 @@ public class MainActivity extends Activity {
         contentRoot = new LinearLayout(this);
         contentRoot.setOrientation(LinearLayout.VERTICAL);
         contentRoot.setBackgroundColor(Color.BLACK);
-        contentRoot.setPadding(dp(20), dp(14), dp(20), dp(28));
+        contentRoot.setPadding(dp(PAGE_MARGIN_H), dp(PAGE_MARGIN_TOP), dp(PAGE_MARGIN_H), dp(PAGE_MARGIN_BOTTOM));
         scrollView.addView(contentRoot);
         screen.addView(scrollView);
         return screen;
@@ -346,10 +374,10 @@ public class MainActivity extends Activity {
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackgroundColor(APP_BAR_COLOR);
-        bar.setPadding(dp(8), dp(10), dp(8), dp(10));
+        bar.setPadding(dp(TOOLBAR_PADDING_H), dp(TOOLBAR_PADDING_V), dp(TOOLBAR_PADDING_H), dp(TOOLBAR_PADDING_V));
         bar.setOnApplyWindowInsetsListener((view, insets) -> {
             int top = insets.getInsets(WindowInsets.Type.statusBars()).top;
-            view.setPadding(dp(8), top + dp(10), dp(8), dp(10));
+            view.setPadding(dp(TOOLBAR_PADDING_H), top + dp(TOOLBAR_PADDING_V), dp(TOOLBAR_PADDING_H), dp(TOOLBAR_PADDING_V));
             return insets;
         });
         bar.setLayoutParams(new LinearLayout.LayoutParams(
@@ -385,7 +413,7 @@ public class MainActivity extends Activity {
     private void setHeader(String title, boolean showBack) {
         titleView.setText(title);
         backView.setVisibility(showBack ? View.VISIBLE : View.GONE);
-        titleView.setPadding(showBack ? 0 : dp(25), 0, 0, 0);
+        titleView.setPadding(showBack ? 0 : dp(TOOLBAR_TITLE_INDENT), 0, 0, 0);
     }
 
     private void showHome() {
@@ -515,7 +543,7 @@ public class MainActivity extends Activity {
                 + "此模式下手機無法連接藍牙耳機，因為 Android 的藍牙堆疊無法同時穩定地擔任耳機端與喇叭端。"
                 + "設定會一直保留，重開機後仍然有效，直到你關閉為止。"));
 
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         Switch autoRestart = new Switch(this);
         autoRestart.setText("自動重啟藍牙");
         autoRestart.setTextSize(18);
@@ -527,7 +555,7 @@ public class MainActivity extends Activity {
                 + "需要 root 或 Shizuku；藍牙原本是關閉時不會被自動打開。"
                 + "關閉此選項時，切換模式後請自己把藍牙關閉再開啟。"));
 
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         btStatusView = text("", 14, true);
         box.addView(btStatusView);
 
@@ -699,7 +727,7 @@ public class MainActivity extends Activity {
         });
         box.addView(enabled);
         box.addView(detailText("開啟後，原廠主題預覽頁會在自我介紹下方顯示系統資源、圖標、桌布與鎖屏選項，可分別選擇要套用的元素。"));
-        box.addView(verticalSpace(22));
+        box.addView(verticalSpace(GROUP_GAP));
         Switch skipSplash = new Switch(this);
         skipSplash.setText("跳過開屏畫面");
         skipSplash.setTextSize(18);
@@ -712,7 +740,7 @@ public class MainActivity extends Activity {
         });
         box.addView(skipSplash);
         box.addView(detailText("啟動原廠主題 App 時跳過蒲公英開屏倒數，直接進入主題首頁。"));
-        box.addView(verticalSpace(22));
+        box.addView(verticalSpace(GROUP_GAP));
         Switch removeTrial = new Switch(this);
         removeTrial.setText("移除試用時間限制");
         removeTrial.setTextSize(18);
@@ -742,7 +770,7 @@ public class MainActivity extends Activity {
                 showToast("無法打開下載佈景主題");
             }
         });
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         box.addView(openBeautify);
         return box;
     }
@@ -770,7 +798,7 @@ public class MainActivity extends Activity {
 
         TextView valueLabel = text("", 16, true);
         valueLabel.setGravity(Gravity.CENTER_HORIZONTAL);
-        valueLabel.setPadding(0, dp(18), 0, 0);
+        valueLabel.setPadding(0, dp(SPACE_L), 0, 0);
         box.addView(valueLabel);
 
         SeekBar seekBar = new SeekBar(this);
@@ -932,10 +960,10 @@ public class MainActivity extends Activity {
     private LinearLayout quickEntrySection() {
         LinearLayout box = sectionBox();
         box.addView(detailText("以下功能可使用 root 或 Shizuku 授權。"));
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         box.addView(text("工程模式", 18, true));
         box.addView(detailText("首次使用時，請先解鎖工程模式；完成解鎖後可直接進入工程模式主選單。"));
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
 
         Button unlock = new Button(this);
         unlock.setText("解鎖工程模式");
@@ -944,7 +972,7 @@ public class MainActivity extends Activity {
         box.addView(unlock);
         box.addView(detailText("模擬輸入 *983*673636#。只需要在首次使用時執行。"));
 
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         Button enter = new Button(this);
         enter.setText("進入工程模式");
         styleButton(enter, false, false);
@@ -952,10 +980,10 @@ public class MainActivity extends Activity {
         box.addView(enter);
         box.addView(detailText("透過原廠電話鍵盤模擬輸入 *983*0#，完成工程模式初始化並開啟主選單。"));
 
-        box.addView(verticalSpace(22));
+        box.addView(verticalSpace(GROUP_GAP));
         box.addView(text("手機資訊", 18, true));
         box.addView(detailText("開啟系統電話服務的手機資訊頁面，可查看行動網路、IMS 與無線電狀態。"));
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         Button phoneInfo = new Button(this);
         phoneInfo.setText("開啟手機資訊");
         styleButton(phoneInfo, false, false);
@@ -1100,12 +1128,12 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setPadding(dp(CARD_PADDING_H), dp(CARD_PADDING_V), dp(CARD_PADDING_H), dp(CARD_PADDING_V));
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        cardParams.setMargins(0, dp(12), 0, dp(4));
+        cardParams.setMargins(0, dp(CARD_MARGIN_TOP), 0, dp(CARD_MARGIN_BOTTOM));
         card.setLayoutParams(cardParams);
         card.setBackground(cardBackground(CARD_COLOR));
         card.setClickable(true);
@@ -1262,7 +1290,7 @@ public class MainActivity extends Activity {
         box.addView(detailText("避免使用第三方啟動器時，啟動器被補成最近任務卡片。只在手勢模式、目前任務為選定第三方 HOME 時生效。"));
         addDetailField(box, "作用進程", "com.zte.mifavor.launcher");
         addDetailField(box, "攔截方法", "RecentsView#onGestureAnimationStart");
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         box.addView(text("更換啟動器", 18, true));
         box.addView(detailText("優先使用 root 執行系統 set-home-activity；無 root 時可透過 Shizuku 授權，以 shell 權限套用。"));
         addDetailField(box, "指令", "cmd package set-home-activity --user 0 <component>");
@@ -1299,7 +1327,7 @@ public class MainActivity extends Activity {
     private LinearLayout wirelessAdbSection() {
         LinearLayout box = sectionBox();
         box.addView(detailText("以下功能皆需 root 權限。"));
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
 
         Switch developerAdb = new Switch(this);
         developerAdb.setText("啟用 ADB（開發人員選項）");
@@ -1309,7 +1337,7 @@ public class MainActivity extends Activity {
         developerAdb.setEnabled(false);
         box.addView(developerAdb);
         box.addView(detailText("快速控制開發人員選項的「USB 偵錯」開關。關閉後也會中斷無線 ADB。"));
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
 
         Switch fakeAdb = new Switch(this);
         fakeAdb.setText("偽裝 ADB 狀態");
@@ -1321,7 +1349,7 @@ public class MainActivity extends Activity {
         box.addView(detailText("寫入 adb_enabled=2。系統會把大於零的值視為 ADB 已開啟，只能欺騙精確檢查 adb_enabled 是否等於 1 的部分 App。對於會檢查非零值或其它偵錯狀態的 App 無效。"));
         TextView developerAdbStatus = wirelessAdbField(box, "系統狀態", "讀取中...");
 
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
 
         Switch enabled = new Switch(this);
         enabled.setText("啟用無線 ADB");
@@ -1334,7 +1362,7 @@ public class MainActivity extends Activity {
         box.addView(detailText("立即設定 ADB TCP 連接埠並重啟 adbd。開啟後會保留使用者設定；ADB 已開啟時每 5 秒確認一次，未執行時會自動恢復。"));
 
         TextView customPortLabel = text("自訂連接埠", 14, true);
-        customPortLabel.setPadding(0, dp(10), 0, 0);
+        customPortLabel.setPadding(0, dp(FIELD_LABEL_TOP), 0, 0);
         box.addView(customPortLabel);
         EditText customPort = new EditText(this);
         customPort.setText(String.valueOf(prefs.getInt(Config.KEY_WIRELESS_ADB_PORT, Config.DEFAULT_WIRELESS_ADB_PORT)));
@@ -1345,9 +1373,9 @@ public class MainActivity extends Activity {
         customPort.setSelectAllOnFocus(false);
         customPort.setInputType(InputType.TYPE_CLASS_NUMBER);
         customPort.setBackground(cardBackground(CARD_COLOR));
-        customPort.setPadding(dp(12), 0, dp(12), 0);
+        customPort.setPadding(dp(INPUT_PADDING_H), 0, dp(INPUT_PADDING_H), 0);
         LinearLayout.LayoutParams portParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
-        portParams.setMargins(0, dp(4), 0, 0);
+        portParams.setMargins(0, dp(SPACE_XS), 0, 0);
         customPort.setLayoutParams(portParams);
         box.addView(customPort);
 
@@ -1383,7 +1411,7 @@ public class MainActivity extends Activity {
         });
         box.addView(applyPort);
 
-        box.addView(verticalSpace(14));
+        box.addView(verticalSpace(ITEM_GAP));
         Switch adbInstall = new Switch(this);
         adbInstall.setText("允許 ADB 安裝");
         adbInstall.setTextSize(18);
@@ -1871,12 +1899,12 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(12), dp(10), dp(12), dp(10));
+        card.setPadding(dp(CARD_PADDING_H), dp(CARD_PADDING_V), dp(CARD_PADDING_H), dp(CARD_PADDING_V));
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        cardParams.setMargins(0, dp(8), 0, dp(4));
+        cardParams.setMargins(0, dp(CARD_MARGIN_TOP), 0, dp(CARD_MARGIN_BOTTOM));
         card.setLayoutParams(cardParams);
         card.setBackground(cardBackground(selected ? CARD_SELECTED_COLOR : CARD_COLOR));
         card.setClickable(true);
@@ -1893,7 +1921,7 @@ public class MainActivity extends Activity {
             ImageView image = new ImageView(this);
             image.setImageDrawable(icon);
             LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(44), dp(44));
-            imageParams.setMargins(0, 0, dp(12), 0);
+            imageParams.setMargins(0, 0, dp(ICON_GAP), 0);
             image.setLayoutParams(imageParams);
             card.addView(image);
         }
@@ -1912,7 +1940,7 @@ public class MainActivity extends Activity {
         selectedMarker.setTextColor(Color.WHITE);
         selectedMarker.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams markerParams = new LinearLayout.LayoutParams(dp(28), dp(44));
-        markerParams.setMargins(dp(8), 0, 0, 0);
+        markerParams.setMargins(dp(SPACE_S), 0, 0, 0);
         selectedMarker.setLayoutParams(markerParams);
         card.addView(selectedMarker);
         return card;
@@ -1937,7 +1965,7 @@ public class MainActivity extends Activity {
     private LinearLayout assistantTabs() {
         LinearLayout tabs = new LinearLayout(this);
         tabs.setOrientation(LinearLayout.HORIZONTAL);
-        tabs.setPadding(0, dp(12), 0, dp(8));
+        tabs.setPadding(0, dp(SPACE_M), 0, dp(SPACE_S));
         tabs.addView(tabButton("系統動作", 0));
         tabs.addView(tabButton("User App", 1));
         tabs.addView(tabButton("System App", 2));
@@ -1958,7 +1986,7 @@ public class MainActivity extends Activity {
             showAssistantPage();
         });
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), 1f);
-        params.setMargins(dp(4), 0, dp(4), 0);
+        params.setMargins(dp(SPACE_XS), 0, dp(SPACE_XS), 0);
         button.setLayoutParams(params);
         return button;
     }
@@ -2010,12 +2038,12 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(12), dp(10), dp(12), dp(10));
+        card.setPadding(dp(CARD_PADDING_H), dp(CARD_PADDING_V), dp(CARD_PADDING_H), dp(CARD_PADDING_V));
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        cardParams.setMargins(0, dp(8), 0, dp(4));
+        cardParams.setMargins(0, dp(CARD_MARGIN_TOP), 0, dp(CARD_MARGIN_BOTTOM));
         card.setLayoutParams(cardParams);
         card.setBackground(cardBackground(selected ? CARD_SELECTED_COLOR : CARD_COLOR));
         card.setClickable(true);
@@ -2029,7 +2057,7 @@ public class MainActivity extends Activity {
             ImageView image = new ImageView(this);
             image.setImageDrawable(icon);
             LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(44), dp(44));
-            imageParams.setMargins(0, 0, dp(12), 0);
+            imageParams.setMargins(0, 0, dp(ICON_GAP), 0);
             image.setLayoutParams(imageParams);
             card.addView(image);
         } else if (fallbackIconText != null && !fallbackIconText.isEmpty()) {
@@ -2037,7 +2065,7 @@ public class MainActivity extends Activity {
             fallback.setGravity(Gravity.CENTER);
             fallback.setBackground(cardBackground(Color.rgb(42, 48, 58)));
             LinearLayout.LayoutParams fallbackParams = new LinearLayout.LayoutParams(dp(44), dp(44));
-            fallbackParams.setMargins(0, 0, dp(12), 0);
+            fallbackParams.setMargins(0, 0, dp(ICON_GAP), 0);
             fallback.setLayoutParams(fallbackParams);
             card.addView(fallback);
         }
@@ -2058,7 +2086,7 @@ public class MainActivity extends Activity {
         selectedMarker.setTextColor(Color.WHITE);
         selectedMarker.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams markerParams = new LinearLayout.LayoutParams(dp(28), dp(44));
-        markerParams.setMargins(dp(8), 0, 0, 0);
+        markerParams.setMargins(dp(SPACE_S), 0, 0, 0);
         selectedMarker.setLayoutParams(markerParams);
         card.addView(selectedMarker);
 
@@ -2122,7 +2150,7 @@ public class MainActivity extends Activity {
     private void showSettingsDialog() {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(24), dp(8), dp(24), 0);
+        content.setPadding(dp(DIALOG_PADDING_H), dp(DIALOG_PADDING_TOP), dp(DIALOG_PADDING_H), 0);
 
         Switch autoCheck = new Switch(this);
         autoCheck.setText("自動檢測更新");
@@ -2134,7 +2162,7 @@ public class MainActivity extends Activity {
         content.addView(autoCheck);
 
         TextView description = detailText("開啟後，啟動 App 時會檢查 GitHub 最新正式 Release。偵測到新版本時會顯示通知。");
-        description.setPadding(0, 0, 0, dp(12));
+        description.setPadding(0, 0, 0, dp(SPACE_M));
         content.addView(description);
 
         Button checkNow = new Button(this);
@@ -2280,7 +2308,7 @@ public class MainActivity extends Activity {
         content.setText(spannable);
         content.setLinkTextColor(Color.rgb(156, 199, 255));
         content.setMovementMethod(LinkMovementMethod.getInstance());
-        content.setPadding(dp(24), dp(8), dp(24), 0);
+        content.setPadding(dp(DIALOG_PADDING_H), dp(DIALOG_PADDING_TOP), dp(DIALOG_PADDING_H), 0);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("關於")
@@ -2320,7 +2348,7 @@ public class MainActivity extends Activity {
         button.setGravity(Gravity.CENTER);
         button.setMinWidth(0);
         button.setMinimumWidth(0);
-        button.setPadding(dp(16), 0, dp(16), 0);
+        button.setPadding(dp(BUTTON_PADDING_H), 0, dp(BUTTON_PADDING_H), 0);
         button.setBackground(cardBackground(selected ? CARD_SELECTED_COLOR : CARD_COLOR));
     }
 
@@ -2425,14 +2453,14 @@ public class MainActivity extends Activity {
         button.setMinWidth(0);
         button.setMinimumHeight(0);
         button.setMinimumWidth(0);
-        button.setPadding(dp(12), 0, dp(12), 0);
+        button.setPadding(dp(BUTTON_PADDING_H), 0, dp(BUTTON_PADDING_H), 0);
         button.setBackground(cardBackground(selected ? CARD_SELECTED_COLOR : CARD_COLOR));
         if (button.getLayoutParams() == null) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     dp(compact ? 44 : 48)
             );
-            params.setMargins(0, dp(10), 0, 0);
+            params.setMargins(0, dp(ITEM_GAP), 0, 0);
             button.setLayoutParams(params);
         }
     }
@@ -2459,8 +2487,7 @@ public class MainActivity extends Activity {
         return Config.STYLE_DEFAULT;
     }
 
-    /** Extra top spacing before every section title except the first child of a section box. */
-    private static final int SECTION_TITLE_TOP_SPACING_DP = 20;
+    // Extra top spacing before every section title except the first child of a section box (SECTION_TITLE_TOP_SPACING_DP).
 
     private boolean isSectionTitle(View child) {
         if (!(child instanceof TextView)) return false;
@@ -2486,7 +2513,7 @@ public class MainActivity extends Activity {
             }
         };
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(0, dp(18), 0, dp(10));
+        box.setPadding(0, dp(SECTION_PADDING_TOP), 0, dp(SECTION_PADDING_BOTTOM));
         box.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -2515,7 +2542,7 @@ public class MainActivity extends Activity {
 
     private void addDetailField(LinearLayout box, String label, String value) {
         TextView labelView = text(label, 14, true);
-        labelView.setPadding(0, dp(10), 0, 0);
+        labelView.setPadding(0, dp(FIELD_LABEL_TOP), 0, 0);
         box.addView(labelView);
         box.addView(detailText(value));
     }
