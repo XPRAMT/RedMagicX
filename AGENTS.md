@@ -17,6 +17,7 @@
   - `VolumeDialogImplAdapt.getDialogLayoutResId` / `getRowLayoutResId` return the call-site AOSP ids (`volume_dialog_legacy` / `volume_dialog_row`).
   - Skip `MfvVolumeDialogImpl.mfvInitDialog` / `prepareDialog` / MFV expand+ringer updates; route row add/remove to `mDialogRowsView`.
 - Prefs keys `volume_step_enabled` / `volume_step` are unchanged (AudioService hooks in `android`).
+- `VolumeAdjustHook` calls `setStreamVolume` inside `Binder.clearCallingIdentity()`/`restoreCallingIdentity`, so it runs as uid 1000 even when the adjust comes from a third-party app (e.g. Ultra Volume `com.treydev.volume`). Without it, AppOps rejected package "android" under the app uid, `AUDIO_MEDIA_VOLUME` was denied and HardeningEnforcer ignored the call, while the hook still swallowed the original adjust (keys did nothing). Verified against the device services.jar: `HardeningEnforcer.blockVolumeMethod` returns false when `checkCallingOrSelfPermission(MODIFY_AUDIO_SETTINGS_PRIVILEGED)` passes, and `setStreamVolume` uses `Binder.getCallingUid()` for `checkNoteAppOp`. The log records success with `callerUid`, or the full exception stack. Takes effect only after a reboot (android scope).
 - Changing the AOSP volume dialog switch requires restarting SystemUI (or a reboot). Do not reboot automatically.
 - `xposed_scope` already includes `com.android.systemui`.
 

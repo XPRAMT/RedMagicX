@@ -17,6 +17,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -1708,14 +1709,25 @@ public class HookEntry implements IXposedHookLoadPackage {
                 int max = audioManager.getStreamMaxVolume(STREAM_MUSIC);
                 int delta = direction == ADJUST_RAISE ? config.volumeStep : -config.volumeStep;
                 int target = clamp(current + delta, min, max);
+                int callerUid = Binder.getCallingUid();
                 if (target != current) {
-                    audioManager.setStreamVolume(STREAM_MUSIC, target, flags);
+                    // Run as system_server (uid 1000) so AudioService's package/uid appops check
+                    // ("android" belongs to 1000), AUDIO_MEDIA_VOLUME op and HardeningEnforcer
+                    // (MODIFY_AUDIO_SETTINGS_PRIVILEGED via checkCallingOrSelfPermission) all pass,
+                    // regardless of which app (e.g. Ultra Volume) issued the adjust call.
+                    long ident = Binder.clearCallingIdentity();
+                    try {
+                        audioManager.setStreamVolume(STREAM_MUSIC, target, flags);
+                    } finally {
+                        Binder.restoreCallingIdentity(ident);
+                    }
                 }
                 notifyZteAppVolume(param.thisObject, flags);
                 param.setResult(null);
-                log("music volume " + current + " -> " + target + " step=" + config.volumeStep);
+                log("music volume " + current + " -> " + target + " step=" + config.volumeStep
+                        + " callerUid=" + callerUid);
             } catch (Throwable throwable) {
-                log("custom volume step failed: " + throwable);
+                log("custom volume step failed: " + android.util.Log.getStackTraceString(throwable));
             } finally {
                 applyingVolume.remove();
             }
