@@ -103,3 +103,12 @@
 - Boot launcher restore update: `restoreLauncher` first sets HOME to the stock `com.zte.mifavor.launcher/com.android.launcher3.uioverrides.QuickstepLauncher`, waits 1 s, then sets the saved component and runs `am start` on it. Reason: in the full-reboot test on 2026-10-31 20:08 (UTC+8), re-setting the same HOME succeeded but the stock Quickstep still kept the home gesture. The manual switch only worked because the default actually changed.
 - RedMagicOS autolaunch policy must allow RedMagicX (startup management / 自啟動). Otherwise ZBrPolicy logs `BootReceiver ... SKIPPED ... autolaunch policy` for BOOT_COMPLETED and MY_PACKAGE_REPLACED, and nothing runs.
 - A soft reboot (system_server restart; `/proc/stat` btime unchanged) keeps `service.adb.tcp.port`, so it does not prove the wireless ADB restore. The full-reboot test at 2026-10-31 20:08 (UTC+8) passed: `RedMagicX-Boot: wireless adb enabled on port 5555` at 20:09:23.
+
+## AOSP volume dialog (SystemUI) - crash notes (2026-10-31)
+- Code: `AospVolumeHooks.java` (called from `HookEntry.hookAospVolumeDialog`).
+- Crash cause: old hooks skipped `mfvInitDialog`/`prepareDialog`, leaving MFV-only fields null (`mDialogMain`, `mDialogRowsView2`, ringer buttons, expand button). `MfvVolumeDialogImpl.updateRowsH` (from `VolumeDialogImpl.initDialog` at SystemUI start) calls `mDialogMain.setVisibility` -> NPE -> SystemUI crash loop (402 crashes 20:18-20:25, reboot also looped).
+- Fix: `prepareDialog` fills `mDialogMain`/`mDialogRowsView2` with detached dummy FrameLayouts; skip `mfvInitDialog`, `updateExpandedH`, `updateRingerMfv`, `updateRingerTypeface`, `initRingerButtonXPositionsInParent`, `startExpandedAnimation`, `prepareForCollapse`, `updateRowsWidth`; `addRowView`/`removeRowView` use `mDialogRowsView`.
+- Safety net: after-hook on every declared `MfvVolumeDialogImpl` method swallows Throwables while AOSP mode is active (logs once per method).
+- Crash-loop guard: start timestamps in `<systemui deviceProtectedDataDir>/redmagicx_aosp_volume_starts`; >=3 starts in 90 s disables AOSP mode for that process (MFV fallback, logged).
+- Do NOT use `invokeOriginalMethod` on the super `VolumeDialogImpl.updateRowsH`: it dispatches virtually back to the subclass (recursion).
+- Live pref read by hooks: `/data/misc/apexdata/a6a1d3cf-da33-4201-81e9-3d26fa1071c3/prefs/dev.xpramt.redmagicvowifi/module.xml` (`/data/data/<pkg>/shared_prefs/module.xml` is NOT what hooks read). Emergency recovery: set `aospVolumeDialog` to false there.
