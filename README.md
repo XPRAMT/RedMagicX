@@ -50,6 +50,7 @@ Once allowed, RedMagicX restores these about 25 seconds after boot:
 
 - Wireless ADB is re-enabled on the last saved port (if it is enabled on the ADB page).
 - The selected third-party launcher is re-applied (the default Home is switched to the stock launcher and back, so the Home gesture uses the selected launcher). Home may still go to the stock launcher in the first few seconds after boot.
+
 ## LSPosed Scopes
 
 Enable RedMagicX in LSPosed, then select scopes based on the features you use:
