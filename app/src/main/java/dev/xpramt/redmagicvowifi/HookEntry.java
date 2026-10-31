@@ -1781,39 +1781,125 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
 
+
     /**
-     * Force AOSP/legacy volume dialog by making VolumeDialogImplAdapt.enabled() return false.
-     * enabled() lives on ClassAdaptor; only override for VolumeDialogImplAdapt instances so other
-     * MiFavor adapters keep working.
+     * Prefer AOSP/legacy volume layouts without flipping ClassAdaptor.enabled().
+     * Forcing enabled()=false still left MfvVolumeDialogImpl.mfvInitDialog() running; that method
+     * findViewById()s MFV-only widgets (expand / ringer RadioGroup) and NPEs after legacy inflate,
+     * which crashed SystemUI. Keep Adapt.enabled() true and instead:
+     *  - return the AOSP layout ids passed into getDialogLayoutResId / getRowLayoutResId
+     *  - skip MFV-only init / row-panel paths that assume volume_dialog_mfv
      */
     private void hookAospVolumeDialog(XC_LoadPackage.LoadPackageParam lpparam) {
         Class<?> adaptClass = findClassIfExists(
                 "com.zte.adapt.mifavor.volume.VolumeDialogImplAdapt", lpparam.classLoader);
-        if (adaptClass == null) {
-            log("VolumeDialogImplAdapt not found; AOSP volume dialog hook skipped");
-            return;
+        if (adaptClass != null) {
+            try {
+                XposedHelpers.findAndHookMethod(adaptClass, "getDialogLayoutResId", int.class,
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) {
+                                if (Config.loadForHook().aospVolumeDialog) {
+                                    param.setResult(param.args[0]);
+                                }
+                            }
+                        });
+                XposedHelpers.findAndHookMethod(adaptClass, "getRowLayoutResId", int.class,
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) {
+                                if (Config.loadForHook().aospVolumeDialog) {
+                                    param.setResult(param.args[0]);
+                                }
+                            }
+                        });
+                log("AOSP volume dialog layout hooks installed on VolumeDialogImplAdapt");
+            } catch (Throwable throwable) {
+                log("AOSP volume dialog layout hooks failed: " + throwable);
+            }
+        } else {
+            log("VolumeDialogImplAdapt not found; AOSP volume dialog layout hooks skipped");
         }
-        Class<?> adaptorBase = adaptClass.getSuperclass();
-        if (adaptorBase == null) {
-            log("VolumeDialogImplAdapt has no superclass; AOSP volume dialog hook skipped");
+
+        Class<?> mfvImpl = findClassIfExists(
+                "com.zte.feature.volume.MfvVolumeDialogImpl", lpparam.classLoader);
+        if (mfvImpl == null) {
+            log("MfvVolumeDialogImpl not found; AOSP volume dialog MFV skip hooks skipped");
             return;
         }
         try {
-            XposedHelpers.findAndHookMethod(adaptorBase, "enabled", new XC_MethodHook() {
+            XposedHelpers.findAndHookMethod(mfvImpl, "mfvInitDialog", new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    if (param.thisObject == null || !adaptClass.isInstance(param.thisObject)) {
-                        return;
-                    }
-                    Config.Snapshot config = Config.loadForHook();
-                    if (config.aospVolumeDialog) {
-                        param.setResult(false);
+                    if (Config.loadForHook().aospVolumeDialog) {
+                        log("skip MfvVolumeDialogImpl.mfvInitDialog for AOSP volume dialog");
+                        param.setResult(null);
                     }
                 }
             });
-            log("AOSP volume dialog hook installed on " + adaptorBase.getName() + "#enabled");
+            XposedHelpers.findAndHookMethod(mfvImpl, "prepareDialog", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (Config.loadForHook().aospVolumeDialog) {
+                        param.setResult(null);
+                    }
+                }
+            });
+            XposedHelpers.findAndHookMethod(mfvImpl, "addRowView",
+                    "com.android.systemui.volume.VolumeDialogImpl$VolumeRow",
+                    new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) {
+                            if (!Config.loadForHook().aospVolumeDialog) {
+                                return;
+                            }
+                            Object row = param.args[0];
+                            Object view = XposedHelpers.getObjectField(row, "view");
+                            Object rows = XposedHelpers.getObjectField(param.thisObject, "mDialogRowsView");
+                            if (rows instanceof android.view.ViewGroup && view instanceof android.view.View) {
+                                ((android.view.ViewGroup) rows).addView((android.view.View) view);
+                            }
+                            param.setResult(null);
+                        }
+                    });
+            XposedHelpers.findAndHookMethod(mfvImpl, "removeRowView",
+                    "com.android.systemui.volume.VolumeDialogImpl$VolumeRow",
+                    new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) {
+                            if (!Config.loadForHook().aospVolumeDialog) {
+                                return;
+                            }
+                            Object row = param.args[0];
+                            Object view = XposedHelpers.getObjectField(row, "view");
+                            Object rows = XposedHelpers.getObjectField(param.thisObject, "mDialogRowsView");
+                            if (rows instanceof android.view.ViewGroup && view instanceof android.view.View) {
+                                ((android.view.ViewGroup) rows).removeView((android.view.View) view);
+                            }
+                            param.setResult(null);
+                        }
+                    });
+            XposedHelpers.findAndHookMethod(mfvImpl, "updateExpandedH", boolean.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (!Config.loadForHook().aospVolumeDialog) {
+                        return;
+                    }
+                    // MFV expand/ringer RadioGroup is absent in legacy layout; avoid NPE.
+                    param.setResult(null);
+                }
+            });
+            XposedHelpers.findAndHookMethod(mfvImpl, "updateRingerMfv", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (Config.loadForHook().aospVolumeDialog) {
+                        param.setResult(null);
+                    }
+                }
+            });
+            log("AOSP volume dialog MFV skip hooks installed on MfvVolumeDialogImpl");
         } catch (Throwable throwable) {
-            log("AOSP volume dialog hook failed: " + throwable);
+            log("AOSP volume dialog MFV skip hooks failed: " + throwable);
         }
     }
 

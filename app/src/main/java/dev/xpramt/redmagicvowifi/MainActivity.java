@@ -1132,10 +1132,11 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean(Config.KEY_AOSP_VOLUME_DIALOG, isChecked).commit();
             showToast("已寫入 AOSP 音量條開關；需重啟 SystemUI 後生效");
         });
-        box.addView(detailText("開啟後強制 SystemUI 使用 AOSP／legacy 音量條，避開紅魔 MFV 的 ColorSeekBarZTE。"
-                + "可改善音量鍵彈出後短暫無法拖曳、拖曳不順的問題。變更後請重啟 SystemUI。"));
+        box.addView(detailText("開啟後改用 AOSP／legacy 音量條 layout（volume_dialog_legacy + volume_dialog_row），"
+                + "並跳過 MFV 專用初始化，避開 ColorSeekBarZTE。不會再強制 Adapt.enabled()=false。"
+                + "變更後請重啟 SystemUI。"));
         addDetailField(box, "作用進程", "com.android.systemui");
-        addDetailField(box, "攔截方法", "VolumeDialogImplAdapt.enabled");
+        addDetailField(box, "攔截方法", "getDialogLayoutResId / getRowLayoutResId\nmfvInitDialog / prepareDialog");
 
         Switch enabled = new Switch(this);
         enabled.setText("啟用自訂音量步進");

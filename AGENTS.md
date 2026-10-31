@@ -11,10 +11,15 @@
 ## Volume Bar Page
 
 - Home card title is `音量條` (renamed from `音量步進調整`).
-- Prefs key `aosp_volume_dialog` (default **off**): when enabled, the LSPosed hook in `com.android.systemui` forces `VolumeDialogImplAdapt` (via `ClassAdaptor.enabled()` with an instanceof guard) to return false so SystemUI uses AOSP/`volume_dialog_legacy` + `volume_dialog_row` instead of MFV/`ColorSeekBarZTE`.
-- Prefs keys `volume_step_enabled` / `volume_step` are unchanged: custom media volume key step still hooks `AudioService` in the `android` process.
-- Changing the AOSP volume dialog switch requires restarting SystemUI (or a reboot) before it takes effect. Do not reboot automatically; tell the user.
+- Prefs key `aosp_volume_dialog` (default **off**).
+- **Do not** force `ClassAdaptor.enabled()` / `VolumeDialogImplAdapt.enabled()` to false. On NX809J the live controller is `MfvVolumeDialogImpl`; after a legacy inflate, `mfvInitDialog()` still `findViewById`s MFV-only widgets and NPEs, which crashed SystemUI.
+- Safe path when the switch is on (SystemUI scope):
+  - `VolumeDialogImplAdapt.getDialogLayoutResId` / `getRowLayoutResId` return the call-site AOSP ids (`volume_dialog_legacy` / `volume_dialog_row`).
+  - Skip `MfvVolumeDialogImpl.mfvInitDialog` / `prepareDialog` / MFV expand+ringer updates; route row add/remove to `mDialogRowsView`.
+- Prefs keys `volume_step_enabled` / `volume_step` are unchanged (AudioService hooks in `android`).
+- Changing the AOSP volume dialog switch requires restarting SystemUI (or a reboot). Do not reboot automatically.
 - `xposed_scope` already includes `com.android.systemui`.
+
 
 ## Other Settings Page
 
