@@ -40,6 +40,16 @@ Select RedMagicX scopes in LSPosed:
 
 <img src="img/選擇lsposed作用域.jpg" alt="Select LSPosed scopes" width="360">
 
+### Power Management (required)
+
+In RedMagicOS system Power Management (電源管理), open RedMagicX and set Auto-start (自行啟動), Associated start (連帶啟動) and Background running (背景執行) all to Allow (允許).
+
+Otherwise, after a reboot the third-party launcher does not take effect automatically (Home goes back to the stock launcher), and wireless ADB does not start automatically.
+
+Once allowed, RedMagicX restores these about 25 seconds after boot:
+
+- Wireless ADB is re-enabled on the last saved port (if it is enabled on the ADB page).
+- The selected third-party launcher is re-applied (the default Home is switched to the stock launcher and back, so the Home gesture uses the selected launcher). Home may still go to the stock launcher in the first few seconds after boot.
 ## LSPosed Scopes
 
 Enable RedMagicX in LSPosed, then select scopes based on the features you use:
