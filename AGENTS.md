@@ -8,6 +8,8 @@
 - The application version remains `0.4.0` unless a release request changes it.
 
 
+- UI spacing: `sectionBox()` returns a LinearLayout whose `addView` adds a 20dp top margin (`SECTION_TITLE_TOP_SPACING_DP`) before every section title (bold TextView/Switch >= 17sp) except the box's first child. All pages get it centrally.
+
 ## Volume Bar Page
 
 - Home card title is `音量條` (renamed from `音量步進調整`).

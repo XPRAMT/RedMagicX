@@ -2459,8 +2459,32 @@ public class MainActivity extends Activity {
         return Config.STYLE_DEFAULT;
     }
 
+    /** Extra top spacing before every section title except the first child of a section box. */
+    private static final int SECTION_TITLE_TOP_SPACING_DP = 20;
+
+    private boolean isSectionTitle(View child) {
+        if (!(child instanceof TextView)) return false;
+        TextView tv = (TextView) child;
+        android.graphics.Typeface tf = tv.getTypeface();
+        boolean bold = tf != null && tf.isBold();
+        float sp = tv.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
+        return bold && sp >= 17f;
+    }
+
     private LinearLayout sectionBox() {
-        LinearLayout box = new LinearLayout(this);
+        LinearLayout box = new LinearLayout(this) {
+            @Override
+            public void addView(View child, int index, ViewGroup.LayoutParams params) {
+                if (getChildCount() > 0 && isSectionTitle(child)) {
+                    LinearLayout.LayoutParams lp = params instanceof LinearLayout.LayoutParams
+                            ? (LinearLayout.LayoutParams) params
+                            : new LinearLayout.LayoutParams(params);
+                    lp.topMargin = Math.max(lp.topMargin, dp(SECTION_TITLE_TOP_SPACING_DP));
+                    params = lp;
+                }
+                super.addView(child, index, params);
+            }
+        };
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(0, dp(18), 0, dp(10));
         box.setLayoutParams(new LinearLayout.LayoutParams(
