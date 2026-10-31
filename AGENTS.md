@@ -19,7 +19,7 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 - Sizes (48dp touch targets, 44dp icons, corner radius 8) are not spacing and stay literal. HookEntry's injected SystemUI panel has its own dp values, outside this spec.
 ## Volume Bar Page
 
-- Page order: 啟用自訂音量步進 (+ seekbar) → 音量變化通知即時送達 → 使用AOSP音量條 (bottom) → 重啟 SystemUI button. The button shows a confirm dialog, then on a background thread runs `su -c 'p=$(pidof com.android.systemui); [ -z $p ] && exit 2; kill $p'` and Toasts the result (exit code + output on failure). Agents must never press it or run that command without the user's explicit yes.
+- Page order: 啟用自訂音量步進 (+ seekbar) → 音量變化通知即時送達 → 使用AOSP音量條 (bottom) → 重啟 SystemUI button. The button (no confirm dialog) immediately runs on a background thread `su -c 'p=$(pidof com.android.systemui); [ -z $p ] && exit 2; kill $p'` and Toasts the result (exit code + output on failure). Agents must never press it or run that command without the user's explicit yes.
 
 - Home card title is `音量條` (renamed from `音量步進調整`).
 - Prefs key `aosp_volume_dialog` (default **off**).

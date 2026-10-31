@@ -1238,19 +1238,9 @@ public class MainActivity extends Activity {
         Button restartSystemUi = new Button(this);
         restartSystemUi.setText("重啟 SystemUI");
         styleButton(restartSystemUi, false, false);
-        restartSystemUi.setOnClickListener(view -> confirmRestartSystemUi());
+        restartSystemUi.setOnClickListener(view -> restartSystemUi());
         box.addView(restartSystemUi);
         return box;
-    }
-
-    private void confirmRestartSystemUi() {
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("重啟 SystemUI")
-                .setMessage("將以 root 重啟 SystemUI，狀態列與導覽列會暫時消失數秒後自動恢復。確定要重啟嗎？")
-                .setPositiveButton("重啟", (d, which) -> restartSystemUi())
-                .setNegativeButton("取消", null)
-                .create();
-        showThemedDialog(dialog);
     }
 
     private void restartSystemUi() {
