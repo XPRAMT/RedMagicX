@@ -91,3 +91,10 @@
 - Never commit or attach vendor files (stock or patched `.so`, stock or generated config). The installer builds the patched libraries and the mix-port config on the phone from its own files; `original/` is git-ignored for files pulled from the phone.
 - Supported: model NX809J on Android 16 (checked by the installer and at boot). Tested only on RedMagicOS 11.0.22 (incremental `20260204.095106`); the installer finds patch sites by instruction bytes and aborts when they are not found as expected.
 - The development history, the investigation data and the measurement tools live outside this repository (workspace `D:\Android\ZTE\VoWiFI`, own Git repository `ksu-hires-unlocker`).
+
+
+## Wireless ADB Boot Restore
+
+- The ADB page enables wireless ADB through root: `su -c "setprop service.adb.tcp.port <port>; setprop ctl.restart adbd"` (no Xposed hook). Prefs `wireless_adb_enabled` / `wireless_adb_port` (default 5555).
+- `BootReceiver` (BOOT_COMPLETED / QUICKBOOT_POWERON / MY_PACKAGE_REPLACED, `RECEIVE_BOOT_COMPLETED`) reapplies the saved setting on every boot when `wireless_adb_enabled` is true; retries su up to 6 times, 3 s apart. Always on, no UI toggle (user request).
+- Verified on NX809J 2026-10-31: after `adb reboot`, `adb connect 192.168.1.10:5555` worked ~1 min after boot without opening the app.
