@@ -1023,8 +1023,59 @@ public class HookEntry implements IXposedHookLoadPackage {
             XposedBridge.hookAllMethods(audioService, "adjustStreamVolume", new VolumeAdjustHook());
             XposedBridge.hookAllMethods(audioService, "adjustSuggestedStreamVolume", new VolumeAdjustHook());
             log("AudioService volume step hooks installed");
+            hookVolumeChangedBroadcastDelay(lpparam);
         } catch (Throwable throwable) {
             log("AudioService hook failed: " + throwable);
+        }
+    }
+
+private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLogged =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /**
+     * BroadcastProcessQueue.updateRunnableAt() gives non-foreground, non-cached receivers
+     * (e.g. Ultra Volume at procstate 5) DELAY_NORMAL_MILLIS (500 ms, reason 2 = NORMAL).
+     * AudioService sends VOLUME_CHANGED_ACTION with deferralPolicy UNTIL_ACTIVE, so
+     * FLAG_RECEIVER_FOREGROUND alone does not help (it is counted in mCountForegroundDeferred).
+     * Only for VOLUME_CHANGED_ACTION and only when the reason is NORMAL, make it runnable at
+     * enqueue time. Cached/frozen deferral, delivery-group (most recent) policy and all other
+     * broadcasts are untouched.
+     */
+    private void hookVolumeChangedBroadcastDelay(XC_LoadPackage.LoadPackageParam lpparam) {
+        try {
+            Class<?> queueClass = XposedHelpers.findClass("com.android.server.am.BroadcastProcessQueue", lpparam.classLoader);
+            XposedBridge.hookAllMethods(queueClass, "updateRunnableAt", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    try {
+                        Object queue = param.thisObject;
+                        if (XposedHelpers.getIntField(queue, "mRunnableAtReason") != 2) {
+                            return;
+                        }
+                        Object args = XposedHelpers.callMethod(queue, "peekNextBroadcast");
+                        if (args == null) {
+                            return;
+                        }
+                        Object record = XposedHelpers.getObjectField(args, "arg1");
+                        Object intent = record == null ? null : XposedHelpers.getObjectField(record, "intent");
+                        if (!(intent instanceof Intent)
+                                || !"android.media.VOLUME_CHANGED_ACTION".equals(((Intent) intent).getAction())) {
+                            return;
+                        }
+                        long enqueueTime = XposedHelpers.getLongField(record, "enqueueTime");
+                        XposedHelpers.setLongField(queue, "mRunnableAt", enqueueTime);
+                        if (volumeBroadcastUndelayLogged.compareAndSet(false, true)) {
+                            log("VOLUME_CHANGED_ACTION normal delay removed (first applied) for "
+                                    + XposedHelpers.getObjectField(queue, "processName"));
+                        }
+                    } catch (Throwable throwable) {
+                        // leave original runnableAt untouched
+                    }
+                }
+            });
+            log("VOLUME_CHANGED_ACTION broadcast undelay hook installed");
+        } catch (Throwable throwable) {
+            log("VOLUME_CHANGED_ACTION broadcast undelay hook failed: " + throwable);
         }
     }
 
