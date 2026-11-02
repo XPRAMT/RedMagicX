@@ -1789,7 +1789,13 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
+    // Cleared after the first failure so ROMs without the ZTE field (e.g. HyperOS) skip it silently.
+    private volatile boolean zteAppVolumeSupported = true;
+
     private void notifyZteAppVolume(Object audioService, int flags) {
+        if (!zteAppVolumeSupported) {
+            return;
+        }
         try {
             Object zAudioService = XposedHelpers.getObjectField(audioService, "mZAudioService");
             Object volumeController = XposedHelpers.getObjectField(audioService, "mVolumeController");
@@ -1798,7 +1804,8 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
                 XposedHelpers.callMethod(zAudioService, "notifyShowAppVolume", controller, flags);
             }
         } catch (Throwable throwable) {
-            log("ZTE app volume notification unavailable: " + throwable);
+            zteAppVolumeSupported = false;
+            log("ZTE app volume notification unavailable, skipping from now on: " + throwable);
         }
     }
 
