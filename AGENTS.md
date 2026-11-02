@@ -5,7 +5,7 @@
 - Android application and LSPosed module for RedMagicOS features.
 - Main UI is implemented programmatically in `app/src/main/java/dev/xpramt/redmagicvowifi/MainActivity.java`.
 - Current feature pages include VoWiFi UI, volume bar (step + AOSP dialog), assistant gesture, launcher, theme, ADB control, quick entry, Bluetooth receiver, and other system settings.
-- The application version remains `0.5.0` unless a release request changes it.
+- The application version remains `0.5.1` unless a release request changes it.
 
 
 ## UI Spacing

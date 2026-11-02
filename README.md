@@ -4,9 +4,9 @@
 
 RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, Bluetooth receiver mode, bottom gesture-bar assistant redirection, third-party launcher control, ADB control, and quick access to engineering mode and phone information.
 
-Current version: `0.5.0`
+Current version: `0.5.1`
 
-Tested device: RedMagic / Nubia NX809J China ROM. Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
+Tested device: RedMagic / Nubia NX809J China ROM. The volume step feature has also been checked on a Xiaomi Pad 6 (HyperOS 3, Android 15, Vector framework). Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
 
 <img src="img/app截圖main.jpg" alt="RedMagicX main screen" width="360">
 
@@ -103,6 +103,7 @@ Customizes how many media-volume levels one hardware volume-key press changes.
 - Hook target: `com.android.server.audio.AudioService`
 - Hooked behavior: media-volume key up/down step size
 - Instant volume-change notifications (on by default): background volume-panel apps (such as Ultra Volume) receive volume-change notifications immediately instead of being delayed about 0.5 s by the system; only affects volume-change notifications (`VOLUME_CHANGED_ACTION`); reboot required after changing
+- Xiaomi / HyperOS: the media stream has 150 levels and the stock key press changes 10 of them, so the step value `1` to `10` is in 1/150 units there (the page shows the real number of levels). Tested on a Xiaomi Pad 6.
 - Activation: enable the switch, set the step value, then reboot so system_server loads the LSPosed module
 
 ### Bluetooth Receiver

@@ -4,9 +4,9 @@
 
 RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、藍牙接收器模式、小白條助手手勢替換、第三方啟動器控制、ADB 控制，以及工程模式與手機資訊快速入口。
 
-目前版本：`0.5.0`
+目前版本：`0.5.1`
 
-測試裝置：RedMagic / Nubia NX809J 中國版 ROM。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
+測試裝置：RedMagic / Nubia NX809J 中國版 ROM。音量步進功能另在小米平板 6（HyperOS 3、Android 15、Vector 框架）上確認可用。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
 
 <img src="img/app截圖main.jpg" alt="RedMagicX 主畫面" width="360">
 
@@ -103,6 +103,7 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 - Hook 目標：`com.android.server.audio.AudioService`
 - 修改行為：媒體音量鍵升降步進
 - 音量變化通知即時送達（預設開啟）：讓背景的音量面板 App（如 Ultra Volume）即時收到音量變化通知，不再被系統延後約 0.5 秒；只影響音量變化通知（`VOLUME_CHANGED_ACTION`）；修改後需重新開機生效
+- 小米 / HyperOS：媒體音量共 150 格，原生按一次音量鍵走 10 格，所以步進值 `1` 到 `10` 在那裡是 1/150 為單位（頁面會顯示實際格數）。已在小米平板 6 測試。
 - 生效方式：開啟功能並設定步進值後，重啟手機讓 system_server 載入 LSPosed 模組
 
 ### 藍牙接收器
