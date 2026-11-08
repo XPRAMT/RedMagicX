@@ -4,7 +4,7 @@
 
 RedMagicX 是非官方 RedMagic / Nubia 系統調整工具，支援 LSPosed、root、Shizuku 使用情境。主要改進或解決中國版 ROM UI 行為：VoWiFi UI、媒體音量鍵步進、藍牙接收器模式、小白條助手手勢替換、第三方啟動器控制、ADB 控制，以及工程模式與手機資訊快速入口。
 
-目前版本：`0.5.1`
+目前版本：`0.5.2`
 
 測試裝置：RedMagic / Nubia NX809J 中國版 ROM。音量步進功能另在小米平板 6（HyperOS 3、Android 15、Vector 框架）上確認可用。其它 RedMagic / Nubia 機型尚未測試，但若 ROM 使用相同 ZTE 類別與屬性，理論上可能可用。
 
@@ -63,7 +63,7 @@ Root 只用於需要執行 shell 指令的動作，例如重啟 Settings/SystemU
 | 魔姬手勢替換       | `com.android.systemui`                        |
 | 第三方啟動器最近任務隱藏 | `com.zte.mifavor.launcher`                    |
 
-設定透過 LSPosed `XSharedPreferences` 保存。若目標進程在修改設定前已經載入，請使用 App 內提供的重啟按鈕重啟相關進程；若目標是 `android`，則需要重啟手機。
+設定保存在 App 自己的儲存空間，並同步一份到 LSPosed 的偏好設定。掛鉤優先讀 LSPosed 的副本，副本不存在時會直接向 App 取得，所以更換或重裝 LSPosed 框架不會丟失設定（開啟一次 App 即可補回 LSPosed 的副本）。若目標進程在修改設定前已經載入，請使用 App 內提供的重啟按鈕重啟相關進程；若目標是 `android`，則需要重啟手機。
 
 ## 功能
 

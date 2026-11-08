@@ -4,7 +4,7 @@
 
 RedMagicX is an unofficial RedMagic / Nubia tweak app for LSPosed, root, and Shizuku workflows. It mainly improves or solves China ROM UI behavior: VoWiFi UI, media volume-key step size, Bluetooth receiver mode, bottom gesture-bar assistant redirection, third-party launcher control, ADB control, and quick access to engineering mode and phone information.
 
-Current version: `0.5.1`
+Current version: `0.5.2`
 
 Tested device: RedMagic / Nubia NX809J China ROM. The volume step feature has also been checked on a Xiaomi Pad 6 (HyperOS 3, Android 15, Vector framework). Other RedMagic / Nubia models have not been tested, but may work if their ROM uses the same ZTE classes and properties.
 
@@ -63,7 +63,7 @@ Enable RedMagicX in LSPosed, then select scopes based on the features you use:
 | Assistant Gesture Redirect | `com.android.systemui` |
 | Third-Party Launcher recent-task hiding | `com.zte.mifavor.launcher` |
 
-Settings are saved with LSPosed `XSharedPreferences`. If a target process already loaded before a setting change, restart the related process from the app when available; if the target is `android`, reboot the phone.
+Settings are kept in the app's own storage and mirrored to LSPosed's preferences. Hooks read LSPosed's copy and, when it is missing, ask the app directly, so replacing or reinstalling the LSPosed framework does not lose your settings (open the app once to restore LSPosed's copy). If a target process already loaded before a setting change, restart the related process from the app when available; if the target is `android`, reboot the phone.
 
 ## Features
 
