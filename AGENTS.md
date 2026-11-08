@@ -34,6 +34,15 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 - `xposed_scope` already includes `com.android.systemui`.
 
 
+## Settings Storage (framework independent)
+
+- **Source of truth: the app's own file** `<app files>/settings.json`, implemented by `FilePrefs` (a `SharedPreferences` backed by atomic JSON writes). It lives in `filesDir`, which no framework touches. `Config.appPrefs()` returns it; every page, receiver and the provider use it.
+- **Framework copy (mirror):** on every committed change, and once when the app opens it, `Config.syncOfficial` makes the framework's `module` preferences (legacy "New XSharedPreferences", `MODE_WORLD_READABLE`) equal to the app's. The app wins; a missing or different copy is overwritten. A framework that does not offer the redirect makes this a no-op.
+- **Hook side:** `Config.hookPrefs()` reads the framework copy (`XSharedPreferences`) when it exists and is non-empty, otherwise asks the app through `ThemeConfigProvider` method `get_all` (`ProviderPrefs`: cached, refreshed every 3 s in the background, never blocks `system_server`; other processes wait at most 1.5 s for the first answer). Replacing or reinstalling the framework therefore does not lose settings, and the hooks keep working before the app is opened again.
+- **One-time import** (`Config.importOlderCopy`, only when `settings.json` does not exist yet): from the framework copy or from `shared_prefs/module.xml`, whichever has more keys (the framework copy wins a tie). `shared_prefs/module.xml` is parsed straight from the file, because while a framework redirects the preferences folder even a private `getSharedPreferences` call is served from the framework's folder.
+- Why: a framework replacement (Vector to LSPosed, or a reinstall: LSPosed's `uninstall.sh` runs `rm -rf /data/adb/lspd`) changes the framework folder (`/data/misc/apexdata/<random uuid>/prefs/...`), so settings kept only there were lost. LSPosed's modern storage (Remote Preferences in its database, Remote Files in `/data/adb/lspd/modules/...`) is removed the same way and needs the whole module rewritten for libxposed API 101+, so it is not used.
+- Verified on 2026-11-09: NX809J (LSPosed 2.2.1) and Xiaomi Pad 6 (LSPosed 2.0.2) import their real values; with the framework copy removed, `com.android.settings` still loaded `wfc=true icon=true style=gen_bd volumeStep=true/5` through the provider. Not yet verified after the change: `system_server` and SystemUI load the new code only after a reboot / SystemUI restart.
+
 ## Other Settings Page
 
 - Home page includes an `其它` card below `快速入口`.
@@ -121,4 +130,4 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 - Safety net: after-hook on every declared `MfvVolumeDialogImpl` method swallows Throwables while AOSP mode is active (logs once per method).
 - Crash-loop guard: start timestamps in `<systemui deviceProtectedDataDir>/redmagicx_aosp_volume_starts`; >=3 starts in 90 s disables AOSP mode for that process (MFV fallback, logged).
 - Do NOT use `invokeOriginalMethod` on the super `VolumeDialogImpl.updateRowsH`: it dispatches virtually back to the subclass (recursion).
-- Live pref read by hooks: `/data/misc/apexdata/a6a1d3cf-da33-4201-81e9-3d26fa1071c3/prefs/dev.xpramt.redmagicvowifi/module.xml` (`/data/data/<pkg>/shared_prefs/module.xml` is NOT what hooks read). Emergency recovery: set `aospVolumeDialog` to false there.
+- Hooks no longer depend on the framework's folder for the settings; see "Settings Storage" above. Emergency recovery for the AOSP volume dialog: set `aosp_volume_dialog` to false in the app's own `files/settings.json` (and in the framework copy, if there is one).
