@@ -3,11 +3,15 @@ package dev.xpramt.redmagicvowifi;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.io.File;
+import java.util.Map;
+
 import de.robv.android.xposed.XSharedPreferences;
 
 final class Config {
     static final String PACKAGE_NAME = "dev.xpramt.redmagicvowifi";
     static final String PREFS_NAME = "module";
+    static final String OWN_FILE_NAME = "settings.json";
 
     static final String KEY_ENABLE_WFC_SETTINGS = "enable_wfc_settings";
     static final String KEY_ENABLE_STATUS_ICON = "enable_status_icon";
@@ -72,28 +76,115 @@ final class Config {
     private Config() {
     }
 
-    static SharedPreferences appPrefs(Context context) {
-        try {
-            return context.getSharedPreferences(PREFS_NAME, Context.MODE_WORLD_READABLE);
-        } catch (SecurityException exception) {
-            return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    private static FilePrefs ownPrefs;
+
+    /**
+     * The app's own settings: a JSON file in the app's private files folder, which no framework
+     * touches. This is the source of truth. The framework's copy (see {@link #syncOfficial}) is
+     * only a mirror of it for the hooks.
+     */
+    static synchronized SharedPreferences appPrefs(Context context) {
+        if (ownPrefs == null) {
+            final Context app = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+            File file = new File(app.getFilesDir(), OWN_FILE_NAME);
+            boolean first = !file.isFile() || file.length() == 0;
+            FilePrefs created = new FilePrefs(file, snapshot -> syncOfficial(app, snapshot));
+            if (first) {
+                importOlderCopy(app, created);
+            }
+            ownPrefs = created;
+            // The framework copy may be missing (a replaced framework): copy the app's values over.
+            syncOfficial(app, created.copyOfAll());
         }
+        return ownPrefs;
+    }
+
+    /**
+     * Once, when the app has no file of its own yet: take over an older copy of the settings. Two
+     * older copies can exist: the framework's (shown by the settings page while the framework
+     * redirected the preferences folder) and the plain {@code shared_prefs/module.xml}. The one with
+     * more keys wins, and the framework's wins a tie, because a copy that only holds defaults is
+     * smaller than one the user filled in.
+     */
+    private static void importOlderCopy(Context app, FilePrefs target) {
+        Map<String, ?> framework = null;
+        try {
+            framework = app.getSharedPreferences(PREFS_NAME, Context.MODE_WORLD_READABLE).getAll();
+        } catch (RuntimeException exception) {
+            // The framework does not offer the redirect right now.
+        }
+        File xml = new File(app.getApplicationInfo().dataDir, "shared_prefs/" + PREFS_NAME + ".xml");
+        Map<String, ?> plain = FilePrefs.readLegacyXml(xml);
+        int frameworkKeys = framework == null ? 0 : framework.size();
+        Map<String, ?> chosen = plain.size() > frameworkKeys ? plain : framework;
+        android.util.Log.i("RedMagicX", "import: framework copy " + frameworkKeys + " keys, shared_prefs xml "
+                + plain.size() + " keys -> " + (chosen == plain ? "xml" : "framework"));
+        if (chosen != null && !chosen.isEmpty()) {
+            target.replaceAll(chosen);
+        }
+    }
+
+    /**
+     * Makes the framework's copy equal to the app's. Returns false when this framework has no such
+     * copy to write (it dropped the legacy redirect); the hooks then ask the app through its provider.
+     */
+    static boolean syncOfficial(Context context, Map<String, ?> values) {
+        try {
+            SharedPreferences official = context.getSharedPreferences(PREFS_NAME, Context.MODE_WORLD_READABLE);
+            if (official.getAll().equals(values)) {
+                return true;
+            }
+            SharedPreferences.Editor editor = official.edit();
+            editor.clear();
+            for (Map.Entry<String, ?> item : values.entrySet()) {
+                Object value = item.getValue();
+                if (value instanceof Boolean) {
+                    editor.putBoolean(item.getKey(), (Boolean) value);
+                } else if (value instanceof Integer) {
+                    editor.putInt(item.getKey(), (Integer) value);
+                } else if (value instanceof Long) {
+                    editor.putLong(item.getKey(), (Long) value);
+                } else if (value instanceof Float) {
+                    editor.putFloat(item.getKey(), (Float) value);
+                } else if (value instanceof String) {
+                    editor.putString(item.getKey(), (String) value);
+                }
+            }
+            return editor.commit();
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    /**
+     * What a hooked process reads. The framework's copy when it has one; otherwise the app's own
+     * values through the provider; otherwise an empty set (every default).
+     */
+    static SharedPreferences hookPrefs() {
+        XSharedPreferences official = new XSharedPreferences(PACKAGE_NAME, PREFS_NAME);
+        try {
+            official.reload();
+            if (official.getFile() != null && official.getFile().canRead() && !official.getAll().isEmpty()) {
+                return official;
+            }
+        } catch (Throwable ignored) {
+            // Fall through to the app's own copy.
+        }
+        SharedPreferences fromApp = ProviderPrefs.get();
+        return fromApp != null ? fromApp : official;
     }
 
     /** Default true; any failure to read the pref is treated as true. */
     static boolean loadVolumeBroadcastUndelayForHook() {
         try {
-            XSharedPreferences prefs = new XSharedPreferences(PACKAGE_NAME, PREFS_NAME);
-            prefs.reload();
-            return prefs.getBoolean(KEY_VOLUME_BROADCAST_UNDELAY, true);
+            return hookPrefs().getBoolean(KEY_VOLUME_BROADCAST_UNDELAY, true);
         } catch (Throwable t) {
             return true;
         }
     }
 
     static Snapshot loadForHook() {
-        XSharedPreferences prefs = new XSharedPreferences(PACKAGE_NAME, PREFS_NAME);
-        prefs.reload();
+        SharedPreferences prefs = hookPrefs();
         return new Snapshot(
                 prefs.getBoolean(KEY_ENABLE_WFC_SETTINGS, false),
                 prefs.getBoolean(KEY_ENABLE_STATUS_ICON, false),

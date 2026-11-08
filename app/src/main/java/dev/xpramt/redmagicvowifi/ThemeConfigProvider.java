@@ -10,6 +10,8 @@ import android.os.Bundle;
 public class ThemeConfigProvider extends ContentProvider {
     static final String AUTHORITY = Config.PACKAGE_NAME + ".themeconfig";
     static final String METHOD_SET_SELECTION = "set_selection";
+    /** Every setting, with its type, for hooked processes whose framework copy is missing. */
+    static final String METHOD_GET_ALL = "get_all";
 
     @Override
     public boolean onCreate() {
@@ -18,6 +20,24 @@ public class ThemeConfigProvider extends ContentProvider {
 
     @Override
     public Bundle call(String method, String arg, Bundle extras) {
+        if (METHOD_GET_ALL.equals(method) && getContext() != null) {
+            Bundle all = new Bundle();
+            for (java.util.Map.Entry<String, ?> item : Config.appPrefs(getContext()).getAll().entrySet()) {
+                Object value = item.getValue();
+                if (value instanceof Boolean) {
+                    all.putBoolean(item.getKey(), (Boolean) value);
+                } else if (value instanceof Integer) {
+                    all.putInt(item.getKey(), (Integer) value);
+                } else if (value instanceof Long) {
+                    all.putLong(item.getKey(), (Long) value);
+                } else if (value instanceof Float) {
+                    all.putFloat(item.getKey(), (Float) value);
+                } else if (value instanceof String) {
+                    all.putString(item.getKey(), (String) value);
+                }
+            }
+            return all;
+        }
         if (!METHOD_SET_SELECTION.equals(method) || extras == null || getContext() == null) {
             return Bundle.EMPTY;
         }
