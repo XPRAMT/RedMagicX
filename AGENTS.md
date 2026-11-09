@@ -42,6 +42,14 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 - Build: AGP 9.2.1, Gradle 9.7.1, compileSdk 37 (libxposed 102 requires it), Java 17; `compileOnly io.github.libxposed:api:102.0.0`, `implementation io.github.libxposed:service:102.0.0`.
 - The module app is no longer hooked by itself.
 
+## Hot reload (API 102)
+
+- `module.prop` has `autoHotReload=true`: installing a new APK reloads the module in every hooked process without restarting it (verified 2026-11-10 on NX809J, LSPosed 2.2.1: `system`, systemui, settings, launcher, bluetooth, beautifyadapter reloaded within 50 ms of `adb install -r`, all `hooks reinstalled`, no errors). A process that is not running (for example `com.zte.beautify`) simply loads the new code at its next start.
+- `HookEntry.onHotReloading` keeps every hooked package (name + class loader, JDK types only) in `setSavedInstanceState`, stops `ProviderPrefs`' thread and returns true (false when nothing was hooked yet). `onHotReloaded` calls `super` (unhooks the old generation), re-inits `Xp`/`Config` and reinstalls the hooks for each saved package (`Xp.hotReloading` is true meanwhile so a reload is not counted as a SystemUI start by the AOSP volume crash-loop guard).
+- Every log line starts with `[<build marker>]` (`Config.BUILD_MARKER` = `BuildConfig.BUILD_MARKER`, a per-build timestamp). After a reload no line without the new marker may appear; one without it means an old hook was not unhooked.
+- Manual trigger (adb shell / root only): `content call --uri content://dev.xpramt.redmagicvowifi.themeconfig --method hot_reload --arg <process name>`; the result lists every hooked target and its state (`UP_TO_DATE`/`STALE`). The first install of the hot-reload-capable build needs one restart of each target process (system_server: soft reboot) because the old code has no reload callbacks.
+- Not covered by a hot reload: the Bluetooth role (receiver / source) is decided when the Bluetooth process starts; a reload reinstalls the hooks but does not switch the mode. Not tested: repeated reloads in a row, a reload while a hooked call is running, the Xiaomi Pad.
+
 ## Settings Storage (framework independent)
 
 - **Source of truth: the app's own file** `<app files>/settings.json`, implemented by `FilePrefs` (a `SharedPreferences` backed by atomic JSON writes). It lives in `filesDir`, which no framework touches. `Config.appPrefs()` returns it; every page, receiver and the provider use it.

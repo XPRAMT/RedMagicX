@@ -60,6 +60,11 @@ final class ProviderPrefs {
         return data == null ? null : new MapPrefs(data);
     }
 
+    /** Hot reload: the old generation stops its background thread. */
+    static void shutdown() {
+        EXECUTOR.shutdown();
+    }
+
     /** No settings at all: every default. */
     static SharedPreferences empty() {
         return new MapPrefs(new HashMap<>());

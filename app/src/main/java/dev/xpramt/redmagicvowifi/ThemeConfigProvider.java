@@ -12,6 +12,8 @@ public class ThemeConfigProvider extends ContentProvider {
     static final String METHOD_SET_SELECTION = "set_selection";
     /** Every setting, with its type, for hooked processes whose framework copy is missing. */
     static final String METHOD_GET_ALL = "get_all";
+    /** Experiment, adb shell / root only: hot-reload the module in the process named by arg. */
+    static final String METHOD_HOT_RELOAD = "hot_reload";
 
     @Override
     public boolean onCreate() {
@@ -25,6 +27,13 @@ public class ThemeConfigProvider extends ContentProvider {
 
     @Override
     public Bundle call(String method, String arg, Bundle extras) {
+        if (METHOD_HOT_RELOAD.equals(method) && arg != null) {
+            int uid = android.os.Binder.getCallingUid();
+            Bundle answer = new Bundle();
+            answer.putString("result", uid == 2000 || uid == 0
+                    ? FrameworkSync.hotReload(arg) : "denied for uid " + uid);
+            return answer;
+        }
         if (METHOD_GET_ALL.equals(method) && getContext() != null) {
             Bundle all = new Bundle();
             for (java.util.Map.Entry<String, ?> item : Config.appPrefs(getContext()).getAll().entrySet()) {

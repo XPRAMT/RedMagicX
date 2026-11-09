@@ -80,7 +80,7 @@ public class HookEntry extends XposedModule {
     public void onModuleLoaded(ModuleLoadedParam param) {
         Xp.init(this);
         Config.useRemotePrefs(this);
-        Xp.log("module loaded in " + param.getProcessName() + " api=" + getApiVersion()
+        Xp.log("module loaded in " + param.getProcessName() + " marker=" + Config.BUILD_MARKER + " api=" + getApiVersion()
                 + " framework=" + getFrameworkName() + " " + getFrameworkVersion()
                 + " systemServer=" + param.isSystemServer());
     }
@@ -88,14 +88,71 @@ public class HookEntry extends XposedModule {
     /** system_server: the former "android" scope. */
     @Override
     public void onSystemServerStarting(SystemServerStartingParam param) {
-        Target target = new Target(ANDROID, param.getClassLoader(), null);
-        hookAudioService(target);
-        hookRecentTasksFilter(target);
+        installSystemServerHooks(new Target(ANDROID, param.getClassLoader(), null));
     }
 
     @Override
     public void onPackageReady(PackageReadyParam param) {
         handlePackage(new Target(param.getPackageName(), param.getClassLoader(), param.getApplicationInfo()));
+    }
+
+    // ---- hot reload ----
+
+    /** Every package this generation hooked in this process; handed to the next generation. */
+    private final List<Target> hooked = Collections.synchronizedList(new ArrayList<>());
+
+    @Override
+    public boolean onHotReloading(HotReloadingParam param) {
+        List<Object> state = new ArrayList<>();
+        synchronized (hooked) {
+            for (Target target : hooked) {
+                state.add(target.packageName);
+                state.add(target.classLoader);
+            }
+        }
+        if (state.isEmpty()) {
+            Xp.log("hot reload refused: nothing hooked yet");
+            return false;
+        }
+        // Only JDK types and the targets' class loaders: nothing created under this module's class loader.
+        param.setSavedInstanceState(state.toArray());
+        ProviderPrefs.shutdown();
+        Xp.log("hot reloading " + (state.size() / 2) + " package(s) from marker=" + Config.BUILD_MARKER);
+        return true;
+    }
+
+    @Override
+    public void onHotReloaded(HotReloadedParam param) {
+        super.onHotReloaded(param); // unhooks every hook of the old generation
+        Xp.init(this);
+        Config.useRemotePrefs(this);
+        Xp.log("hot reloaded in " + param.getProcessName() + " marker=" + Config.BUILD_MARKER);
+        Object saved = param.getSavedInstanceState();
+        if (!(saved instanceof Object[])) {
+            Xp.log("hot reload: no saved targets, hooks not reinstalled");
+            return;
+        }
+        Object[] state = (Object[]) saved;
+        Xp.hotReloading = true;
+        try {
+            for (int i = 0; i + 1 < state.length; i += 2) {
+                Target target = new Target((String) state[i], (ClassLoader) state[i + 1], null);
+                if (ANDROID.equals(target.packageName)) {
+                    installSystemServerHooks(target);
+                } else {
+                    handlePackage(target);
+                }
+            }
+        } finally {
+            Xp.hotReloading = false;
+        }
+        Xp.log("hot reload: hooks reinstalled for " + (state.length / 2) + " package(s)");
+    }
+
+    private void installSystemServerHooks(Target target) {
+        hooked.add(target);
+        hookAudioService(target);
+        hookRecentTasksFilter(target);
     }
 
     private void handlePackage(Target lpparam) {
@@ -107,6 +164,7 @@ public class HookEntry extends XposedModule {
                 && !BLUETOOTH.equals(lpparam.packageName)) {
             return;
         }
+        hooked.add(lpparam);
         Config.Snapshot config = Config.loadForHook();
         log("loaded in " + lpparam.packageName
                 + " wfc=" + config.enableWfcSettings
