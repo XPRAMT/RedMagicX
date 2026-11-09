@@ -58,8 +58,8 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/assistant_tab_system"
                     style="?attr/materialButtonOutlinedStyle"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
                 android:singleLine="true"
                 android:textSize="13sp"
                     android:layout_width="0dp"
@@ -70,8 +70,8 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/assistant_tab_user"
                     style="?attr/materialButtonOutlinedStyle"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
                 android:singleLine="true"
                 android:textSize="13sp"
                     android:layout_width="0dp"
@@ -82,8 +82,8 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/assistant_tab_sysapp"
                     style="?attr/materialButtonOutlinedStyle"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
                 android:singleLine="true"
                 android:textSize="13sp"
                     android:layout_width="0dp"
