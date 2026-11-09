@@ -1,7 +1,7 @@
 package dev.xpramt.redmagicvowifi;
 
-import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
-import static de.robv.android.xposed.XposedHelpers.findClassIfExists;
+import static dev.xpramt.redmagicvowifi.Xp.findAndHookMethod;
+import static dev.xpramt.redmagicvowifi.Xp.findClassIfExists;
 
 import android.app.Application;
 import android.content.Context;
@@ -50,14 +50,12 @@ import java.util.WeakHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import de.robv.android.xposed.IXposedHookLoadPackage;
-import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XC_MethodReplacement;
-import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
-import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import dev.xpramt.redmagicvowifi.Xp.MethodHook;
+import dev.xpramt.redmagicvowifi.Xp.Param;
+import dev.xpramt.redmagicvowifi.Xp.Target;
+import io.github.libxposed.api.XposedModule;
 
-public class HookEntry implements IXposedHookLoadPackage {
+public class HookEntry extends XposedModule {
     private static final String SETTINGS = "com.android.settings";
     private static final String SYSTEM_UI = "com.android.systemui";
     private static final String ANDROID = "android";
@@ -79,12 +77,28 @@ public class HookEntry implements IXposedHookLoadPackage {
     private boolean torchEnabled;
 
     @Override
-    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
-        if (ANDROID.equals(lpparam.packageName)) {
-            hookAudioService(lpparam);
-            hookRecentTasksFilter(lpparam);
-            return;
-        }
+    public void onModuleLoaded(ModuleLoadedParam param) {
+        Xp.init(this);
+        Config.useRemotePrefs(this);
+        Xp.log("module loaded in " + param.getProcessName() + " api=" + getApiVersion()
+                + " framework=" + getFrameworkName() + " " + getFrameworkVersion()
+                + " systemServer=" + param.isSystemServer());
+    }
+
+    /** system_server: the former "android" scope. */
+    @Override
+    public void onSystemServerStarting(SystemServerStartingParam param) {
+        Target target = new Target(ANDROID, param.getClassLoader(), null);
+        hookAudioService(target);
+        hookRecentTasksFilter(target);
+    }
+
+    @Override
+    public void onPackageReady(PackageReadyParam param) {
+        handlePackage(new Target(param.getPackageName(), param.getClassLoader(), param.getApplicationInfo()));
+    }
+
+    private void handlePackage(Target lpparam) {
         if (!SETTINGS.equals(lpparam.packageName)
                 && !SYSTEM_UI.equals(lpparam.packageName)
                 && !STOCK_LAUNCHER.equals(lpparam.packageName)
@@ -149,19 +163,19 @@ public class HookEntry implements IXposedHookLoadPackage {
      * status report; the choice is read once when the Bluetooth process starts, so a mode change needs the
      * Bluetooth stack to be restarted.
      */
-    private void hookBluetoothRoles(XC_LoadPackage.LoadPackageParam lpparam, boolean receiver) {
+    private void hookBluetoothRoles(Target lpparam, boolean receiver) {
         reportBluetoothMode(receiver ? Config.BT_MODE_RECEIVER : Config.BT_MODE_NORMAL);
         if (!receiver) {
             log("Bluetooth: normal (A2DP source) mode, no role hooks");
             return;
         }
         try {
-            Class<?> sink = XposedHelpers.findClass(
+            Class<?> sink = Xp.findClass(
                     "com.android.bluetooth.a2dpsink.A2dpSinkService", lpparam.classLoader);
-            Class<?> source = XposedHelpers.findClass(
+            Class<?> source = Xp.findClass(
                     "com.android.bluetooth.a2dp.A2dpService", lpparam.classLoader);
-            findAndHookMethod(sink, "isEnabled", XC_MethodReplacement.returnConstant(Boolean.TRUE));
-            findAndHookMethod(source, "isEnabled", XC_MethodReplacement.returnConstant(Boolean.FALSE));
+            findAndHookMethod(sink, "isEnabled", Xp.returnConstant(Boolean.TRUE));
+            findAndHookMethod(source, "isEnabled", Xp.returnConstant(Boolean.FALSE));
             log("Bluetooth: receiver (A2DP sink) mode, A2dpSinkService on and A2dpService off");
         } catch (Throwable throwable) {
             log("Bluetooth receiver hooks failed: " + throwable);
@@ -171,11 +185,11 @@ public class HookEntry implements IXposedHookLoadPackage {
     /** Tells RedMagicX which mode this Bluetooth process started in (shown on the receiver page). */
     private void reportBluetoothMode(String mode) {
         try {
-            findAndHookMethod(Application.class, "onCreate", new XC_MethodHook() {
+            findAndHookMethod(Application.class, "onCreate", new MethodHook() {
                 private boolean sent;
 
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
+                protected void after(Param param) {
                     if (sent) {
                         return;
                     }
@@ -196,7 +210,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
     }
 
-    private void hookBeautifySplash(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookBeautifySplash(Target lpparam) {
         Class<?> logoActivityClass = findClassIfExists(
                 "com.zte.beautify.view.beauty.splashscreen.LogoActivity",
                 lpparam.classLoader);
@@ -204,15 +218,15 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify LogoActivity not found");
             return;
         }
-        findAndHookMethod(logoActivityClass, "onCreate", Bundle.class, new XC_MethodHook() {
+        findAndHookMethod(logoActivityClass, "onCreate", Bundle.class, new MethodHook() {
             @Override
-            protected void afterHookedMethod(MethodHookParam param) {
+            protected void after(Param param) {
                 redirectBeautifySplash((Activity) param.thisObject, "onCreate");
             }
         });
-        findAndHookMethod(logoActivityClass, "ShowProgressTask", new XC_MethodHook() {
+        findAndHookMethod(logoActivityClass, "ShowProgressTask", new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 if (!Config.loadForHook().skipBeautifySplash) {
                     return;
                 }
@@ -225,11 +239,11 @@ public class HookEntry implements IXposedHookLoadPackage {
 
     private void redirectBeautifySplash(Activity activity, String source) {
         if (!Config.loadForHook().skipBeautifySplash
-                || Boolean.TRUE.equals(XposedHelpers.getAdditionalInstanceField(
+                || Boolean.TRUE.equals(Xp.getAdditionalInstanceField(
                 activity, BEAUTIFY_SPLASH_REDIRECTED))) {
             return;
         }
-        XposedHelpers.setAdditionalInstanceField(activity, BEAUTIFY_SPLASH_REDIRECTED, true);
+        Xp.setAdditionalInstanceField(activity, BEAUTIFY_SPLASH_REDIRECTED, true);
         Intent home = new Intent();
         home.setClassName(BEAUTIFY, "com.zte.beautify.view.beauty.home.HomeActivity");
         activity.startActivity(home);
@@ -238,10 +252,10 @@ public class HookEntry implements IXposedHookLoadPackage {
         log("Beautify splash skipped from " + source);
     }
 
-    private void hookBeautifyAdapterTrial(XC_LoadPackage.LoadPackageParam lpparam) {
-        findAndHookMethod("h.a", lpparam.classLoader, "b", Context.class, int.class, new XC_MethodHook() {
+    private void hookBeautifyAdapterTrial(Target lpparam) {
+        findAndHookMethod("h.a", lpparam.classLoader, "b", Context.class, int.class, new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 if (Config.loadForHook().removeTrialLimit) {
                     param.setResult(null);
                     log("Beautify trial removal: blocked schedule()");
@@ -251,7 +265,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         log("Beautify adapter trial hook installed");
     }
 
-    private void hookBeautifyThemeSelector(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookBeautifyThemeSelector(Target lpparam) {
         hookBeautifyDownloadedThemesEntry(lpparam);
         hookBeautifyThemeApplyRoute(lpparam);
         Class<?> adapterClass = findClassIfExists(
@@ -261,15 +275,15 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify preview adapter not found");
             return;
         }
-        XposedBridge.hookAllMethods(adapterClass, "onBindTitleView", new XC_MethodHook() {
+        Xp.hookAllMethods(adapterClass, "onBindTitleView", new MethodHook() {
             @Override
-            protected void afterHookedMethod(MethodHookParam param) {
+            protected void after(Param param) {
                 Config.Snapshot config = Config.loadForHook();
                 if (!config.themeSelectEnabled || param.args == null || param.args.length == 0
                         || !param.thisObject.getClass().getName().contains("ThemePreviewAdapter")) {
                     return;
                 }
-                Object itemViewValue = XposedHelpers.getObjectField(param.args[0], "itemView");
+                Object itemViewValue = Xp.getObjectField(param.args[0], "itemView");
                 if (!(itemViewValue instanceof LinearLayout)) {
                     return;
                 }
@@ -287,7 +301,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         log("Beautify theme selector adapter hook installed");
     }
 
-    private void hookBeautifyDownloadedThemesEntry(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookBeautifyDownloadedThemesEntry(Target lpparam) {
         Class<?> fragmentClass = findClassIfExists(
                 "com.zte.beautify.view.themewallpaper.home.HomePageFragment",
                 lpparam.classLoader);
@@ -295,38 +309,38 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify HomePageFragment not found");
             return;
         }
-        XposedBridge.hookAllMethods(fragmentClass, "onCreateView", new XC_MethodHook() {
+        Xp.hookAllMethods(fragmentClass, "onCreateView", new MethodHook() {
             @Override
-            protected void afterHookedMethod(MethodHookParam param) {
-                Object activity = XposedHelpers.callMethod(param.thisObject, "getActivity");
+            protected void after(Param param) {
+                Object activity = Xp.callMethod(param.thisObject, "getActivity");
                 if (activity == null) {
                     return;
                 }
-                Intent intent = (Intent) XposedHelpers.callMethod(activity, "getIntent");
+                Intent intent = (Intent) Xp.callMethod(activity, "getIntent");
                 if (intent == null || !intent.getBooleanExtra(EXTRA_OPEN_DOWNLOADED_THEMES, false)) {
                     return;
                 }
                 intent.removeExtra(EXTRA_OPEN_DOWNLOADED_THEMES);
-                Object viewPager = XposedHelpers.getObjectField(param.thisObject, "viewPager");
-                Object tabHost = XposedHelpers.getObjectField(param.thisObject, "tabHost");
-                XposedHelpers.callMethod(viewPager, "setCurrentItem", 1);
-                XposedHelpers.callMethod(tabHost, "setCurrentTab", 1);
+                Object viewPager = Xp.getObjectField(param.thisObject, "viewPager");
+                Object tabHost = Xp.getObjectField(param.thisObject, "tabHost");
+                Xp.callMethod(viewPager, "setCurrentItem", 1);
+                Xp.callMethod(tabHost, "setCurrentTab", 1);
                 log("Beautify opened on downloaded themes tab");
             }
         });
         log("Beautify downloaded themes entry hook installed");
     }
 
-    private void hookBeautifyThemeApplyRoute(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookBeautifyThemeApplyRoute(Target lpparam) {
         Class<?> managerClass = findClassIfExists(
                 "com.zte.beautify.view.base.BaseSetWallPaperManager", lpparam.classLoader);
         if (managerClass == null) {
             log("Beautify BaseSetWallPaperManager not found");
             return;
         }
-        XposedBridge.hookAllMethods(managerClass, "setThemeAsync", new XC_MethodHook() {
+        Xp.hookAllMethods(managerClass, "setThemeAsync", new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 Config.Snapshot config = Config.loadForHook();
                 if (!config.themeSelectEnabled || param.args == null || param.args.length < 2) {
                     return;
@@ -344,11 +358,11 @@ public class HookEntry implements IXposedHookLoadPackage {
                             !hasThemeIcons(config));
                 }
                 if (hasThemeWallpaper(config)) {
-                    XposedHelpers.callMethod(param.thisObject, "setThemeDesktopWallPaperAsync",
+                    Xp.callMethod(param.thisObject, "setThemeDesktopWallPaperAsync",
                             param.args[0], param.args[1]);
                 }
                 if (hasThemeIcons(config)) {
-                    XposedHelpers.callMethod(param.thisObject, "setIconChangeSelfDefine",
+                    Xp.callMethod(param.thisObject, "setIconChangeSelfDefine",
                             param.args[0], param.args[1], "",
                             !config.themeBeautifyThirdPartyIcons);
                 }
@@ -368,7 +382,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         log("Beautify theme apply route hook installed");
     }
 
-    private void hookBeautifyFullThemeIconPolicy(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookBeautifyFullThemeIconPolicy(Target lpparam) {
         Class<?> taskClass = findClassIfExists(
                 "com.zte.beautify.view.base.BaseSetWallPaperManager$SetThemeAsyncTask",
                 lpparam.classLoader);
@@ -376,15 +390,15 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify full-theme task not found");
             return;
         }
-        XposedBridge.hookAllMethods(taskClass, "doCommonBackgroudAction", new XC_MethodHook() {
+        Xp.hookAllMethods(taskClass, "doCommonBackgroudAction", new MethodHook() {
             @Override
-            protected void afterHookedMethod(MethodHookParam param) {
-                Object themeBean = XposedHelpers.getObjectField(param.thisObject, "mBean");
+            protected void after(Param param) {
+                Object themeBean = Xp.getObjectField(param.thisObject, "mBean");
                 if (!Boolean.TRUE.equals(fullThemeIconPolicies.remove(themeBean))) {
                     return;
                 }
-                Object managerReference = XposedHelpers.getObjectField(param.thisObject, "mManager");
-                Object contextReference = XposedHelpers.getObjectField(param.thisObject, "mContext");
+                Object managerReference = Xp.getObjectField(param.thisObject, "mManager");
+                Object contextReference = Xp.getObjectField(param.thisObject, "mContext");
                 if (!(managerReference instanceof WeakReference)
                         || !(contextReference instanceof WeakReference)) {
                     log("Beautify full-theme icon policy references unavailable");
@@ -396,7 +410,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                     log("Beautify full-theme icon policy targets unavailable");
                     return;
                 }
-                XposedHelpers.callMethod(manager, "setIconChangeSelfDefine",
+                Xp.callMethod(manager, "setIconChangeSelfDefine",
                         context, themeBean, "", true);
                 log("Beautify full-theme third-party icon beautification disabled");
             }
@@ -404,7 +418,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         log("Beautify full-theme icon policy hook installed");
     }
 
-    private void hookBeautifyWallpaperCompletion(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookBeautifyWallpaperCompletion(Target lpparam) {
         Class<?> taskClass = findClassIfExists(
                 "com.zte.beautify.view.base.BaseSetWallPaperManager$SetThemeDesktopWallPaperAsyncTask",
                 lpparam.classLoader);
@@ -412,14 +426,14 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify wallpaper task not found");
             return;
         }
-        XposedBridge.hookAllMethods(taskClass, "doCommonBackgroudAction", new XC_MethodHook() {
+        Xp.hookAllMethods(taskClass, "doCommonBackgroudAction", new MethodHook() {
             @Override
-            protected void afterHookedMethod(MethodHookParam param) {
+            protected void after(Param param) {
                 Config.Snapshot config = Config.loadForHook();
                 if (!config.themeSelectEnabled || config.themeFull || !hasThemeWallpaper(config)) {
                     return;
                 }
-                Object reference = XposedHelpers.getObjectField(param.thisObject, "mContext");
+                Object reference = Xp.getObjectField(param.thisObject, "mContext");
                 if (!(reference instanceof WeakReference)) {
                     return;
                 }
@@ -618,16 +632,16 @@ public class HookEntry implements IXposedHookLoadPackage {
         String currentIconConfig = "";
         if (restoreCurrentIcons) {
             try {
-                Class<?> utilities = XposedHelpers.findClass(
+                Class<?> utilities = Xp.findClass(
                         "com.zte.beautify.view.common.tools.Utilities", classLoader);
-                String currentIconTheme = (String) XposedHelpers.callStaticMethod(
+                String currentIconTheme = (String) Xp.callStaticMethod(
                         utilities, "getIconFlavorChooseIconId");
-                currentIconConfig = (String) XposedHelpers.callStaticMethod(
+                currentIconConfig = (String) Xp.callStaticMethod(
                         utilities, "getCurrentIconConfigId");
-                Class<?> resourceManager = XposedHelpers.findClass(
+                Class<?> resourceManager = Xp.findClass(
                         "com.zte.beautify.model.ResourceManager", classLoader);
-                Object resources = XposedHelpers.callStaticMethod(resourceManager, "getInstance");
-                currentIconBean = XposedHelpers.callMethod(
+                Object resources = Xp.callStaticMethod(resourceManager, "getInstance");
+                currentIconBean = Xp.callMethod(
                         resources, "getThemeBeanInfoById", currentIconTheme);
             } catch (Throwable throwable) {
                 log("Unable to capture current icons before system-resource apply: " + throwable);
@@ -638,9 +652,9 @@ public class HookEntry implements IXposedHookLoadPackage {
         String iconConfig = currentIconConfig == null ? "" : currentIconConfig;
         new Thread(() -> {
             try {
-                XposedHelpers.callMethod(manager, "setTheme", themeBean, true, false);
+                Xp.callMethod(manager, "setTheme", themeBean, true, false);
                 if (restoreCurrentIcons && iconBean != null) {
-                    XposedHelpers.callMethod(
+                    Xp.callMethod(
                             manager, "setIconChangeSelfDefine", iconBean, iconConfig, false);
                     log("Beautify restored previous icons after system-resource apply");
                 }
@@ -655,14 +669,14 @@ public class HookEntry implements IXposedHookLoadPackage {
     private void applyThemeLockscreen(Context context, Object manager, Object themeBean) {
         String type;
         try {
-            type = (String) XposedHelpers.callMethod(themeBean, "getLockScreenWallpaperType");
+            type = (String) Xp.callMethod(themeBean, "getLockScreenWallpaperType");
         } catch (Throwable throwable) {
             log("Unable to read theme lockscreen type: " + throwable);
             return;
         }
         log("Beautify theme lockscreen type=" + type);
         if ("3".equals(type)) {
-            XposedHelpers.callMethod(manager, "setDynamicLockerAsync", context, themeBean);
+            Xp.callMethod(manager, "setDynamicLockerAsync", context, themeBean);
             log("Beautify dynamic theme lockscreen apply requested");
             return;
         }
@@ -691,10 +705,10 @@ public class HookEntry implements IXposedHookLoadPackage {
 
     private byte[] readThemeLockscreen(Object themeBean) throws Exception {
         ClassLoader classLoader = themeBean.getClass().getClassLoader();
-        Class<?> resourceManagerClass = XposedHelpers.findClass(
+        Class<?> resourceManagerClass = Xp.findClass(
                 "com.zte.beautify.model.ResourceManager", classLoader);
-        Object resourceManager = XposedHelpers.callStaticMethod(resourceManagerClass, "getInstance");
-        InputStream themeStream = (InputStream) XposedHelpers.callMethod(
+        Object resourceManager = Xp.callStaticMethod(resourceManagerClass, "getInstance");
+        InputStream themeStream = (InputStream) Xp.callMethod(
                 resourceManager, "getThemeZipInputStream", themeBean);
         if (themeStream == null) {
             return null;
@@ -775,7 +789,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         return Math.round(value * context.getResources().getDisplayMetrics().density);
     }
 
-    private void hookBeautifyAdapterResourceTypes(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookBeautifyAdapterResourceTypes(Target lpparam) {
         hookBeautifyAdapterTrial(lpparam);
         Class<?> serviceClass = findClassIfExists(
                 "com.zte.beautifyadapter.ThemeApplyService", lpparam.classLoader);
@@ -783,9 +797,9 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("Beautify adapter ThemeApplyService not found");
             return;
         }
-        XposedBridge.hookAllMethods(serviceClass, "x", new XC_MethodHook() {
+        Xp.hookAllMethods(serviceClass, "x", new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 Config.Snapshot config = Config.loadForHook();
                 if (!config.themeSelectEnabled || param.args == null || param.args.length == 0
                         || !(param.args[0] instanceof Integer)) {
@@ -801,7 +815,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         log("Beautify adapter resource type hook installed");
     }
 
-    private void hookSystemUiAssistantBroadcast(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookSystemUiAssistantBroadcast(Target lpparam) {
         hookBroadcastMethods(ContextWrapper.class, "ContextWrapper");
         Class<?> contextImpl = findClassIfExists("android.app.ContextImpl", lpparam.classLoader);
         if (contextImpl != null) {
@@ -812,9 +826,9 @@ public class HookEntry implements IXposedHookLoadPackage {
     }
 
     private void hookBroadcastMethods(Class<?> contextClass, String label) {
-        XC_MethodHook hook = new XC_MethodHook() {
+        MethodHook hook = new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 Intent intent = firstIntentArg(param.args);
                 if (intent == null || !isZteAssistantWakeAction(intent.getAction())) {
                     return;
@@ -837,10 +851,10 @@ public class HookEntry implements IXposedHookLoadPackage {
             }
         };
         try {
-            XposedBridge.hookAllMethods(contextClass, "sendBroadcast", hook);
-            XposedBridge.hookAllMethods(contextClass, "sendBroadcastAsUser", hook);
-            XposedBridge.hookAllMethods(contextClass, "sendOrderedBroadcast", hook);
-            XposedBridge.hookAllMethods(contextClass, "sendOrderedBroadcastAsUser", hook);
+            Xp.hookAllMethods(contextClass, "sendBroadcast", hook);
+            Xp.hookAllMethods(contextClass, "sendBroadcastAsUser", hook);
+            Xp.hookAllMethods(contextClass, "sendOrderedBroadcast", hook);
+            Xp.hookAllMethods(contextClass, "sendOrderedBroadcastAsUser", hook);
             log(label + " assistant broadcast hooks installed");
         } catch (Throwable throwable) {
             log(label + " assistant broadcast hook failed: " + throwable);
@@ -859,16 +873,16 @@ public class HookEntry implements IXposedHookLoadPackage {
         return null;
     }
 
-    private void hookSystemUiStartAssist(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookSystemUiStartAssist(Target lpparam) {
         Class<?> commandQueue = findClassIfExists("com.android.systemui.statusbar.CommandQueue", lpparam.classLoader);
         if (commandQueue == null) {
             log("CommandQueue not found; assistant redirect skipped");
             return;
         }
         try {
-            findAndHookMethod(commandQueue, "startAssist", android.os.Bundle.class, new XC_MethodHook() {
+            findAndHookMethod(commandQueue, "startAssist", android.os.Bundle.class, new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     Config.Snapshot config = Config.loadForHook();
                     if (!config.assistantRedirectEnabled) {
                         return;
@@ -1007,7 +1021,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         String[] fieldNames = new String[]{"mContext", "context"};
         for (String fieldName : fieldNames) {
             try {
-                Object value = XposedHelpers.getObjectField(object, fieldName);
+                Object value = Xp.getObjectField(object, fieldName);
                 if (value instanceof Context) {
                     return (Context) value;
                 }
@@ -1017,11 +1031,11 @@ public class HookEntry implements IXposedHookLoadPackage {
         return null;
     }
 
-    private void hookAudioService(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookAudioService(Target lpparam) {
         try {
-            Class<?> audioService = XposedHelpers.findClass("com.android.server.audio.AudioService", lpparam.classLoader);
-            XposedBridge.hookAllMethods(audioService, "adjustStreamVolume", new VolumeAdjustHook());
-            XposedBridge.hookAllMethods(audioService, "adjustSuggestedStreamVolume", new VolumeAdjustHook());
+            Class<?> audioService = Xp.findClass("com.android.server.audio.AudioService", lpparam.classLoader);
+            Xp.hookAllMethods(audioService, "adjustStreamVolume", new VolumeAdjustHook());
+            Xp.hookAllMethods(audioService, "adjustSuggestedStreamVolume", new VolumeAdjustHook());
             log("AudioService volume step hooks installed");
             hookVolumeChangedBroadcastDelay(lpparam);
         } catch (Throwable throwable) {
@@ -1041,36 +1055,36 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
      * enqueue time. Cached/frozen deferral, delivery-group (most recent) policy and all other
      * broadcasts are untouched.
      */
-    private void hookVolumeChangedBroadcastDelay(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookVolumeChangedBroadcastDelay(Target lpparam) {
         if (!Config.loadVolumeBroadcastUndelayForHook()) {
             log("VOLUME_CHANGED_ACTION broadcast undelay disabled by pref; hook not installed");
             return;
         }
         try {
-            Class<?> queueClass = XposedHelpers.findClass("com.android.server.am.BroadcastProcessQueue", lpparam.classLoader);
-            XposedBridge.hookAllMethods(queueClass, "updateRunnableAt", new XC_MethodHook() {
+            Class<?> queueClass = Xp.findClass("com.android.server.am.BroadcastProcessQueue", lpparam.classLoader);
+            Xp.hookAllMethods(queueClass, "updateRunnableAt", new MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
+                protected void after(Param param) {
                     try {
                         Object queue = param.thisObject;
-                        if (XposedHelpers.getIntField(queue, "mRunnableAtReason") != 2) {
+                        if (Xp.getIntField(queue, "mRunnableAtReason") != 2) {
                             return;
                         }
-                        Object args = XposedHelpers.callMethod(queue, "peekNextBroadcast");
+                        Object args = Xp.callMethod(queue, "peekNextBroadcast");
                         if (args == null) {
                             return;
                         }
-                        Object record = XposedHelpers.getObjectField(args, "arg1");
-                        Object intent = record == null ? null : XposedHelpers.getObjectField(record, "intent");
+                        Object record = Xp.getObjectField(args, "arg1");
+                        Object intent = record == null ? null : Xp.getObjectField(record, "intent");
                         if (!(intent instanceof Intent)
                                 || !"android.media.VOLUME_CHANGED_ACTION".equals(((Intent) intent).getAction())) {
                             return;
                         }
-                        long enqueueTime = XposedHelpers.getLongField(record, "enqueueTime");
-                        XposedHelpers.setLongField(queue, "mRunnableAt", enqueueTime);
+                        long enqueueTime = Xp.getLongField(record, "enqueueTime");
+                        Xp.setLongField(queue, "mRunnableAt", enqueueTime);
                         if (volumeBroadcastUndelayLogged.compareAndSet(false, true)) {
                             log("VOLUME_CHANGED_ACTION normal delay removed (first applied) for "
-                                    + XposedHelpers.getObjectField(queue, "processName"));
+                                    + Xp.getObjectField(queue, "processName"));
                         }
                     } catch (Throwable throwable) {
                         // leave original runnableAt untouched
@@ -1083,13 +1097,13 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookRecentTasksFilter(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookRecentTasksFilter(Target lpparam) {
         hookRecentTasksMethod(lpparam, "com.android.server.wm.ActivityTaskManagerService", "getRecentTasks");
         hookRecentTasksMethod(lpparam, "com.android.server.wm.RecentTasks", "getRecentTasks");
         hookRecentTasksMethod(lpparam, "com.android.server.wm.RecentTasks", "getRecentTasksImpl");
     }
 
-    private void hookRecentUiFilter(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookRecentUiFilter(Target lpparam) {
         hookLauncherRecentTasksList(lpparam);
         String[] classNames = new String[]{
                 "com.android.quickstep.RecentsModel",
@@ -1103,16 +1117,16 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookShellRecentTasksProvider(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookShellRecentTasksProvider(Target lpparam) {
         Class<?> clazz = findClassIfExists("com.android.wm.shell.recents.RecentTasksController", lpparam.classLoader);
         if (clazz == null) {
             log("Shell RecentTasksController not found; provider filter skipped");
             return;
         }
         try {
-            XposedBridge.hookAllMethods(clazz, "getRecentTasks", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "getRecentTasks", new MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
+                protected void after(Param param) {
                     int removed = filterRecentMethodResult(param);
                     if (removed > 0) {
                         Config.Snapshot config = Config.loadForHook();
@@ -1131,9 +1145,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
 
     private void hookShellRecentTasksControllerState(Class<?> clazz) {
         try {
-            XposedBridge.hookAllMethods(clazz, "onVisibleTasksChanged", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "onVisibleTasksChanged", new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     int removed = filterRecentListArg(param, 0);
                     if (removed > 0) {
                         Config.Snapshot config = Config.loadForHook();
@@ -1142,9 +1156,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
                     }
                 }
             });
-            XposedBridge.hookAllMethods(clazz, "generateList", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "generateList", new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     int removed = filterRecentListArg(param, 0);
                     if (removed > 0) {
                         Config.Snapshot config = Config.loadForHook();
@@ -1160,9 +1174,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
                     "notifyTaskMovedToFront"
             };
             for (String method : methods) {
-                XposedBridge.hookAllMethods(clazz, method, new XC_MethodHook() {
+                Xp.hookAllMethods(clazz, method, new MethodHook() {
                     @Override
-                    protected void beforeHookedMethod(MethodHookParam param) {
+                    protected void before(Param param) {
                         Config.Snapshot config = Config.loadForHook();
                         if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
                                 || param.args == null || param.args.length == 0) {
@@ -1182,7 +1196,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private int filterRecentListArg(XC_MethodHook.MethodHookParam param, int index) {
+    private int filterRecentListArg(Param param, int index) {
         Config.Snapshot config = Config.loadForHook();
         if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
                 || param.args == null || param.args.length <= index || !(param.args[index] instanceof List)) {
@@ -1196,16 +1210,16 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         return Math.max(0, original.size() - filtered.size());
     }
 
-    private void hookShellRecentTaskListenerCallbacks(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookShellRecentTaskListenerCallbacks(Target lpparam) {
         Class<?> clazz = findClassIfExists("com.android.wm.shell.recents.IRecentTasksListener$Stub$Proxy", lpparam.classLoader);
         if (clazz == null) {
             log("Shell IRecentTasksListener proxy not found; listener filter skipped");
             return;
         }
         try {
-            XposedBridge.hookAllMethods(clazz, "onVisibleTasksChanged", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "onVisibleTasksChanged", new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     Config.Snapshot config = Config.loadForHook();
                     if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
                             || param.args == null || param.args.length == 0 || param.args[0] == null) {
@@ -1221,9 +1235,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
                     }
                 }
             });
-            XposedBridge.hookAllMethods(clazz, "onTaskMovedToFront", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "onTaskMovedToFront", new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     Config.Snapshot config = Config.loadForHook();
                     if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
                             || param.args == null || param.args.length == 0) {
@@ -1242,16 +1256,16 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookLauncherSystemUiProxyRecentTasks(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookLauncherSystemUiProxyRecentTasks(Target lpparam) {
         Class<?> clazz = findClassIfExists("com.android.quickstep.SystemUiProxy", lpparam.classLoader);
         if (clazz == null) {
             log("Launcher_MFV SystemUiProxy not found; launcher recents filter skipped");
             return;
         }
         try {
-            XposedBridge.hookAllMethods(clazz, "getRecentTasks", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "getRecentTasks", new MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
+                protected void after(Param param) {
                     int removed = filterRecentMethodResult(param);
                     if (removed > 0) {
                         Config.Snapshot config = Config.loadForHook();
@@ -1266,7 +1280,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookLauncherRecentTasksList(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookLauncherRecentTasksList(Target lpparam) {
         Class<?> clazz = findClassIfExists("com.android.quickstep.RecentTasksList", lpparam.classLoader);
         if (clazz == null) {
             return;
@@ -1274,9 +1288,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         hookLauncherRecentConsumerMethod(clazz, "getTasks");
         hookLauncherRecentConsumerMethod(clazz, "getTaskKeys");
         try {
-            XposedBridge.hookAllMethods(clazz, "loadTasksInBackground", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "loadTasksInBackground", new MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
+                protected void after(Param param) {
                     int removed = filterRecentMethodResult(param);
                     if (removed > 0) {
                         Config.Snapshot config = Config.loadForHook();
@@ -1291,7 +1305,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookLauncherRecentTasksData(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookLauncherRecentTasksData(Target lpparam) {
         Class<?> clazz = findClassIfExists("com.android.quickstep.RecentTasksList", lpparam.classLoader);
         if (clazz == null) {
             log("Launcher_MFV RecentTasksList not found; data filter skipped");
@@ -1299,9 +1313,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
             hookLauncherRecentConsumerMethod(clazz, "getTasks");
             hookLauncherRecentConsumerMethod(clazz, "getTaskKeys");
             try {
-                XposedBridge.hookAllMethods(clazz, "loadTasksInBackground", new XC_MethodHook() {
+                Xp.hookAllMethods(clazz, "loadTasksInBackground", new MethodHook() {
                     @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
+                    protected void after(Param param) {
                         Config.Snapshot config = Config.loadForHook();
                         if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
                             return;
@@ -1321,16 +1335,16 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         hookLauncherGestureCurrentTask(lpparam);
     }
 
-    private void hookLauncherGestureCurrentTask(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookLauncherGestureCurrentTask(Target lpparam) {
         Class<?> clazz = findClassIfExists("com.android.quickstep.views.RecentsView", lpparam.classLoader);
         if (clazz == null) {
             log("Launcher_MFV RecentsView not found; gesture current task filter skipped");
             return;
         }
         try {
-            XposedBridge.hookAllMethods(clazz, "onGestureAnimationStart", new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, "onGestureAnimationStart", new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     Config.Snapshot config = Config.loadForHook();
                     if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()
                             || param.args == null || param.args.length == 0) {
@@ -1353,9 +1367,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
 
     private void hookLauncherRecentConsumerMethod(Class<?> clazz, String methodName) {
         try {
-            XposedBridge.hookAllMethods(clazz, methodName, new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, methodName, new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     wrapRecentConsumerArgs(param);
                 }
             });
@@ -1365,7 +1379,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookRecentUiClass(XC_LoadPackage.LoadPackageParam lpparam, String className) {
+    private void hookRecentUiClass(Target lpparam, String className) {
         Class<?> clazz = findClassIfExists(className, lpparam.classLoader);
         if (clazz == null) {
             return;
@@ -1377,14 +1391,14 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
                 continue;
             }
             try {
-                XposedBridge.hookMethod(method, new XC_MethodHook() {
+                Xp.hookMethod(method, new MethodHook() {
                     @Override
-                    protected void beforeHookedMethod(MethodHookParam param) {
+                    protected void before(Param param) {
                         filterRecentArgs(param);
                     }
 
                     @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
+                    protected void after(Param param) {
                         filterRecentMethodResult(param);
                     }
                 });
@@ -1397,15 +1411,15 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookRecentTasksMethod(XC_LoadPackage.LoadPackageParam lpparam, String className, String methodName) {
+    private void hookRecentTasksMethod(Target lpparam, String className, String methodName) {
         Class<?> clazz = findClassIfExists(className, lpparam.classLoader);
         if (clazz == null) {
             return;
         }
         try {
-            XposedBridge.hookAllMethods(clazz, methodName, new XC_MethodHook() {
+            Xp.hookAllMethods(clazz, methodName, new MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
+                protected void after(Param param) {
                     Config.Snapshot config = Config.loadForHook();
                     if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
                         return;
@@ -1422,7 +1436,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void filterRecentArgs(XC_MethodHook.MethodHookParam param) {
+    private void filterRecentArgs(Param param) {
         Config.Snapshot config = Config.loadForHook();
         if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty() || param.args == null) {
             return;
@@ -1437,7 +1451,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void wrapRecentConsumerArgs(XC_MethodHook.MethodHookParam param) {
+    private void wrapRecentConsumerArgs(Param param) {
         Config.Snapshot config = Config.loadForHook();
         if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty() || param.args == null) {
             return;
@@ -1485,7 +1499,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         return false;
     }
 
-    private int filterRecentMethodResult(XC_MethodHook.MethodHookParam param) {
+    private int filterRecentMethodResult(Param param) {
         Config.Snapshot config = Config.loadForHook();
         if (!config.launcherOverrideEnabled || config.launcherPackage.isEmpty()) {
             return 0;
@@ -1509,7 +1523,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
             return filterRecentListInPlace((List<?>) result, packageName);
         }
         try {
-            Object list = XposedHelpers.callMethod(result, "getList");
+            Object list = Xp.callMethod(result, "getList");
             if (list instanceof List) {
                 return filterRecentListInPlace((List<?>) list, packageName);
             }
@@ -1573,14 +1587,14 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
             return false;
         }
         try {
-            Object contains = XposedHelpers.callMethod(task, "containsPackage", packageName);
+            Object contains = Xp.callMethod(task, "containsPackage", packageName);
             if (Boolean.TRUE.equals(contains)) {
                 return true;
             }
         } catch (Throwable ignored) {
         }
         try {
-            Object tasks = XposedHelpers.callMethod(task, "getTasks");
+            Object tasks = Xp.callMethod(task, "getTasks");
             if (tasks instanceof List) {
                 for (Object childTask : (List<?>) tasks) {
                     if (recentTaskBelongsToPackage(childTask, packageName)) {
@@ -1591,28 +1605,28 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         } catch (Throwable ignored) {
         }
         try {
-            Object taskInfo1 = XposedHelpers.callMethod(task, "getTaskInfo1");
+            Object taskInfo1 = Xp.callMethod(task, "getTaskInfo1");
             if (recentTaskBelongsToPackage(taskInfo1, packageName)) {
                 return true;
             }
         } catch (Throwable ignored) {
         }
         try {
-            Object taskInfo2 = XposedHelpers.callMethod(task, "getTaskInfo2");
+            Object taskInfo2 = Xp.callMethod(task, "getTaskInfo2");
             if (recentTaskBelongsToPackage(taskInfo2, packageName)) {
                 return true;
             }
         } catch (Throwable ignored) {
         }
         try {
-            Object firstTask = XposedHelpers.callMethod(task, "getFirstTask");
+            Object firstTask = Xp.callMethod(task, "getFirstTask");
             if (recentTaskBelongsToPackage(firstTask, packageName)) {
                 return true;
             }
         } catch (Throwable ignored) {
         }
         try {
-            Object tasks = XposedHelpers.callMethod(task, "E");
+            Object tasks = Xp.callMethod(task, "E");
             if (tasks instanceof List) {
                 for (Object childTask : (List<?>) tasks) {
                     if (recentTaskBelongsToPackage(childTask, packageName)) {
@@ -1626,7 +1640,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
             return true;
         }
         try {
-            Object key = XposedHelpers.getObjectField(task, "key");
+            Object key = Xp.getObjectField(task, "key");
             if (isThirdPartyHomeTask(key)) {
                 return true;
             }
@@ -1635,7 +1649,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         String[] componentFields = new String[]{"topActivity", "baseActivity", "origActivity", "realActivity"};
         for (String field : componentFields) {
             try {
-                Object value = XposedHelpers.getObjectField(task, field);
+                Object value = Xp.getObjectField(task, field);
                 if (value instanceof ComponentName && packageName.equals(((ComponentName) value).getPackageName())) {
                     return true;
                 }
@@ -1645,7 +1659,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         String[] intentFields = new String[]{"baseIntent", "intent"};
         for (String field : intentFields) {
             try {
-                Object value = XposedHelpers.getObjectField(task, field);
+                Object value = Xp.getObjectField(task, field);
                 if (value instanceof Intent) {
                     ComponentName component = ((Intent) value).getComponent();
                     if (component != null && packageName.equals(component.getPackageName())) {
@@ -1679,7 +1693,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         String[] intentFields = new String[]{"baseIntent", "intent"};
         for (String field : intentFields) {
             try {
-                Object value = XposedHelpers.getObjectField(task, field);
+                Object value = Xp.getObjectField(task, field);
                 if (value instanceof Intent && isThirdPartyHomeIntent((Intent) value)) {
                     return true;
                 }
@@ -1736,9 +1750,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         return false;
     }
 
-    private final class VolumeAdjustHook extends XC_MethodHook {
+    private final class VolumeAdjustHook extends MethodHook {
         @Override
-        protected void beforeHookedMethod(MethodHookParam param) {
+        protected void before(Param param) {
             if (Boolean.TRUE.equals(applyingVolume.get())) {
                 return;
             }
@@ -1797,11 +1811,11 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
             return;
         }
         try {
-            Object zAudioService = XposedHelpers.getObjectField(audioService, "mZAudioService");
-            Object volumeController = XposedHelpers.getObjectField(audioService, "mVolumeController");
-            Object controller = XposedHelpers.callMethod(volumeController, "getController");
+            Object zAudioService = Xp.getObjectField(audioService, "mZAudioService");
+            Object volumeController = Xp.getObjectField(audioService, "mVolumeController");
+            Object controller = Xp.callMethod(volumeController, "getController");
             if (zAudioService != null && controller != null) {
-                XposedHelpers.callMethod(zAudioService, "notifyShowAppVolume", controller, flags);
+                Xp.callMethod(zAudioService, "notifyShowAppVolume", controller, flags);
             }
         } catch (Throwable throwable) {
             zteAppVolumeSupported = false;
@@ -1816,7 +1830,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         return stream == STREAM_MUSIC || stream == AudioManager.USE_DEFAULT_STREAM_TYPE;
     }
 
-    private int intArg(XC_MethodHook.MethodHookParam param, int index, int fallback) {
+    private int intArg(Param param, int index, int fallback) {
         if (param.args == null || index < 0 || index >= param.args.length || !(param.args[index] instanceof Integer)) {
             return fallback;
         }
@@ -1825,7 +1839,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
 
     private AudioManager audioManager(Object audioService) {
         try {
-            Object context = XposedHelpers.getObjectField(audioService, "mContext");
+            Object context = Xp.getObjectField(audioService, "mContext");
             if (context instanceof Context) {
                 return (AudioManager) ((Context) context).getSystemService(Context.AUDIO_SERVICE);
             }
@@ -1841,7 +1855,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         return value;
     }
 
-    private void hookSettingsWfcGate(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookSettingsWfcGate(Target lpparam) {
         hookZteBooleanProperty(
                 lpparam,
                 "ro.vendor.feature.zte_feature_need_wfc_for_domestic",
@@ -1864,7 +1878,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
      *  - return the AOSP layout ids passed into getDialogLayoutResId / getRowLayoutResId
      *  - skip MFV-only init / row-panel paths that assume volume_dialog_mfv
      */
-    private void hookAospVolumeDialog(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookAospVolumeDialog(Target lpparam) {
         try {
             AospVolumeHooks.install(lpparam);
         } catch (Throwable throwable) {
@@ -1872,7 +1886,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookSystemUiAbroad(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookSystemUiAbroad(Target lpparam) {
         hookZteStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad", true);
         hookZteStringProperty(lpparam, "ro.mifavor.custom", "abroad", true);
         hookAndroidStringProperty(lpparam, "ro.vendor.mifavor.custom", "abroad", true);
@@ -1880,12 +1894,12 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         hookFlavorIsAbroad(lpparam, true);
     }
 
-    private void hookSystemUiVariantGenBd(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookSystemUiVariantGenBd(Target lpparam) {
         hookZteStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD", false);
         hookAndroidStringProperty(lpparam, "persist.custom.variant.id", "GEN_BD", false);
     }
 
-    private void hookSystemUiBdArray(XC_LoadPackage.LoadPackageParam lpparam) {
+    private void hookSystemUiBdArray(Target lpparam) {
         hookSystemUiVariantGenBd(lpparam);
         Class<?> imsClass = findClassIfExists("com.zte.feature.signal.ImsUpdateFeature", lpparam.classLoader);
         if (imsClass == null) {
@@ -1893,9 +1907,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
             return;
         }
         try {
-            XposedHelpers.findAndHookMethod(imsClass, "getSingleCardImsIconArrayResId", new XC_MethodHook() {
+            Xp.findAndHookMethod(imsClass, "getSingleCardImsIconArrayResId", new MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) {
+                protected void after(Param param) {
                     int resId = getArrayId("bd_single_card_volte_vowifi_icons_array", lpparam.classLoader);
                     if (resId != 0) {
                         param.setResult(resId);
@@ -1909,15 +1923,15 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
 
     private int getArrayId(String name, ClassLoader classLoader) {
         try {
-            Class<?> rArray = XposedHelpers.findClass("com.android.systemui.R$array", classLoader);
-            return XposedHelpers.getStaticIntField(rArray, name);
+            Class<?> rArray = Xp.findClass("com.android.systemui.R$array", classLoader);
+            return Xp.getStaticIntField(rArray, name);
         } catch (Throwable throwable) {
             log("array id not found: " + name + " " + throwable);
             return 0;
         }
     }
 
-    private void hookFlavorIsAbroad(XC_LoadPackage.LoadPackageParam lpparam, boolean imsOnly) {
+    private void hookFlavorIsAbroad(Target lpparam, boolean imsOnly) {
         String[] classNames = new String[]{
                 "com.zte.utils.FlavorUtils$Companion",
                 "com.zte.utils.FlavorUtils"
@@ -1934,9 +1948,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
 
     private void hookNoArgBoolean(Class<?> clazz, String methodName, boolean result, boolean imsOnly) {
         try {
-            XposedHelpers.findAndHookMethod(clazz, methodName, new XC_MethodHook() {
+            Xp.findAndHookMethod(clazz, methodName, new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     if (!imsOnly || isImsIconStack()) {
                         param.setResult(result);
                     }
@@ -1947,7 +1961,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookZteStringProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, String value, boolean imsOnly) {
+    private void hookZteStringProperty(Target lpparam, String key, String value, boolean imsOnly) {
         Class<?> propertyClass = findZtePropertyClass(lpparam.classLoader);
         if (propertyClass == null) {
             log("SystemPropertiesZTE not found for " + key);
@@ -1956,16 +1970,16 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         hookStringGet(propertyClass, key, value, imsOnly);
     }
 
-    private void hookZteBooleanProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, boolean value) {
+    private void hookZteBooleanProperty(Target lpparam, String key, boolean value) {
         Class<?> propertyClass = findZtePropertyClass(lpparam.classLoader);
         if (propertyClass == null) {
             log("SystemPropertiesZTE not found for " + key);
             return;
         }
         try {
-            findAndHookMethod(propertyClass, "getBoolean", String.class, boolean.class, new XC_MethodHook() {
+            findAndHookMethod(propertyClass, "getBoolean", String.class, boolean.class, new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     if (key.equals(param.args[0])) {
                         param.setResult(value);
                     }
@@ -1976,7 +1990,7 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         }
     }
 
-    private void hookAndroidStringProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, String value, boolean imsOnly) {
+    private void hookAndroidStringProperty(Target lpparam, String key, String value, boolean imsOnly) {
         Class<?> propertyClass = findClassIfExists("android.os.SystemProperties", lpparam.classLoader);
         if (propertyClass == null) {
             log("android.os.SystemProperties not found for " + key);
@@ -1985,16 +1999,16 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         hookStringGet(propertyClass, key, value, imsOnly);
     }
 
-    private void hookAndroidBooleanProperty(XC_LoadPackage.LoadPackageParam lpparam, String key, boolean value) {
+    private void hookAndroidBooleanProperty(Target lpparam, String key, boolean value) {
         Class<?> propertyClass = findClassIfExists("android.os.SystemProperties", lpparam.classLoader);
         if (propertyClass == null) {
             log("android.os.SystemProperties not found for " + key);
             return;
         }
         try {
-            findAndHookMethod(propertyClass, "getBoolean", String.class, boolean.class, new XC_MethodHook() {
+            findAndHookMethod(propertyClass, "getBoolean", String.class, boolean.class, new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     if (key.equals(param.args[0])) {
                         param.setResult(value);
                     }
@@ -2007,9 +2021,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
 
     private void hookStringGet(Class<?> propertyClass, String key, String value, boolean imsOnly) {
         try {
-            findAndHookMethod(propertyClass, "get", String.class, new XC_MethodHook() {
+            findAndHookMethod(propertyClass, "get", String.class, new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     if (key.equals(param.args[0])) {
                         String scopedValue = scopedSystemUiFlavorValue(value, imsOnly);
                         if (scopedValue != null) {
@@ -2021,9 +2035,9 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
         } catch (Throwable ignored) {
         }
         try {
-            findAndHookMethod(propertyClass, "get", String.class, String.class, new XC_MethodHook() {
+            findAndHookMethod(propertyClass, "get", String.class, String.class, new MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
+                protected void before(Param param) {
                     if (key.equals(param.args[0])) {
                         String scopedValue = scopedSystemUiFlavorValue(value, imsOnly);
                         if (scopedValue != null) {
@@ -2117,6 +2131,6 @@ private final java.util.concurrent.atomic.AtomicBoolean volumeBroadcastUndelayLo
     }
 
     private void log(String message) {
-        XposedBridge.log("RedMagicX: " + message);
+        Xp.log(message);
     }
 }

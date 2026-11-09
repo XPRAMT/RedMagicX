@@ -15,6 +15,11 @@ public class ThemeConfigProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+        // Starts the settings hand-over to the framework as soon as the app process exists (a hooked
+        // process asking for the settings starts it).
+        if (getContext() != null) {
+            Config.appPrefs(getContext());
+        }
         return true;
     }
 

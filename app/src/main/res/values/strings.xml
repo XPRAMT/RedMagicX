@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">RedMagicX</string>
+    <string name="module_description">RedMagicX: RedMagic system tweaks for VoWiFi UI, volume, Bluetooth receiver, assistant, launcher, themes, and ADB</string>
 </resources>
