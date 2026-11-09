@@ -48,11 +48,12 @@ final class Xp {
     }
 
     static void log(String message) {
+        String line = "[" + Config.BUILD_MARKER + "] " + message;
         XposedModule current = module;
         if (current != null) {
-            current.log(Log.INFO, TAG, message);
+            current.log(Log.INFO, TAG, line);
         } else {
-            Log.i(TAG, message);
+            Log.i(TAG, line);
         }
     }
 
