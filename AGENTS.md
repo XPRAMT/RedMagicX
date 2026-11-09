@@ -5,7 +5,7 @@
 - Android application and LSPosed module for RedMagicOS features. The module uses the modern libxposed API 102 only (no legacy Xposed API, no compatibility layer; user rule 2026-11-10). It needs an LSPosed build with API 102 (NX809J LSPosed 2.2.1 reports `api=102`); the Xiaomi Pad 6 runs LSPosed 2.0.2, which has not been checked for API 102 and may not load the module.
 - Main UI is implemented programmatically in `app/src/main/java/dev/xpramt/redmagicvowifi/MainActivity.java`.
 - Current feature pages include VoWiFi UI, volume bar (step + AOSP dialog), assistant gesture, launcher, theme, ADB control, quick entry, Bluetooth receiver, and other system settings.
-- The application version remains `0.6.0` unless a release request changes it.
+- The application version remains `0.6.1` unless a release request changes it.
 
 
 ## UI (Material 3, XML)
