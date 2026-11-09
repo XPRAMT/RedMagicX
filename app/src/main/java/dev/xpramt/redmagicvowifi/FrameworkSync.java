@@ -65,6 +65,35 @@ final class FrameworkSync {
         pushLater();
     }
 
+    /** Experiment: asks the framework to hot-reload the module in the hooked process named {@code process}. */
+    static String hotReload(String process) {
+        XposedService bound;
+        synchronized (FrameworkSync.class) {
+            bound = service;
+        }
+        if (bound == null) {
+            return "no framework service";
+        }
+        try {
+            if (bound.getApiVersion() < XposedService.API_102) {
+                return "framework service api " + bound.getApiVersion() + " < 102";
+            }
+            StringBuilder seen = new StringBuilder();
+            for (io.github.libxposed.service.HookedTarget target : bound.getRunningTargets()) {
+                seen.append(target.getProcessName()).append('#').append(target.getPid())
+                        .append(':').append(target.getState()).append(' ');
+                if (process.equals(target.getProcessName())) {
+                    bound.hotReloadModule(target, null, (done, result) -> Log.i(TAG, "hot reload "
+                            + done.getProcessName() + " -> " + result.status() + " " + result.message()));
+                    return "requested for " + process + "; targets: " + seen;
+                }
+            }
+            return "no running target named " + process + "; targets: " + seen;
+        } catch (RuntimeException exception) {
+            return "failed: " + exception;
+        }
+    }
+
     private static void pushLater() {
         EXECUTOR.execute(FrameworkSync::push);
     }

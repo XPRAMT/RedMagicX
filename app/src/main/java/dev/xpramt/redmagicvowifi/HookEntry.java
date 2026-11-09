@@ -80,7 +80,7 @@ public class HookEntry extends XposedModule {
     public void onModuleLoaded(ModuleLoadedParam param) {
         Xp.init(this);
         Config.useRemotePrefs(this);
-        Xp.log("module loaded in " + param.getProcessName() + " api=" + getApiVersion()
+        Xp.log("module loaded in " + param.getProcessName() + " marker=" + Config.BUILD_MARKER + " api=" + getApiVersion()
                 + " framework=" + getFrameworkName() + " " + getFrameworkVersion()
                 + " systemServer=" + param.isSystemServer());
     }
@@ -89,6 +89,7 @@ public class HookEntry extends XposedModule {
     @Override
     public void onSystemServerStarting(SystemServerStartingParam param) {
         Target target = new Target(ANDROID, param.getClassLoader(), null);
+        lastTarget = target;
         hookAudioService(target);
         hookRecentTasksFilter(target);
     }
@@ -98,7 +99,48 @@ public class HookEntry extends XposedModule {
         handlePackage(new Target(param.getPackageName(), param.getClassLoader(), param.getApplicationInfo()));
     }
 
+    // ---- hot reload (experiment) ----
+
+    /** The package this generation hooked; handed to the next generation. */
+    private volatile Target lastTarget;
+
+    @Override
+    public boolean onHotReloading(HotReloadingParam param) {
+        Target target = lastTarget;
+        if (target == null) {
+            Xp.log("hot reload refused: nothing hooked yet");
+            return false;
+        }
+        // Only JDK types and the target's class loader: nothing created under this module's class loader.
+        param.setSavedInstanceState(new Object[]{target.packageName, target.classLoader});
+        Xp.log("hot reloading " + target.packageName + " from marker=" + Config.BUILD_MARKER);
+        return true;
+    }
+
+    @Override
+    public void onHotReloaded(HotReloadedParam param) {
+        super.onHotReloaded(param); // unhooks every hook of the old generation
+        Xp.init(this);
+        Config.useRemotePrefs(this);
+        Xp.log("hot reloaded in " + param.getProcessName() + " marker=" + Config.BUILD_MARKER);
+        Object saved = param.getSavedInstanceState();
+        if (!(saved instanceof Object[]) || ((Object[]) saved).length != 2) {
+            Xp.log("hot reload: no saved target, hooks not reinstalled");
+            return;
+        }
+        Object[] state = (Object[]) saved;
+        Target target = new Target((String) state[0], (ClassLoader) state[1], null);
+        if (ANDROID.equals(target.packageName)) {
+            lastTarget = target;
+            hookAudioService(target);
+            hookRecentTasksFilter(target);
+        } else {
+            handlePackage(target);
+        }
+    }
+
     private void handlePackage(Target lpparam) {
+        lastTarget = lpparam;
         if (!SETTINGS.equals(lpparam.packageName)
                 && !SYSTEM_UI.equals(lpparam.packageName)
                 && !STOCK_LAUNCHER.equals(lpparam.packageName)

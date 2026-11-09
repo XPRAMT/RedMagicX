@@ -11,6 +11,8 @@ import io.github.libxposed.api.XposedModule;
 
 final class Config {
     static final String PACKAGE_NAME = "dev.xpramt.redmagicvowifi";
+    /** Which build runs in a process; the hot-reload experiment changes it to tell generations apart. */
+    static final String BUILD_MARKER = "gen-A";
     static final String PREFS_NAME = "module";
     /** Remote-preferences group the app publishes to and the hooks read from. */
     static final String REMOTE_GROUP = "module";
