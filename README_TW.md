@@ -58,12 +58,14 @@ Root 只用於需要執行 shell 指令的動作，例如重啟 Settings/SystemU
 | 功能           | 需要作用域                                         |
 | ------------ | --------------------------------------------- |
 | VoWiFi UI 修正 | `com.android.settings`、`com.android.systemui` |
-| 音量條       | `android` / System Framework                  |
+| 音量條       | `system`（System Framework）                  |
 | 藍牙接收器 | `com.android.bluetooth` |
 | 魔姬手勢替換       | `com.android.systemui`                        |
 | 第三方啟動器最近任務隱藏 | `com.zte.mifavor.launcher`                    |
 
-設定保存在 App 自己的儲存空間，並同步一份到 LSPosed 的偏好設定。掛鉤優先讀 LSPosed 的副本，副本不存在時會直接向 App 取得，所以更換或重裝 LSPosed 框架不會丟失設定（開啟一次 App 即可補回 LSPosed 的副本）。若目標進程在修改設定前已經載入，請使用 App 內提供的重啟按鈕重啟相關進程；若目標是 `android`，則需要重啟手機。
+RedMagicX 是現代 LSPosed 模組（libxposed API 102）：需要支援 API 102 的 LSPosed 版本（實測 LSPosed 2.2.1），較舊的 LSPosed 無法載入。作用域清單由模組固定。
+
+設定保存在 App 自己的儲存空間，並發布到 LSPosed 的遠端偏好設定（remote preferences）。掛鉤優先讀 LSPosed 的副本，副本不存在時會直接向 App 取得，所以更換或重裝 LSPosed 框架不會丟失設定（開啟一次 App 即可再次發布）。若目標進程在修改設定前已經載入，請使用 App 內提供的重啟按鈕重啟相關進程；若目標是 `system`（system_server），則需要重啟手機。
 
 ## 功能
 
@@ -99,7 +101,7 @@ BD 樣式使用 `bd_stat_vowifi.svg`：
 <img src="img/app截圖2.jpg" alt="音量條設定" width="360">
 
 - 範圍：`1` 到 `10`
-- 作用域：`android` / System Framework
+- 作用域：`system`（System Framework）
 - Hook 目標：`com.android.server.audio.AudioService`
 - 修改行為：媒體音量鍵升降步進
 - 音量變化通知即時送達（預設開啟）：讓背景的音量面板 App（如 Ultra Volume）即時收到音量變化通知，不再被系統延後約 0.5 秒；只影響音量變化通知（`VOLUME_CHANGED_ACTION`）；修改後需重新開機生效
@@ -179,6 +181,6 @@ app\build\outputs\apk\debug\app-debug.apk
 
 ## 注意事項
 
-- 模組宣告 `xposedminversion=93` 與 `xposedsharedprefs=true`。
+- 模組以 libxposed API 102 為目標（`META-INF/xposed/module.prop`：`minApiVersion=102`、`targetApiVersion=102`），不使用舊版 Xposed API。
 - Shizuku 用於無 root 時套用預設啟動器，以及操作工程模式快速入口。
 - 本專案為非官方工具，與 RedMagic、Nubia、ZTE 無關。

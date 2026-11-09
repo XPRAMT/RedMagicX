@@ -18,10 +18,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
-import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import dev.xpramt.redmagicvowifi.Xp.MethodHook;
+import dev.xpramt.redmagicvowifi.Xp.Param;
+import dev.xpramt.redmagicvowifi.Xp.Target;
+import io.github.libxposed.api.XposedInterface;
 
 /**
  * "Use AOSP volume dialog" in SystemUI (com.zte.feature.volume.MfvVolumeDialogImpl on RedMagicOS 11).
@@ -64,10 +64,10 @@ final class AospVolumeHooks {
         }
     }
 
-    static void install(XC_LoadPackage.LoadPackageParam lpparam) {
+    static void install(Target lpparam) {
         checkCrashLoopGuard(lpparam);
         installLayoutHooks(lpparam);
-        Class<?> mfv = XposedHelpers.findClassIfExists(MFV, lpparam.classLoader);
+        Class<?> mfv = Xp.findClassIfExists(MFV, lpparam.classLoader);
         if (mfv == null) {
             log("MfvVolumeDialogImpl not found; AOSP volume dialog MFV hooks skipped");
             return;
@@ -76,7 +76,7 @@ final class AospVolumeHooks {
         installMfvHooks(mfv);
     }
 
-    private static void checkCrashLoopGuard(XC_LoadPackage.LoadPackageParam lpparam) {
+    private static void checkCrashLoopGuard(Target lpparam) {
         try {
             if (!Config.loadForHook().aospVolumeDialog) {
                 return;
@@ -117,23 +117,23 @@ final class AospVolumeHooks {
         }
     }
 
-    private static void installLayoutHooks(XC_LoadPackage.LoadPackageParam lpparam) {
-        Class<?> adapt = XposedHelpers.findClassIfExists(ADAPT, lpparam.classLoader);
+    private static void installLayoutHooks(Target lpparam) {
+        Class<?> adapt = Xp.findClassIfExists(ADAPT, lpparam.classLoader);
         if (adapt == null) {
             log("VolumeDialogImplAdapt not found; AOSP volume dialog layout hooks skipped");
             return;
         }
-        XC_MethodHook passThrough = new XC_MethodHook() {
+        MethodHook passThrough = new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 if (active()) {
                     param.setResult(param.args[0]);
                 }
             }
         };
         try {
-            XposedHelpers.findAndHookMethod(adapt, "getDialogLayoutResId", int.class, passThrough);
-            XposedHelpers.findAndHookMethod(adapt, "getRowLayoutResId", int.class, passThrough);
+            Xp.findAndHookMethod(adapt, "getDialogLayoutResId", int.class, passThrough);
+            Xp.findAndHookMethod(adapt, "getRowLayoutResId", int.class, passThrough);
             log("AOSP volume dialog layout hooks installed on VolumeDialogImplAdapt");
         } catch (Throwable t) {
             log("AOSP volume dialog layout hooks failed: " + t);
@@ -148,9 +148,9 @@ final class AospVolumeHooks {
                 continue;
             }
             try {
-                XposedBridge.hookMethod(method, new XC_MethodHook(XC_MethodHook.PRIORITY_LOWEST) {
+                Xp.hookMethod(method, new MethodHook(XposedInterface.PRIORITY_LOWEST) {
                     @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
+                    protected void after(Param param) {
                         Throwable thrown = param.getThrowable();
                         if (thrown == null || !active()) {
                             return;
@@ -185,31 +185,31 @@ final class AospVolumeHooks {
         skip(mfv, "updateRowsWidth");
 
         // prepareDialog: keep MFV containers non-null even when the AOSP layout lacks them.
-        hook(mfv, "prepareDialog", new XC_MethodHook() {
+        hook(mfv, "prepareDialog", new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 if (!active()) {
                     return;
                 }
                 Object self = param.thisObject;
-                View dialogView = (View) XposedHelpers.getObjectField(self, "mDialogView");
+                View dialogView = (View) Xp.getObjectField(self, "mDialogView");
                 Context ctx = dialogView != null ? dialogView.getContext()
-                        : (Context) XposedHelpers.getObjectField(self, "mContext");
-                XposedHelpers.setObjectField(self, "mDialogMain", new FrameLayout(ctx));
-                XposedHelpers.setObjectField(self, "mDialogRowsView2", new FrameLayout(ctx));
+                        : (Context) Xp.getObjectField(self, "mContext");
+                Xp.setObjectField(self, "mDialogMain", new FrameLayout(ctx));
+                Xp.setObjectField(self, "mDialogRowsView2", new FrameLayout(ctx));
                 param.setResult(null);
             }
         });
 
         // Put every row (including MFV "row2" streams) into the AOSP rows container.
-        XC_MethodHook rowView = new XC_MethodHook() {
+        MethodHook rowView = new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 if (!active()) {
                     return;
                 }
-                Object view = XposedHelpers.getObjectField(param.args[0], "view");
-                Object rows = XposedHelpers.getObjectField(param.thisObject, "mDialogRowsView");
+                Object view = Xp.getObjectField(param.args[0], "view");
+                Object rows = Xp.getObjectField(param.thisObject, "mDialogRowsView");
                 if (rows instanceof ViewGroup && view instanceof View) {
                     ViewGroup group = (ViewGroup) rows;
                     View child = (View) view;
@@ -229,9 +229,9 @@ final class AospVolumeHooks {
     }
 
     private static void skip(Class<?> clazz, String name, Object... params) {
-        hook(clazz, name, new XC_MethodHook() {
+        hook(clazz, name, new MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void before(Param param) {
                 if (active()) {
                     param.setResult(defaultValue(((Method) param.method).getReturnType()));
                 }
@@ -239,12 +239,12 @@ final class AospVolumeHooks {
         }, params);
     }
 
-    private static void hook(Class<?> clazz, String name, XC_MethodHook callback, Object... params) {
+    private static void hook(Class<?> clazz, String name, MethodHook callback, Object... params) {
         try {
             Object[] args = new Object[params.length + 1];
             System.arraycopy(params, 0, args, 0, params.length);
             args[params.length] = callback;
-            XposedHelpers.findAndHookMethod(clazz, name, args);
+            Xp.findAndHookMethod(clazz, name, args);
         } catch (Throwable t) {
             log("AOSP volume dialog hook " + name + " failed: " + t);
         }
@@ -263,6 +263,6 @@ final class AospVolumeHooks {
     }
 
     private static void log(String message) {
-        XposedBridge.log("RedMagicX: " + message);
+        Xp.log(message);
     }
 }

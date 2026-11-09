@@ -60,6 +60,11 @@ final class ProviderPrefs {
         return data == null ? null : new MapPrefs(data);
     }
 
+    /** No settings at all: every default. */
+    static SharedPreferences empty() {
+        return new MapPrefs(new HashMap<>());
+    }
+
     private static boolean isSystemServer() {
         try {
             Class<?> thread = Class.forName("android.app.ActivityThread");

@@ -6,11 +6,14 @@ import android.content.SharedPreferences;
 import java.io.File;
 import java.util.Map;
 
-import de.robv.android.xposed.XSharedPreferences;
+import io.github.libxposed.api.XposedInterface;
+import io.github.libxposed.api.XposedModule;
 
 final class Config {
     static final String PACKAGE_NAME = "dev.xpramt.redmagicvowifi";
     static final String PREFS_NAME = "module";
+    /** Remote-preferences group the app publishes to and the hooks read from. */
+    static final String REMOTE_GROUP = "module";
     static final String OWN_FILE_NAME = "settings.json";
 
     static final String KEY_ENABLE_WFC_SETTINGS = "enable_wfc_settings";
@@ -80,98 +83,70 @@ final class Config {
 
     /**
      * The app's own settings: a JSON file in the app's private files folder, which no framework
-     * touches. This is the source of truth. The framework's copy (see {@link #syncOfficial}) is
-     * only a mirror of it for the hooks.
+     * touches. This is the source of truth. The framework's copy (see {@link FrameworkSync}) is only
+     * a mirror of it for the hooks.
      */
     static synchronized SharedPreferences appPrefs(Context context) {
         if (ownPrefs == null) {
             final Context app = context.getApplicationContext() != null ? context.getApplicationContext() : context;
             File file = new File(app.getFilesDir(), OWN_FILE_NAME);
             boolean first = !file.isFile() || file.length() == 0;
-            FilePrefs created = new FilePrefs(file, snapshot -> syncOfficial(app, snapshot));
+            FilePrefs created = new FilePrefs(file, FrameworkSync::publish);
             if (first) {
                 importOlderCopy(app, created);
             }
             ownPrefs = created;
-            // The framework copy may be missing (a replaced framework): copy the app's values over.
-            syncOfficial(app, created.copyOfAll());
+            // The framework copy may be missing (a replaced framework): publish the app's values.
+            FrameworkSync.start(created.copyOfAll());
         }
         return ownPrefs;
     }
 
     /**
-     * Once, when the app has no file of its own yet: take over an older copy of the settings. Two
-     * older copies can exist: the framework's (shown by the settings page while the framework
-     * redirected the preferences folder) and the plain {@code shared_prefs/module.xml}. The one with
-     * more keys wins, and the framework's wins a tie, because a copy that only holds defaults is
-     * smaller than one the user filled in.
+     * Once, when the app has no file of its own yet: take over the plain {@code shared_prefs/module.xml}
+     * of an older version.
      */
     private static void importOlderCopy(Context app, FilePrefs target) {
-        Map<String, ?> framework = null;
-        try {
-            framework = app.getSharedPreferences(PREFS_NAME, Context.MODE_WORLD_READABLE).getAll();
-        } catch (RuntimeException exception) {
-            // The framework does not offer the redirect right now.
-        }
         File xml = new File(app.getApplicationInfo().dataDir, "shared_prefs/" + PREFS_NAME + ".xml");
         Map<String, ?> plain = FilePrefs.readLegacyXml(xml);
-        int frameworkKeys = framework == null ? 0 : framework.size();
-        Map<String, ?> chosen = plain.size() > frameworkKeys ? plain : framework;
-        android.util.Log.i("RedMagicX", "import: framework copy " + frameworkKeys + " keys, shared_prefs xml "
-                + plain.size() + " keys -> " + (chosen == plain ? "xml" : "framework"));
-        if (chosen != null && !chosen.isEmpty()) {
-            target.replaceAll(chosen);
+        android.util.Log.i("RedMagicX", "import: shared_prefs xml " + plain.size() + " keys");
+        if (!plain.isEmpty()) {
+            target.replaceAll(plain);
         }
     }
 
-    /**
-     * Makes the framework's copy equal to the app's. Returns false when this framework has no such
-     * copy to write (it dropped the legacy redirect); the hooks then ask the app through its provider.
-     */
-    static boolean syncOfficial(Context context, Map<String, ?> values) {
+    private static volatile SharedPreferences remote;
+
+    /** Hooked process: use the framework's copy of the settings, when this framework offers one. */
+    static void useRemotePrefs(XposedModule module) {
         try {
-            SharedPreferences official = context.getSharedPreferences(PREFS_NAME, Context.MODE_WORLD_READABLE);
-            if (official.getAll().equals(values)) {
-                return true;
+            if ((module.getFrameworkProperties() & XposedInterface.PROP_CAP_REMOTE) != 0) {
+                remote = module.getRemotePreferences(REMOTE_GROUP);
+            } else {
+                Xp.log("framework offers no remote preferences; settings come from the app");
             }
-            SharedPreferences.Editor editor = official.edit();
-            editor.clear();
-            for (Map.Entry<String, ?> item : values.entrySet()) {
-                Object value = item.getValue();
-                if (value instanceof Boolean) {
-                    editor.putBoolean(item.getKey(), (Boolean) value);
-                } else if (value instanceof Integer) {
-                    editor.putInt(item.getKey(), (Integer) value);
-                } else if (value instanceof Long) {
-                    editor.putLong(item.getKey(), (Long) value);
-                } else if (value instanceof Float) {
-                    editor.putFloat(item.getKey(), (Float) value);
-                } else if (value instanceof String) {
-                    editor.putString(item.getKey(), (String) value);
-                }
-            }
-            return editor.commit();
-        } catch (RuntimeException exception) {
-            return false;
+        } catch (Throwable throwable) {
+            Xp.log("remote preferences unavailable: " + throwable);
         }
     }
 
     /**
-     * What a hooked process reads. The framework's copy when it has one; otherwise the app's own
-     * values through the provider; otherwise an empty set (every default).
+     * What a hooked process reads. The framework's copy when it has values; otherwise the app's own
+     * values through its provider; otherwise nothing (every default, i.e. every feature off).
      */
     static SharedPreferences hookPrefs() {
-        XSharedPreferences official = new XSharedPreferences(PACKAGE_NAME, PREFS_NAME);
-        try {
-            official.reload();
-            if (official.getFile() != null && official.getFile().canRead() && !official.getAll().isEmpty()) {
-                return official;
+        SharedPreferences copy = remote;
+        if (copy != null) {
+            try {
+                if (!copy.getAll().isEmpty()) {
+                    return copy;
+                }
+            } catch (RuntimeException ignored) {
+                // Fall through to the app's own values.
             }
-        } catch (Throwable ignored) {
-            // Fall through to the app's own copy.
         }
         SharedPreferences fromApp = ProviderPrefs.get();
-        return fromApp != null ? fromApp : official;
+        return fromApp != null ? fromApp : ProviderPrefs.empty();
     }
 
     /** Default true; any failure to read the pref is treated as true. */

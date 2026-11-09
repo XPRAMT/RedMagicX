@@ -58,12 +58,14 @@ Enable RedMagicX in LSPosed, then select scopes based on the features you use:
 | Feature | Required scope |
 |---|---|
 | VoWiFi UI Fix | `com.android.settings`, `com.android.systemui` |
-| Volume Step Control | `android` / System Framework |
+| Volume Step Control | `system` (System Framework) |
 | Bluetooth Receiver | `com.android.bluetooth` |
 | Assistant Gesture Redirect | `com.android.systemui` |
 | Third-Party Launcher recent-task hiding | `com.zte.mifavor.launcher` |
 
-Settings are kept in the app's own storage and mirrored to LSPosed's preferences. Hooks read LSPosed's copy and, when it is missing, ask the app directly, so replacing or reinstalling the LSPosed framework does not lose your settings (open the app once to restore LSPosed's copy). If a target process already loaded before a setting change, restart the related process from the app when available; if the target is `android`, reboot the phone.
+RedMagicX is a modern LSPosed module (libxposed API 102): it needs an LSPosed build that supports API 102 (tested on LSPosed 2.2.1); older LSPosed builds cannot load it. The scope list is fixed by the module.
+
+Settings are kept in the app's own storage and published to LSPosed's remote preferences. Hooks read LSPosed's copy and, when it is missing, ask the app directly, so replacing or reinstalling the LSPosed framework does not lose your settings (open the app once to publish them again). If a target process already loaded before a setting change, restart the related process from the app when available; if the target is `system` (system_server), reboot the phone.
 
 ## Features
 
@@ -99,7 +101,7 @@ Customizes how many media-volume levels one hardware volume-key press changes.
 <img src="img/app截圖2.jpg" alt="Volume Step Control settings" width="360">
 
 - Range: `1` to `10`
-- Scope: `android` / System Framework
+- Scope: `system` (System Framework)
 - Hook target: `com.android.server.audio.AudioService`
 - Hooked behavior: media-volume key up/down step size
 - Instant volume-change notifications (on by default): background volume-panel apps (such as Ultra Volume) receive volume-change notifications immediately instead of being delayed about 0.5 s by the system; only affects volume-change notifications (`VOLUME_CHANGED_ACTION`); reboot required after changing
@@ -179,6 +181,6 @@ app\build\outputs\apk\debug\app-debug.apk
 
 ## Notes
 
-- The module declares `xposedminversion=93` and `xposedsharedprefs=true`.
+- The module targets libxposed API 102 (`META-INF/xposed/module.prop`: `minApiVersion=102`, `targetApiVersion=102`); it does not use the legacy Xposed API.
 - Shizuku is used for applying the default launcher and operating engineering-mode quick entry without root.
 - This is an unofficial project and is not affiliated with RedMagic, Nubia, or ZTE.
