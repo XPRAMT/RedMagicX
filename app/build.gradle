@@ -16,8 +16,23 @@ android {
         buildConfigField "String", "BUILD_MARKER", "\"${new Date().format('MMdd-HHmmss')}\""
     }
 
+    androidResources {
+        // The app text is Chinese; Material's own strings are only needed for English and Chinese.
+        localeFilters += ["en", "zh"]
+    }
+
     buildFeatures {
         buildConfig true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            // Release APKs are published as-is for side loading; they are signed with the debug key like the debug build.
+            signingConfig signingConfigs.debug
+        }
     }
 
     compileOptions {
