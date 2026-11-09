@@ -16,7 +16,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="@dimen/card_padding_h"
-            android:paddingTop="@dimen/card_padding_v"
+            android:paddingTop="@dimen/gap_xs"
             android:paddingEnd="@dimen/card_padding_h"
             android:paddingBottom="@dimen/card_padding_v">
 
