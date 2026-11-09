@@ -2,7 +2,7 @@
 
 ## Current State
 
-- Android application and LSPosed module for RedMagicOS features.
+- Android application and LSPosed module for RedMagicOS features. The module uses the modern libxposed API 102 only (no legacy Xposed API, no compatibility layer; user rule 2026-11-10). It needs an LSPosed build with API 102 (NX809J LSPosed 2.2.1 reports `api=102`); the Xiaomi Pad 6 runs LSPosed 2.0.2, which has not been checked for API 102 and may not load the module.
 - Main UI is implemented programmatically in `app/src/main/java/dev/xpramt/redmagicvowifi/MainActivity.java`.
 - Current feature pages include VoWiFi UI, volume bar (step + AOSP dialog), assistant gesture, launcher, theme, ADB control, quick entry, Bluetooth receiver, and other system settings.
 - The application version remains `0.5.2` unless a release request changes it.
@@ -31,17 +31,25 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 - `VolumeAdjustHook` calls `setStreamVolume` inside `Binder.clearCallingIdentity()`/`restoreCallingIdentity`, so it runs as uid 1000 even when the adjust comes from a third-party app (e.g. Ultra Volume `com.treydev.volume`). Without it, AppOps rejected package "android" under the app uid, `AUDIO_MEDIA_VOLUME` was denied and HardeningEnforcer ignored the call, while the hook still swallowed the original adjust (keys did nothing). Verified against the device services.jar: `HardeningEnforcer.blockVolumeMethod` returns false when `checkCallingOrSelfPermission(MODIFY_AUDIO_SETTINGS_PRIVILEGED)` passes, and `setStreamVolume` uses `Binder.getCallingUid()` for `checkNoteAppOp`. The log records success with `callerUid`, or the full exception stack. Takes effect only after a reboot (android scope).
 - `hookVolumeChangedBroadcastDelay` (android scope, toggle pref `volume_broadcast_undelay`, default true; unreadable pref = true; when false the hook is not installed and logs "broadcast undelay disabled by pref"; UI switch 音量變化通知即時送達 on the 音量條 page; change needs reboot): `BroadcastProcessQueue.updateRunnableAt` after-hook. When the reason is 2 (NORMAL, `DELAY_NORMAL_MILLIS` 500 ms) and the next record is `VOLUME_CHANGED_ACTION`, set `mRunnableAt` to the record enqueue time. Reason: background volume apps (Ultra Volume, procstate 5) got every volume broadcast about 500 ms late, so the panel lagged. `FLAG_RECEIVER_FOREGROUND` was not used because AudioService sends with deferralPolicy UNTIL_ACTIVE, and foreground+deferred is excluded (`mCountForeground > mCountForegroundDeferred`). Delivery-group (most recent) policy and cached/frozen deferral are untouched. Logs: "VOLUME_CHANGED_ACTION broadcast undelay hook installed" and one "normal delay removed (first applied)".
 - Changing the AOSP volume dialog switch requires restarting SystemUI (or a reboot). Do not reboot automatically.
-- `xposed_scope` already includes `com.android.systemui`.
+- `META-INF/xposed/scope.list` already includes `com.android.systemui`.
 
+
+## Modern API layout
+
+- Entry: `HookEntry extends XposedModule` (`META-INF/xposed/java_init.list`). `onModuleLoaded` calls `Xp.init` and `Config.useRemotePrefs`; `onSystemServerStarting` installs the system_server hooks (AudioService volume step, recent tasks filter); `onPackageReady` installs the per-package hooks (Settings, SystemUI, Bluetooth, launcher, Beautify). There is no `assets/xposed_init` and no `xposed*` manifest meta-data (those made the LSPosed manager show the legacy / deprecated warning).
+- `META-INF/xposed/module.prop`: `minApiVersion=102`, `targetApiVersion=102`, `staticScope=true`. `scope.list`: `system` (system_server; the old `android` scope), `com.android.settings`, `com.android.systemui`, `com.android.bluetooth`, `com.zte.mifavor.launcher`, `com.zte.beautify`, `com.zte.beautifyadapter`. Module description is `android:description` in the manifest.
+- `Xp.java`: `MethodHook.before/after` + `Param` (thisObject, args, setResult, getThrowable) on top of `hook(executable).intercept(chain -> ...)` with `ExceptionMode.PASSTHROUGH` and the helper's own try/catch (a failing callback is logged and the original call proceeds); reflection helpers (`findClass`, `getObjectField`, `callMethod`, ...) because the modern API ships none. Hooks keep the old before/after shape; do not reintroduce `XposedHelpers`/`XposedBridge`/`XC_MethodHook`.
+- Build: AGP 9.2.1, Gradle 9.7.1, compileSdk 37 (libxposed 102 requires it), Java 17; `compileOnly io.github.libxposed:api:102.0.0`, `implementation io.github.libxposed:service:102.0.0`.
+- The module app is no longer hooked by itself.
 
 ## Settings Storage (framework independent)
 
 - **Source of truth: the app's own file** `<app files>/settings.json`, implemented by `FilePrefs` (a `SharedPreferences` backed by atomic JSON writes). It lives in `filesDir`, which no framework touches. `Config.appPrefs()` returns it; every page, receiver and the provider use it.
-- **Framework copy (mirror):** on every committed change, and once when the app opens it, `Config.syncOfficial` makes the framework's `module` preferences (legacy "New XSharedPreferences", `MODE_WORLD_READABLE`) equal to the app's. The app wins; a missing or different copy is overwritten. A framework that does not offer the redirect makes this a no-op.
-- **Hook side:** `Config.hookPrefs()` reads the framework copy (`XSharedPreferences`) when it exists and is non-empty, otherwise asks the app through `ThemeConfigProvider` method `get_all` (`ProviderPrefs`: cached, refreshed every 3 s in the background, never blocks `system_server`; other processes wait at most 1.5 s for the first answer). Replacing or reinstalling the framework therefore does not lose settings, and the hooks keep working before the app is opened again.
-- **One-time import** (`Config.importOlderCopy`, only when `settings.json` does not exist yet): from the framework copy or from `shared_prefs/module.xml`, whichever has more keys (the framework copy wins a tie). `shared_prefs/module.xml` is parsed straight from the file, because while a framework redirects the preferences folder even a private `getSharedPreferences` call is served from the framework's folder.
-- Why: a framework replacement (Vector to LSPosed, or a reinstall: LSPosed's `uninstall.sh` runs `rm -rf /data/adb/lspd`) changes the framework folder (`/data/misc/apexdata/<random uuid>/prefs/...`), so settings kept only there were lost. LSPosed's modern storage (Remote Preferences in its database, Remote Files in `/data/adb/lspd/modules/...`) is removed the same way and needs the whole module rewritten for libxposed API 101+, so it is not used.
-- Verified on 2026-11-09: NX809J (LSPosed 2.2.1) and Xiaomi Pad 6 (LSPosed 2.0.2) import their real values; with the framework copy removed, `com.android.settings` still loaded `wfc=true icon=true style=gen_bd volumeStep=true/5` through the provider. Not yet verified after the change: `system_server` and SystemUI load the new code only after a reboot / SystemUI restart.
+- **Framework copy (remote preferences, group `module`):** `FrameworkSync` (app side) registers `XposedServiceHelper` once per process (started from `Config.appPrefs`, which `ThemeConfigProvider.onCreate` also triggers, so a hooked process asking the provider starts the app and the binder arrives), and publishes the app's values to `XposedService.getRemotePreferences("module")` when the service binds and on every committed change (clear + put all, one commit; skipped when equal). It checks `PROP_CAP_REMOTE`.
+- **Hook side:** `Config.hookPrefs()` reads the remote preferences (`module.getRemotePreferences`, obtained in `onModuleLoaded`) when they hold values, otherwise asks the app through `ThemeConfigProvider` method `get_all` (`ProviderPrefs`: cached, refreshed every 3 s in the background, never blocks `system_server`; other processes wait at most 1.5 s for the first answer), otherwise nothing is set (every default, i.e. every feature off).
+- **One-time import** (`Config.importOlderCopy`, only when `settings.json` does not exist yet): from `shared_prefs/module.xml`, parsed straight from the file.
+- Why: LSPosed's `uninstall.sh` runs `rm -rf /data/adb/lspd`, which holds the remote preferences, so a replaced or reinstalled framework starts empty; the app file survives and republishes at the next app start.
+- Verified on 2026-11-10 on NX809J (LSPosed 2.2.1, api=102): the new APK installs, the app process started through the provider and the framework database holds 29 `module` keys for RedMagicX. Not yet verified: that hooks load in Settings / SystemUI / Bluetooth / system_server with the new code and read the remote preferences (needs those processes restarted; system_server needs a reboot by the user); the Xiaomi Pad.
 
 ## Other Settings Page
 
@@ -59,7 +67,7 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 - Implementation: LSPosed hook in `com.android.bluetooth` (`HookEntry.hookBluetoothRoles`). In receiver mode `A2dpSinkService.isEnabled()` returns true and `A2dpService.isEnabled()` returns false; these two static methods are the only readers of the sink/source system properties in the Bluetooth app, and `Config.PROFILE_SERVICES_AND_FLAGS` is built from them when the process starts. Normal mode installs no role hooks. The choice is read once at process start, so a mode change needs the Bluetooth stack restarted.
 - Settings (prefs `module`): `bt_receiver_enabled` (default off) and `bt_auto_restart` (default off). The mode persists across reboots until switched off. With `bt_auto_restart` on, every mode switch restarts Bluetooth through root (`su`), falling back to Shizuku: `cmd bluetooth_manager disable`, wait for `STATE_OFF`, `enable`, wait for `STATE_ON`; it only runs when Bluetooth is currently on. A manual `立即重啟藍牙` button does the same.
 - Status: the hook reports the mode it started in by broadcast (`dev.xpramt.redmagicvowifi.BT_MODE_REPORT`, handled by `BtModeReceiver`, stored as `bt_active_mode` / `bt_active_at`), and the page compares it with the configured mode. The receiver needs an `intent-filter` for that action, because the hook sends an action + package broadcast, not a component broadcast.
-- LSPosed scope: `com.android.bluetooth` must be ticked for RedMagicX (it is in the recommended `xposed_scope` array, but the user has to enable it in the LSPosed manager).
+- LSPosed scope: `com.android.bluetooth` must be ticked for RedMagicX (it is in `META-INF/xposed/scope.list`; `staticScope=true` fixes the scope to that list).
 - Limits: only SBC and AAC are decoded by the stack; the other phone still sees a phone-class device; headphones cannot connect in receiver mode.
 - Not tested on a device yet: the hook itself (needs the scope), the page flow with root and with Shizuku, and the interplay with the experimental A2DP sink build of the KernelSU module (branch `a2dp-sink-experiment` in the old development repository `D:\Android\ZTE\VoWiFI\ksu-hires-unlocker`, not in the standalone repository; it sets the same two properties through `btmode.sh`); do not use both at the same time.
 
@@ -69,7 +77,7 @@ All MainActivity spacing uses the constants at the top of `MainActivity` (dp); n
 - Known local Gradle command:
 
 ```powershell
-& 'C:\Users\XPRAMT\.gradle\wrapper\dists\gradle-8.13-bin\5xuhj0ry160q40clulazy9h7d\gradle-8.13\bin\gradle.bat' -p 'D:\Android\ZTE\VoWiFI\lsposed-redmagic-vowifi' assembleDebug
+& 'C:\Users\XPRAMT\.gradle\wrapper\dists\gradle-9.7.1-bin\1w1c7tv4s851m17nbqdsro2tv\gradle-9.7.1\bin\gradle.bat' -p 'D:\Android\ZTE\VoWiFI\lsposed-redmagic-vowifi' assembleDebug
 ```
 
 - Debug APK output: `app/build/outputs/apk/debug/app-debug.apk`.
