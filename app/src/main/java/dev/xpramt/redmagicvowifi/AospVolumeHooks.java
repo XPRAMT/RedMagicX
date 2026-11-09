@@ -77,6 +77,9 @@ final class AospVolumeHooks {
     }
 
     private static void checkCrashLoopGuard(Target lpparam) {
+        if (Xp.hotReloading) {
+            return; // a hot reload is not a SystemUI start
+        }
         try {
             if (!Config.loadForHook().aospVolumeDialog) {
                 return;

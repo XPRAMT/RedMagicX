@@ -30,6 +30,9 @@ import io.github.libxposed.api.XposedModule;
 final class Xp {
     private static final String TAG = "RedMagicX";
 
+    /** True while a new generation reinstalls its hooks after a hot reload (not a process start). */
+    static volatile boolean hotReloading;
+
     private static volatile XposedModule module;
     private static final Map<Object, Map<String, Object>> EXTRAS = Collections.synchronizedMap(new WeakHashMap<>());
 
