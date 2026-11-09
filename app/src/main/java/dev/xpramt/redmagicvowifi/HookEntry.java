@@ -164,7 +164,7 @@ public class HookEntry extends XposedModule {
      * Bluetooth stack to be restarted.
      */
     private void hookBluetoothRoles(Target lpparam, boolean receiver) {
-        reportBluetoothMode(receiver ? Config.BT_MODE_RECEIVER : Config.BT_MODE_NORMAL);
+        reportBluetoothMode(receiver ? Config.BT_MODE_RECEIVER : Config.BT_MODE_NORMAL, lpparam);
         if (!receiver) {
             log("Bluetooth: normal (A2DP source) mode, no role hooks");
             return;
@@ -183,9 +183,12 @@ public class HookEntry extends XposedModule {
     }
 
     /** Tells RedMagicX which mode this Bluetooth process started in (shown on the receiver page). */
-    private void reportBluetoothMode(String mode) {
+    private void reportBluetoothMode(String mode, Target target) {
+        // Application.onCreate is empty and AdapterApp may not call it, so report from AdapterService.onCreate,
+        // which runs once whenever the Bluetooth stack starts.
+        Class<?> adapter = findClassIfExists("com.android.bluetooth.btservice.AdapterService", target.classLoader);
         try {
-            findAndHookMethod(Application.class, "onCreate", new MethodHook() {
+            findAndHookMethod(adapter != null ? adapter : Application.class, "onCreate", new MethodHook() {
                 private boolean sent;
 
                 @Override
@@ -200,11 +203,14 @@ public class HookEntry extends XposedModule {
                         intent.setPackage(Config.PACKAGE_NAME);
                         intent.putExtra(Config.EXTRA_BT_MODE, mode);
                         context.sendBroadcast(intent);
+                        log("Bluetooth mode reported: " + mode);
                     } catch (Throwable throwable) {
                         log("Bluetooth mode report failed: " + throwable);
                     }
                 }
             });
+            log("Bluetooth mode report hook installed on "
+                    + (adapter != null ? "AdapterService" : "Application") + ".onCreate");
         } catch (Throwable throwable) {
             log("Bluetooth mode report hook failed: " + throwable);
         }
