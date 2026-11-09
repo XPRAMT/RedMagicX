@@ -12,6 +12,12 @@ android {
         targetSdk 35
         versionCode 10
         versionName "0.5.2"
+        // Tells the generations apart in the log and in a hot reload: every build gets its own marker.
+        buildConfigField "String", "BUILD_MARKER", "\"${new Date().format('MMdd-HHmmss')}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     compileOptions {
