@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        style="@style/Widget.App.Description"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:text="@string/vowifi_intro" />
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/vowifi_wfc_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/vowifi_wfc" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/vowifi_wfc_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/vowifi_wfc_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/vowifi_wfc_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/vowifi_wfc_param_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/vowifi_wfc_param_value" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/vowifi_open_wfc"
+                style="@style/Widget.App.Button"
+                android:text="@string/vowifi_open_wfc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/vowifi_icon_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/vowifi_icon" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/vowifi_icon_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/vowifi_icon_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/vowifi_icon_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/vowifi_icon_param_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/vowifi_icon_param_value" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.Title.First"
+                android:text="@string/vowifi_style_title" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/vowifi_style_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/vowifi_style_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/vowifi_style_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/vowifi_style_param_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/vowifi_style_param_value" />
+            <RadioGroup
+                android:id="@+id/vowifi_style_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap_item"
+                android:orientation="vertical">
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/vowifi_style_default"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/vowifi_style_default" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/vowifi_style_gen_bd"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/vowifi_style_gen_bd" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/vowifi_style_array_hook"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/vowifi_style_array_hook" />
+
+            </RadioGroup>
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.Title.First"
+                android:text="@string/vowifi_restart_title" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/vowifi_restart_desc" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/vowifi_restart_settings"
+                style="@style/Widget.App.Button"
+                android:text="@string/vowifi_restart_settings" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/vowifi_restart_systemui"
+                style="@style/Widget.App.Button"
+                android:text="@string/vowifi_restart_systemui" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/vowifi_restart_both"
+                style="@style/Widget.App.Button"
+                android:text="@string/vowifi_restart_both" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

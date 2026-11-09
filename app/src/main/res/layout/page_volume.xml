@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/volume_step_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/volume_step" />
+            <TextView
+                android:id="@+id/volume_step_label"
+                style="@style/Widget.App.ValueLabel" />
+            <com.google.android.material.slider.Slider
+                android:id="@+id/volume_step_slider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="1"
+                android:valueTo="10"
+                android:stepSize="1"
+                app:labelBehavior="gone"
+                app:tickVisible="false" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/volume_step_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/volume_step_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/volume_step_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/volume_step_methods_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/volume_step_methods_value" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/volume_undelay_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/volume_undelay" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/volume_undelay_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/volume_undelay_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/volume_undelay_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/volume_undelay_methods_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/volume_undelay_methods_value" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/volume_aosp_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/volume_aosp" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/volume_aosp_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/volume_aosp_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/volume_aosp_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/volume_aosp_methods_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/volume_aosp_methods_value" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/volume_restart_systemui"
+                style="@style/Widget.App.Button"
+                android:text="@string/volume_restart_systemui" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

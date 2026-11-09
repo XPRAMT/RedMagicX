@@ -1,0 +1,96 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/assistant_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/assistant" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/assistant_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/assistant_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/assistant_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/assistant_methods_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/assistant_methods_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/assistant_target_label" />
+            <TextView
+                android:id="@+id/assistant_target_value"
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/assistant_target_value" />
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/assistant_tabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap_item"
+                android:layout_marginBottom="@dimen/gap_small"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/assistant_tab_system"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/assistant_tab_system" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/assistant_tab_user"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/assistant_tab_user" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/assistant_tab_sysapp"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/assistant_tab_sysapp" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+            <TextView
+                android:id="@+id/assistant_list_header"
+                style="@style/Widget.App.FieldLabel"
+                android:visibility="gone" />
+            <LinearLayout
+                android:id="@+id/assistant_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

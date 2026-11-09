@@ -20,21 +20,14 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.text.SpannableString;
 import android.text.Spanned;
-import android.text.InputType;
 import android.text.method.LinkMovementMethod;
 import android.text.style.URLSpan;
-import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.PopupMenu;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -66,46 +59,17 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
-import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
 
 import rikka.shizuku.Shizuku;
 
 public class MainActivity extends Activity {
-    // ---- Spacing spec (dp). Scale: 4 / 8 / 12 / 16 / 20 / 24. See AGENTS.md "UI Spacing". ----
-    private static final int SPACE_XS = 4;
-    private static final int SPACE_S = 8;
-    private static final int SPACE_M = 12;
-    private static final int SPACE_L = 16;
-    private static final int SPACE_XL = 20;
-    private static final int SPACE_XXL = 24;
-    private static final int PAGE_MARGIN_H = SPACE_XL;
-    private static final int PAGE_MARGIN_TOP = SPACE_L;
-    private static final int PAGE_MARGIN_BOTTOM = SPACE_XXL;
-    private static final int TOOLBAR_PADDING_H = SPACE_S;
-    private static final int TOOLBAR_PADDING_V = SPACE_S;
-    private static final int TOOLBAR_TITLE_INDENT = SPACE_XXL;
-    private static final int SECTION_PADDING_TOP = SPACE_L;
-    private static final int SECTION_PADDING_BOTTOM = SPACE_S;
-    private static final int SECTION_TITLE_TOP_SPACING_DP = SPACE_XL;
-    private static final int ITEM_GAP = SPACE_M;
-    private static final int GROUP_GAP = SPACE_XXL;
-    private static final int FIELD_LABEL_TOP = SPACE_S;
-    private static final int CARD_PADDING_H = SPACE_L;
-    private static final int CARD_PADDING_V = SPACE_M;
-    private static final int CARD_MARGIN_TOP = SPACE_S;
-    private static final int CARD_MARGIN_BOTTOM = SPACE_XS;
-    private static final int ICON_GAP = SPACE_M;
-    private static final int INPUT_PADDING_H = SPACE_M;
-    private static final int BUTTON_PADDING_H = SPACE_L;
-    private static final int DIALOG_PADDING_H = SPACE_XXL;
-    private static final int DIALOG_PADDING_TOP = SPACE_S;
     private static final int PAGE_HOME = 0;
     private static final int PAGE_VOWIFI = 1;
     private static final int PAGE_VOLUME = 2;
@@ -243,7 +207,17 @@ public class MainActivity extends Activity {
         Shizuku.addRequestPermissionResultListener(btRestartShizukuPermissionListener);
         prefs.registerOnSharedPreferenceChangeListener(btStatusPrefsListener);
         ensureDefaults();
-        setContentView(createShell());
+        setContentView(R.layout.activity_main);
+        screen = findViewById(R.id.screen);
+        contentRoot = findViewById(R.id.content);
+        setupToolbar();
+        // Edge to edge: the page owns the system bar insets.
+        ViewCompat.setOnApplyWindowInsetsListener(screen, (view, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
         showHome();
         if (prefs.getBoolean(Config.KEY_AUTO_CHECK_UPDATES, true)) {
             checkForUpdates(false);
@@ -351,36 +325,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private LinearLayout createShell() {
-        screen = new LinearLayout(this);
-        screen.setOrientation(LinearLayout.VERTICAL);
-        // Edge to edge: the page owns the system bar insets.
-        ViewCompat.setOnApplyWindowInsetsListener(screen, (view, windowInsets) -> {
-            Insets bars = windowInsets.getInsets(
-                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-            return WindowInsetsCompat.CONSUMED;
-        });
-        screen.addView(appBar());
-
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-        ));
-        scrollView.setClipToPadding(false);
-        contentRoot = new LinearLayout(this);
-        contentRoot.setOrientation(LinearLayout.VERTICAL);
-        contentRoot.setPadding(dp(PAGE_MARGIN_H), dp(PAGE_MARGIN_TOP), dp(PAGE_MARGIN_H), dp(PAGE_MARGIN_BOTTOM));
-        scrollView.addView(contentRoot);
-        screen.addView(scrollView);
-        return screen;
-    }
-
-    private MaterialToolbar appBar() {
-        toolbar = new MaterialToolbar(this);
-        toolbar.setTitle("RedMagicX");
+    private void setupToolbar() {
+        toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationContentDescription("返回");
         toolbar.setNavigationOnClickListener(view -> showHome());
         toolbar.getMenu().add("關於").setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER);
@@ -393,11 +339,6 @@ public class MainActivity extends Activity {
             }
             return true;
         });
-        toolbar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        ));
-        return toolbar;
     }
 
     private void setHeader(String title, boolean showBack) {
@@ -412,84 +353,82 @@ public class MainActivity extends Activity {
     private void showHome() {
         stopWirelessAdbPolling();
         currentPage = PAGE_HOME;
-        setHeader("RedMagicX", false);
+        setHeader(getString(R.string.app_name), false);
+        View page = inflatePage(R.layout.page_home);
+        onClick(page, R.id.home_vowifi, view -> showVoWifiPage());
+        onClick(page, R.id.home_volume, view -> showVolumePage());
+        onClick(page, R.id.home_bt, view -> showBtReceiverPage());
+        onClick(page, R.id.home_assistant, view -> showAssistantPage());
+        onClick(page, R.id.home_launcher, view -> showLauncherPage());
+        onClick(page, R.id.home_theme, view -> showThemePage());
+        onClick(page, R.id.home_adb, view -> showAdbControlPage());
+        onClick(page, R.id.home_quick, view -> showQuickEntryPage());
+        onClick(page, R.id.home_other, view -> showOtherPage());
+    }
+
+    /** Replaces the page content with a layout from res/layout and returns it. */
+    private View inflatePage(int layout) {
         contentRoot.removeAllViews();
-        contentRoot.addView(featureButton(
-                "VoWiFi UI 修正",
-                "Wi-Fi Calling 設定、狀態列 VoWiFi 圖標、VoWiFi 圖標樣式",
-                view -> showVoWifiPage()
-        ));
-        contentRoot.addView(featureButton(
-                "音量條",
-                "自訂音量鍵步進，或改用 AOSP 音量條",
-                view -> showVolumePage()
-        ));
-        contentRoot.addView(featureButton(
-                "藍牙接收器",
-                "讓手機變成藍牙喇叭，其他手機可串流音樂過來（與藍牙耳機互斥），可自動重啟藍牙",
-                view -> showBtReceiverPage()
-        ));
-        contentRoot.addView(featureButton(
-                "魔姬手勢替換",
-                "攔截 SystemUI 的小白條長按 Assistant 入口，改啟動系統動作、使用者 App 或系統 App",
-                view -> showAssistantPage()
-        ));
-        contentRoot.addView(featureButton(
-                "第三方啟動器",
-                "設定預設 HOME，並從最近使用列表隱藏選定啟動器",
-                view -> showLauncherPage()
-        ));
-        contentRoot.addView(featureButton(
-                "主題",
-                "在原廠主題預覽頁選擇允許套用的原廠資源類型",
-                view -> showThemePage()
-        ));
-        contentRoot.addView(featureButton(
-                "ADB 控制中心",
-                "快速控制 USB 偵錯、ADB 偽裝與無線 ADB",
-                view -> showAdbControlPage()
-        ));
-        contentRoot.addView(featureButton(
-                "快速入口",
-                "自動撥號進入工程模式與手機資訊入口",
-                view -> showQuickEntryPage()
-        ));
-        contentRoot.addView(featureButton(
-                "其它",
-                "未分類的系統設定與未來可擴充功能",
-                view -> showOtherPage()
-        ));
+        View page = getLayoutInflater().inflate(layout, contentRoot, false);
+        contentRoot.addView(page);
+        return page;
+    }
+
+    private void onClick(View page, int id, View.OnClickListener listener) {
+        page.findViewById(id).setOnClickListener(listener);
+    }
+
+    /** A switch that mirrors one boolean preference and writes it on every change. */
+    private MaterialSwitch bindSwitch(View page, int id, String key, boolean defaultValue,
+                                      String onMessage, String offMessage) {
+        MaterialSwitch toggle = page.findViewById(id);
+        toggle.setChecked(prefs.getBoolean(key, defaultValue));
+        toggle.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
+            prefs.edit().putBoolean(key, isChecked).commit();
+            showToast(isChecked ? onMessage : offMessage);
+        });
+        return toggle;
+    }
+
+    private MaterialSwitch bindSwitch(View page, int id, String key, boolean defaultValue, String message) {
+        return bindSwitch(page, id, key, defaultValue, message, message);
     }
 
     private void showVoWifiPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_VOWIFI;
-        setHeader("VoWiFi UI 修正", true);
-        contentRoot.removeAllViews();
+        setHeader(getString(R.string.home_vowifi_title), true);
+        View page = inflatePage(R.layout.page_vowifi);
 
-        contentRoot.addView(detailText("此功能修正 VoWiFi UI 顯示。"));
-        LinearLayout wfcSettingsSection = sectionSwitch(
-                "在設定顯示 VoWiFi 設定",
-                "在設定顯示 Wi-Fi Calling / VoWiFi 開關。仍需要 Pixel IMS 啟用 WFC。",
-                "com.android.settings",
-                "ro.vendor.feature.zte_feature_need_wfc_for_domestic=true",
-                Config.KEY_ENABLE_WFC_SETTINGS
-        );
-        MaterialButton openWfcSettings = new MaterialButton(this);
-        openWfcSettings.setText("打開 WiFi 通話設定");
-        styleButton(openWfcSettings, false, false);
-        openWfcSettings.setOnClickListener(view -> openWifiCallingSettings());
-        wfcSettingsSection.addView(openWfcSettings);
-        addCard(wfcSettingsSection);
-        addCard(sectionSwitch(
-                "開啟狀態列 VoWiFi 圖標",
-                "更改狀態列圖標來源，解決 VoWiFi 圖標無法顯示的問題。開啟後 4G 通話圖標由 HD 變為 VoLTE。修改只作用於 IMS / 訊號圖標相關呼叫，避免其它功能受到影響。",
-                "com.android.systemui",
-                "ro.vendor.mifavor.custom=abroad\nro.mifavor.custom=abroad",
-                Config.KEY_ENABLE_STATUS_ICON
+        bindSwitch(page, R.id.vowifi_wfc_switch, Config.KEY_ENABLE_WFC_SETTINGS, true,
+                "已保存 LSPosed 設定：" + getString(R.string.vowifi_wfc));
+        onClick(page, R.id.vowifi_open_wfc, view -> openWifiCallingSettings());
+        bindSwitch(page, R.id.vowifi_icon_switch, Config.KEY_ENABLE_STATUS_ICON, true,
+                "已保存 LSPosed 設定：" + getString(R.string.vowifi_icon));
+
+        RadioGroup styleGroup = page.findViewById(R.id.vowifi_style_group);
+        int checkedId = styleToId(prefs.getString(Config.KEY_ICON_STYLE, Config.STYLE_GEN_BD));
+        styleGroup.check(checkedId);
+        styleGroup.setOnCheckedChangeListener((radioGroup, checked) -> {
+            prefs.edit().putString(Config.KEY_ICON_STYLE, idToStyle(checked)).commit();
+            showToast("已保存 LSPosed 設定：VoWiFi 圖標樣式");
+        });
+
+        onClick(page, R.id.vowifi_restart_settings, view -> runRootCommand(
+                "am force-stop com.android.settings",
+                "已執行：am force-stop com.android.settings",
+                "重啟 Settings 失敗"
         ));
-        addCard(styleSection());
-        addCard(actionSection());
+        onClick(page, R.id.vowifi_restart_systemui, view -> runRootCommand(
+                "kill -9 $(pidof com.android.systemui)",
+                "已執行：kill -9 $(pidof com.android.systemui)",
+                "重啟 SystemUI 失敗"
+        ));
+        onClick(page, R.id.vowifi_restart_both, view -> runRootCommand(
+                "am force-stop com.android.settings; kill -9 $(pidof com.android.systemui)",
+                "已重啟 Settings + SystemUI",
+                "重啟失敗"
+        ));
     }
 
     private void openWifiCallingSettings() {
@@ -508,57 +447,51 @@ public class MainActivity extends Activity {
     private void showVolumePage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_VOLUME;
-        setHeader("音量條", true);
-        contentRoot.removeAllViews();
-        addCard(volumeSection());
+        setHeader(getString(R.string.home_volume_title), true);
+        View page = inflatePage(R.layout.page_volume);
+
+        bindSwitch(page, R.id.volume_step_switch, Config.KEY_VOLUME_STEP_ENABLED, false, "已寫入音量步進開關");
+        TextView stepLabel = page.findViewById(R.id.volume_step_label);
+        Slider seekBar = page.findViewById(R.id.volume_step_slider);
+        seekBar.setValue(Config.clampVolumeStep(prefs.getInt(Config.KEY_VOLUME_STEP, Config.DEFAULT_VOLUME_STEP)));
+        int volumeSegments = mediaVolumeSegments();
+        Runnable updateLabel = () -> stepLabel.setText(
+                "共 " + volumeSegments + " 段音量，每次步進 " + volumeStepFromSeekBar(seekBar));
+        updateLabel.run();
+        seekBar.addOnChangeListener((slider, value, fromUser) -> {
+            updateLabel.run();
+            if (fromUser) {
+                prefs.edit().putInt(Config.KEY_VOLUME_STEP, volumeStepFromSeekBar(slider)).commit();
+            }
+        });
+        seekBar.addOnSliderTouchListener(new Slider.OnSliderTouchListener() {
+            @Override
+            public void onStartTrackingTouch(Slider slider) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(Slider slider) {
+                prefs.edit().putInt(Config.KEY_VOLUME_STEP, volumeStepFromSeekBar(slider)).commit();
+                showToast("已寫入音量步進值");
+            }
+        });
+
+        bindSwitch(page, R.id.volume_undelay_switch, Config.KEY_VOLUME_BROADCAST_UNDELAY, true,
+                "已寫入音量變化通知開關，重新開機後生效");
+        bindSwitch(page, R.id.volume_aosp_switch, Config.KEY_AOSP_VOLUME_DIALOG, false,
+                "已寫入 AOSP 音量條開關；按下方「重啟 SystemUI」或重新開機後生效");
+        onClick(page, R.id.volume_restart_systemui, view -> restartSystemUi());
     }
 
     private void showBtReceiverPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_BT_RECEIVER;
-        setHeader("藍牙接收器", true);
-        contentRoot.removeAllViews();
-        addCard(btReceiverSection());
-        refreshBtStatus();
-    }
+        setHeader(getString(R.string.home_bt_title), true);
+        View page = inflatePage(R.layout.page_bt_receiver);
+        btStatusView = page.findViewById(R.id.bt_status);
 
-    private LinearLayout btReceiverSection() {
-        LinearLayout box = sectionBox();
-
-        MaterialSwitch receiver = switchView("藍牙接收器模式");
+        MaterialSwitch receiver = page.findViewById(R.id.bt_receiver_switch);
         receiver.setChecked(prefs.getBoolean(Config.KEY_BT_RECEIVER_ENABLED, false));
-        box.addView(receiver);
-        box.addView(detailText("開啟後，這支手機會變成藍牙喇叭：其他手機配對後可以把音樂串流過來（SBC 或 AAC）。"
-                + "此模式下手機無法連接藍牙耳機，因為 Android 的藍牙堆疊無法同時穩定地擔任耳機端與喇叭端。"
-                + "設定會一直保留，重開機後仍然有效，直到你關閉為止。"));
-
-        box.addView(verticalSpace(ITEM_GAP));
-        MaterialSwitch autoRestart = switchView("自動重啟藍牙");
-        autoRestart.setChecked(prefs.getBoolean(Config.KEY_BT_AUTO_RESTART, false));
-        box.addView(autoRestart);
-        box.addView(detailText("打開後，每次切換接收器模式都會自動把藍牙關閉再開啟，新模式立刻生效。"
-                + "需要 root 或 Shizuku；藍牙原本是關閉時不會被自動打開。"
-                + "關閉此選項時，切換模式後請自己把藍牙關閉再開啟。"));
-
-        box.addView(verticalSpace(ITEM_GAP));
-        btStatusView = text("", 14, true);
-        box.addView(btStatusView);
-
-        MaterialButton restartNow = new MaterialButton(this);
-        restartNow.setText("立即重啟藍牙");
-        styleButton(restartNow, false, false);
-        restartNow.setOnClickListener(view -> restartBluetooth());
-        box.addView(restartNow);
-
-        addDetailField(box, "使用方式", "1. 開啟「藍牙接收器模式」，並讓藍牙重啟。"
-                + "2. 在這支手機的系統設定開啟「藍牙 > 配對新裝置」，讓它可被搜尋。"
-                + "3. 在另一支手機配對這支手機並選它當音訊輸出。"
-                + "4. 要用耳機時，關閉接收器模式並讓藍牙重啟。");
-        addDetailField(box, "LSPosed 作用域", "藍牙（com.android.bluetooth）。第一次使用請在 LSPosed 為 RedMagicX 勾選此作用域，"
-                + "然後讓藍牙重啟。");
-        addDetailField(box, "限制", "只能解 SBC / AAC（沒有 LDAC、aptX、LHDC 的接收解碼）。"
-                + "對方看到的裝置類型仍是手機。接收模式下藍牙耳機無法連線。");
-
         receiver.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
             prefs.edit().putBoolean(Config.KEY_BT_RECEIVER_ENABLED, isChecked).commit();
             if (prefs.getBoolean(Config.KEY_BT_AUTO_RESTART, false)) {
@@ -568,11 +501,10 @@ public class MainActivity extends Activity {
             }
             refreshBtStatus();
         });
-        autoRestart.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_BT_AUTO_RESTART, isChecked).commit();
-            showToast(isChecked ? "已開啟：切換模式時會自動重啟藍牙" : "已關閉自動重啟藍牙");
-        });
-        return box;
+        bindSwitch(page, R.id.bt_auto_restart_switch, Config.KEY_BT_AUTO_RESTART, false,
+                "已開啟：切換模式時會自動重啟藍牙", "已關閉自動重啟藍牙");
+        onClick(page, R.id.bt_restart_now, view -> restartBluetooth());
+        refreshBtStatus();
     }
 
     /** Shows the configured mode next to the mode the running Bluetooth process reported. */
@@ -669,70 +601,162 @@ public class MainActivity extends Activity {
     private void showAssistantPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_ASSISTANT;
-        setHeader("魔姬手勢替換", true);
-        contentRoot.removeAllViews();
-        addCard(assistantSection());
+        setHeader(getString(R.string.home_assistant_title), true);
+        View page = inflatePage(R.layout.page_assistant);
+
+        bindSwitch(page, R.id.assistant_switch, Config.KEY_ASSISTANT_REDIRECT_ENABLED, false, "已寫入魔姬手勢替換開關");
+        ((TextView) page.findViewById(R.id.assistant_target_value)).setText(assistantTargetLabel(
+                prefs.getString(Config.KEY_ASSISTANT_TARGET, Config.ASSISTANT_TARGET_DEFAULT)));
+
+        MaterialButtonToggleGroup tabs = page.findViewById(R.id.assistant_tabs);
+        tabs.check(assistantTab == 0 ? R.id.assistant_tab_system
+                : assistantTab == 1 ? R.id.assistant_tab_user : R.id.assistant_tab_sysapp);
+        tabs.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            int tab = checkedId == R.id.assistant_tab_system ? 0 : checkedId == R.id.assistant_tab_user ? 1 : 2;
+            if (tab != assistantTab) {
+                assistantTab = tab;
+                showAssistantPage();
+            }
+        });
+
+        LinearLayout list = page.findViewById(R.id.assistant_list);
+        if (assistantTab == 0) {
+            addSystemActions(list);
+        } else {
+            addAppList(list, page.findViewById(R.id.assistant_list_header), assistantTab == 2);
+        }
     }
 
     private void showLauncherPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_LAUNCHER;
-        setHeader("第三方啟動器", true);
-        contentRoot.removeAllViews();
-        addCard(launcherSection());
+        setHeader(getString(R.string.home_launcher_title), true);
+        View page = inflatePage(R.layout.page_launcher);
+
+        bindSwitch(page, R.id.launcher_hide_switch, Config.KEY_LAUNCHER_OVERRIDE_ENABLED, false, "已寫入最近任務隱藏開關");
+
+        String component = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
+        if (isSettingsFallbackHome(component)) {
+            component = stockLauncherComponent().flattenToString();
+            prefs.edit()
+                    .putString(Config.KEY_LAUNCHER_COMPONENT, component)
+                    .putString(Config.KEY_LAUNCHER_PACKAGE, STOCK_LAUNCHER_PACKAGE)
+                    .commit();
+        }
+
+        LinearLayout list = page.findViewById(R.id.launcher_list);
+        List<ResolveInfo> launchers = installedLaunchers();
+        if (launchers.isEmpty()) {
+            page.findViewById(R.id.launcher_empty).setVisibility(View.VISIBLE);
+        }
+        for (ResolveInfo info : launchers) {
+            String packageName = info.activityInfo.packageName;
+            String className = info.activityInfo.name;
+            if (isSettingsFallbackHome(packageName, className)) {
+                continue;
+            }
+            ComponentName componentName = new ComponentName(packageName, className);
+            CharSequence label = info.loadLabel(getPackageManager());
+            String title = label == null ? packageName : label.toString();
+            String description = componentName.flattenToShortString();
+            Drawable icon = info.loadIcon(getPackageManager());
+            list.addView(launcherCard(list, title, description, componentName.flattenToString(), packageName, icon));
+        }
     }
 
     private void showAdbControlPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_ADB_CONTROL;
-        setHeader("ADB 控制中心", true);
-        contentRoot.removeAllViews();
-        addCard(wirelessAdbSection());
+        setHeader(getString(R.string.home_adb_title), true);
+        View page = inflatePage(R.layout.page_adb);
+
+        MaterialSwitch developerAdb = page.findViewById(R.id.adb_developer_switch);
+        MaterialSwitch fakeAdb = page.findViewById(R.id.adb_fake_switch);
+        TextView developerAdbStatus = page.findViewById(R.id.adb_system_value);
+        MaterialSwitch enabled = page.findViewById(R.id.adb_wireless_switch);
+        enabled.setChecked(prefs.getBoolean(Config.KEY_WIRELESS_ADB_ENABLED, false));
+        TextInputEditText customPort = page.findViewById(R.id.adb_port);
+        customPort.setText(String.valueOf(prefs.getInt(Config.KEY_WIRELESS_ADB_PORT, Config.DEFAULT_WIRELESS_ADB_PORT)));
+        TextView statusValue = page.findViewById(R.id.adb_status_value);
+        TextView endpointValue = page.findViewById(R.id.adb_endpoint_value);
+        TextView commandValue = page.findViewById(R.id.adb_command_value);
+        MaterialButton copyCommand = page.findViewById(R.id.adb_copy);
+        MaterialButton applyPort = page.findViewById(R.id.adb_apply);
+        MaterialSwitch adbInstall = page.findViewById(R.id.adb_install_switch);
+
+        copyCommand.setOnClickListener(view -> {
+            String command = String.valueOf(commandValue.getText());
+            if (!"-".equals(command)) {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText("ADB connect", command));
+                showToast("已複製連線指令");
+            }
+        });
+        applyPort.setOnClickListener(view -> {
+            int port = parseWirelessAdbPort(customPort);
+            if (port == -1) {
+                showToast("連接埠必須介於 1 到 65535");
+                return;
+            }
+            prefs.edit().putInt(Config.KEY_WIRELESS_ADB_PORT, port).commit();
+            applyWirelessAdbPort(port, enabled, statusValue, endpointValue, commandValue, copyCommand);
+        });
+
+        enabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingWirelessAdbSwitch) {
+                int port = parseWirelessAdbPort(customPort);
+                if (port == -1) {
+                    updatingWirelessAdbSwitch = true;
+                    enabled.setChecked(false);
+                    updatingWirelessAdbSwitch = false;
+                    showToast("連接埠必須介於 1 到 65535");
+                    return;
+                }
+                prefs.edit()
+                        .putInt(Config.KEY_WIRELESS_ADB_PORT, port)
+                        .putBoolean(Config.KEY_WIRELESS_ADB_ENABLED, isChecked)
+                        .commit();
+                toggleWirelessAdb(isChecked, port, enabled, statusValue, endpointValue, commandValue, copyCommand);
+            }
+        });
+        developerAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingDeveloperAdbSwitch) {
+                toggleDeveloperAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus,
+                        enabled, statusValue, endpointValue, commandValue, copyCommand);
+            }
+        });
+        fakeAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingDeveloperAdbSwitch) {
+                toggleFakeAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus,
+                        enabled, statusValue, endpointValue, commandValue, copyCommand);
+            }
+        });
+        adbInstall.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!updatingAdbInstallSwitch) {
+                toggleAdbInstall(isChecked, adbInstall);
+            }
+        });
+        refreshDeveloperAdbStatus(developerAdb, fakeAdb, developerAdbStatus);
+        refreshAdbInstallStatus(adbInstall);
+        startWirelessAdbPolling(enabled, statusValue, endpointValue, commandValue, copyCommand);
     }
 
     private void showThemePage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_THEME;
-        setHeader("主題", true);
-        contentRoot.removeAllViews();
-        addCard(themeSection());
-    }
+        setHeader(getString(R.string.home_theme_title), true);
+        View page = inflatePage(R.layout.page_theme);
 
-    private LinearLayout themeSection() {
-        LinearLayout box = sectionBox();
-        MaterialSwitch enabled = switchView("啟用主題元素選擇");
-        enabled.setChecked(prefs.getBoolean(Config.KEY_THEME_SELECT_ENABLED, false));
-        enabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_THEME_SELECT_ENABLED, isChecked).commit();
-            showToast(isChecked ? "已啟用主題元素選擇" : "已停用主題元素選擇");
-        });
-        box.addView(enabled);
-        box.addView(detailText("開啟後，原廠主題預覽頁會在自我介紹下方顯示系統資源、圖標、桌布與鎖屏選項，可分別選擇要套用的元素。"));
-        box.addView(verticalSpace(GROUP_GAP));
-        MaterialSwitch skipSplash = switchView("跳過開屏畫面");
-        skipSplash.setChecked(prefs.getBoolean(Config.KEY_SKIP_BEAUTIFY_SPLASH, false));
-        skipSplash.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_SKIP_BEAUTIFY_SPLASH, isChecked).commit();
-            showToast(isChecked ? "已啟用跳過開屏畫面" : "已停用跳過開屏畫面");
-        });
-        box.addView(skipSplash);
-        box.addView(detailText("啟動原廠主題 App 時跳過蒲公英開屏倒數，直接進入主題首頁。"));
-        box.addView(verticalSpace(GROUP_GAP));
-        MaterialSwitch removeTrial = switchView("移除試用時間限制");
-        removeTrial.setChecked(prefs.getBoolean(Config.KEY_REMOVE_TRIAL_LIMIT, false));
-        removeTrial.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_REMOVE_TRIAL_LIMIT, isChecked).commit();
-            showToast(isChecked ? "已啟用移除試用時間限制" : "已停用移除試用時間限制");
-        });
-        box.addView(removeTrial);
-        box.addView(detailText("免費試用主題、字體、桌布、動態桌布、熄屏時，不會有 5 分鐘時間限制。"));
-        addDetailField(box, "可選元素", "系統資源\n圖標\n桌布\n鎖屏");
-        addDetailField(box, "作用進程", "com.zte.beautify\ncom.zte.beautifyadapter");
-        addDetailField(box, "生效條件", "LSPosed 需要勾選上述兩個作用域。變更作用域後請重新開啟原廠主題 App。");
-        MaterialButton openBeautify = new MaterialButton(this);
-        openBeautify.setText("打開下載佈景主題");
-        styleButton(openBeautify, false, false);
-        openBeautify.setOnClickListener(view -> {
+        bindSwitch(page, R.id.theme_select_switch, Config.KEY_THEME_SELECT_ENABLED, false,
+                "已啟用主題元素選擇", "已停用主題元素選擇");
+        bindSwitch(page, R.id.theme_splash_switch, Config.KEY_SKIP_BEAUTIFY_SPLASH, false,
+                "已啟用跳過開屏畫面", "已停用跳過開屏畫面");
+        bindSwitch(page, R.id.theme_trial_switch, Config.KEY_REMOVE_TRIAL_LIMIT, false,
+                "已啟用移除試用時間限制", "已停用移除試用時間限制");
+        onClick(page, R.id.theme_open_beautify, view -> {
             Intent intent = new Intent("zte.mfv.intent.action.beauty.main");
             intent.setPackage("com.zte.beautify");
             intent.putExtra("dev.xpramt.redmagicvowifi.OPEN_DOWNLOADED_THEMES", true);
@@ -743,46 +767,31 @@ public class MainActivity extends Activity {
                 showToast("無法打開下載佈景主題");
             }
         });
-        box.addView(verticalSpace(ITEM_GAP));
-        box.addView(openBeautify);
-        return box;
     }
 
     private void showQuickEntryPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_QUICK_ENTRY;
-        setHeader("快速入口", true);
-        contentRoot.removeAllViews();
-        addCard(quickEntrySection());
+        setHeader(getString(R.string.home_quick_title), true);
+        View page = inflatePage(R.layout.page_quick_entry);
+        onClick(page, R.id.quick_unlock, view -> openEngineeringMode("*983*673636#", "已送出工程模式解鎖碼"));
+        onClick(page, R.id.quick_enter, view -> openEngineeringModeMenu());
+        onClick(page, R.id.quick_phone_info, view -> openPhoneInfo());
     }
 
     private void showOtherPage() {
         stopWirelessAdbPolling();
         currentPage = PAGE_OTHER;
-        setHeader("其它", true);
-        contentRoot.removeAllViews();
-        addCard(otherSection());
-    }
+        setHeader(getString(R.string.home_other_title), true);
+        View page = inflatePage(R.layout.page_other);
 
-    private LinearLayout otherSection() {
-        LinearLayout box = sectionBox();
-        box.addView(text("螢幕亮屏時間設定", 18, true));
-        box.addView(detailText("設定螢幕無操作後維持亮屏的時間，範圍為 1 到 60 分鐘。每次進入此頁面時會重新讀取系統目前值。套用優先使用 root；沒有 root 時改用 Shizuku。"));
-
-        TextView valueLabel = text("", 16, true);
-        valueLabel.setGravity(Gravity.CENTER_HORIZONTAL);
-        valueLabel.setPadding(0, dp(SPACE_L), 0, 0);
-        box.addView(valueLabel);
-
-        Slider seekBar = slider(MIN_SCREEN_OFF_MINUTES, MAX_SCREEN_OFF_MINUTES, readScreenOffTimeoutMinutes());
-        seekBar.setContentDescription("螢幕亮屏時間");
-        box.addView(seekBar);
-
+        TextView valueLabel = page.findViewById(R.id.other_timeout_label);
+        Slider seekBar = page.findViewById(R.id.other_timeout_slider);
+        seekBar.setValue(readScreenOffTimeoutMinutes());
         Runnable updateLabel = () -> valueLabel.setText(
                 "螢幕關閉時間：" + screenOffMinutesFromSeekBar(seekBar) + " 分鐘"
         );
         updateLabel.run();
-
         seekBar.addOnChangeListener((slider, value, fromUser) -> updateLabel.run());
         seekBar.addOnSliderTouchListener(new Slider.OnSliderTouchListener() {
             @Override
@@ -794,9 +803,6 @@ public class MainActivity extends Activity {
                 applyScreenOffTimeout(screenOffMinutesFromSeekBar(slider), seekBar, valueLabel);
             }
         });
-
-        addDetailField(box, "系統參數", "Settings.System.screen_off_timeout");
-        return box;
     }
 
     private int readScreenOffTimeoutMinutes() {
@@ -925,41 +931,6 @@ public class MainActivity extends Activity {
         pendingScreenTimeoutMinutes = 0;
         pendingScreenTimeoutSeekBar = null;
         pendingScreenTimeoutValueLabel = null;
-    }
-
-    private LinearLayout quickEntrySection() {
-        LinearLayout box = sectionBox();
-        box.addView(detailText("以下功能可使用 root 或 Shizuku 授權。"));
-        box.addView(verticalSpace(ITEM_GAP));
-        box.addView(text("工程模式", 18, true));
-        box.addView(detailText("首次使用時，請先解鎖工程模式；完成解鎖後可直接進入工程模式主選單。"));
-        box.addView(verticalSpace(ITEM_GAP));
-
-        MaterialButton unlock = new MaterialButton(this);
-        unlock.setText("解鎖工程模式");
-        styleButton(unlock, false, false);
-        unlock.setOnClickListener(view -> openEngineeringMode("*983*673636#", "已送出工程模式解鎖碼"));
-        box.addView(unlock);
-        box.addView(detailText("模擬輸入 *983*673636#。只需要在首次使用時執行。"));
-
-        box.addView(verticalSpace(ITEM_GAP));
-        MaterialButton enter = new MaterialButton(this);
-        enter.setText("進入工程模式");
-        styleButton(enter, false, false);
-        enter.setOnClickListener(view -> openEngineeringModeMenu());
-        box.addView(enter);
-        box.addView(detailText("透過原廠電話鍵盤模擬輸入 *983*0#，完成工程模式初始化並開啟主選單。"));
-
-        box.addView(verticalSpace(GROUP_GAP));
-        box.addView(text("手機資訊", 18, true));
-        box.addView(detailText("開啟系統電話服務的手機資訊頁面，可查看行動網路、IMS 與無線電狀態。"));
-        box.addView(verticalSpace(ITEM_GAP));
-        MaterialButton phoneInfo = new MaterialButton(this);
-        phoneInfo.setText("開啟手機資訊");
-        styleButton(phoneInfo, false, false);
-        phoneInfo.setOnClickListener(view -> openPhoneInfo());
-        box.addView(phoneInfo);
-        return box;
     }
 
     private void openPhoneInfo() {
@@ -1094,117 +1065,6 @@ public class MainActivity extends Activity {
         };
     }
 
-    private MaterialCardView featureButton(String title, String description, View.OnClickListener listener) {
-        MaterialCardView card = filledCard();
-        card.setOnClickListener(listener);
-        LinearLayout labels = new LinearLayout(this);
-        labels.setOrientation(LinearLayout.VERTICAL);
-        labels.setPadding(dp(CARD_PADDING_H), dp(CARD_PADDING_V), dp(CARD_PADDING_H), dp(CARD_PADDING_V));
-        TextView titleView = text(title, 16, true);
-        titleView.setTextColor(color(com.google.android.material.R.attr.colorOnSurface));
-        labels.addView(titleView);
-        labels.addView(detailText(description));
-        card.addView(labels);
-        return card;
-    }
-
-    /** Material 3 filled card (surface container highest), the one card style of every page. */
-    private MaterialCardView filledCard() {
-        MaterialCardView card = new MaterialCardView(
-                this, null, com.google.android.material.R.attr.materialCardViewFilledStyle);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.setMargins(0, 0, 0, dp(ITEM_GAP));
-        card.setLayoutParams(params);
-        return card;
-    }
-
-    /** Puts a page section into its own filled card. */
-    private void addCard(LinearLayout box) {
-        MaterialCardView card = filledCard();
-        box.setPadding(dp(CARD_PADDING_H), dp(SECTION_PADDING_TOP), dp(CARD_PADDING_H), dp(SECTION_PADDING_BOTTOM));
-        card.addView(box);
-        contentRoot.addView(card);
-    }
-
-    private LinearLayout volumeSection() {
-        LinearLayout box = sectionBox();
-
-        MaterialSwitch enabled = switchView("啟用自訂音量步進");
-        enabled.setChecked(prefs.getBoolean(Config.KEY_VOLUME_STEP_ENABLED, false));
-        box.addView(enabled);
-
-        TextView stepLabel = text("", 16, true);
-        stepLabel.setGravity(Gravity.CENTER_HORIZONTAL);
-        box.addView(stepLabel);
-
-        Slider seekBar = slider(Config.MIN_VOLUME_STEP, Config.MAX_VOLUME_STEP,
-                Config.clampVolumeStep(prefs.getInt(Config.KEY_VOLUME_STEP, Config.DEFAULT_VOLUME_STEP)));
-        box.addView(seekBar);
-
-        int volumeSegments = mediaVolumeSegments();
-        Runnable updateLabel = () -> stepLabel.setText(
-                "共 " + volumeSegments + " 段音量，每次步進 " + volumeStepFromSeekBar(seekBar));
-        updateLabel.run();
-
-        enabled.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_VOLUME_STEP_ENABLED, isChecked).commit();
-            showToast("已寫入音量步進開關");
-        });
-        seekBar.addOnChangeListener((slider, value, fromUser) -> {
-            updateLabel.run();
-            if (fromUser) {
-                prefs.edit().putInt(Config.KEY_VOLUME_STEP, volumeStepFromSeekBar(slider)).commit();
-            }
-        });
-        seekBar.addOnSliderTouchListener(new Slider.OnSliderTouchListener() {
-            @Override
-            public void onStartTrackingTouch(Slider slider) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(Slider slider) {
-                prefs.edit().putInt(Config.KEY_VOLUME_STEP, volumeStepFromSeekBar(slider)).commit();
-                showToast("已寫入音量步進值");
-            }
-        });
-        box.addView(detailText("攔截媒體音量的音量鍵升降步進值，可設為 1 到 10。第一次載入可能需要重啟手機才能生效。"));
-        addDetailField(box, "作用進程", "android / System Framework");
-        addDetailField(box, "攔截方法", "adjustStreamVolume\nadjustSuggestedStreamVolume");
-
-        MaterialSwitch undelay = switchView("音量變化通知即時送達");
-        undelay.setChecked(prefs.getBoolean(Config.KEY_VOLUME_BROADCAST_UNDELAY, true));
-        box.addView(undelay);
-        undelay.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_VOLUME_BROADCAST_UNDELAY, isChecked).commit();
-            showToast("已寫入音量變化通知開關，重新開機後生效");
-        });
-        box.addView(detailText("讓背景的音量面板 App（如 Ultra Volume）即時收到音量變化通知，不再被系統延後約 0.5 秒。"
-                + "只影響音量變化通知（VOLUME_CHANGED_ACTION），不影響其他廣播。修改後需重新開機生效。"));
-        addDetailField(box, "作用進程", "android / System Framework");
-        addDetailField(box, "攔截方法", "BroadcastProcessQueue.updateRunnableAt");
-
-        MaterialSwitch aospDialog = switchView("使用AOSP音量條");
-        aospDialog.setChecked(prefs.getBoolean(Config.KEY_AOSP_VOLUME_DIALOG, false));
-        box.addView(aospDialog);
-        aospDialog.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_AOSP_VOLUME_DIALOG, isChecked).commit();
-            showToast("已寫入 AOSP 音量條開關；按下方「重啟 SystemUI」或重新開機後生效");
-        });
-        box.addView(detailText("開啟後改用 AOSP／legacy 音量條 layout（volume_dialog_legacy + volume_dialog_row），"
-                + "並跳過 MFV 專用初始化，避開 ColorSeekBarZTE。不會再強制 Adapt.enabled()=false。"
-                + "變更後按下方「重啟 SystemUI」或重新開機套用。"));
-        addDetailField(box, "作用進程", "com.android.systemui");
-        addDetailField(box, "攔截方法", "getDialogLayoutResId / getRowLayoutResId\nmfvInitDialog / prepareDialog");
-
-        MaterialButton restartSystemUi = new MaterialButton(this);
-        restartSystemUi.setText("重啟 SystemUI");
-        styleButton(restartSystemUi, false, false);
-        restartSystemUi.setOnClickListener(view -> restartSystemUi());
-        box.addView(restartSystemUi);
-        return box;
-    }
-
     private void restartSystemUi() {
         new Thread(() -> {
             String result;
@@ -1245,196 +1105,6 @@ public class MainActivity extends Activity {
         return audioManager == null
                 ? Config.MAX_VOLUME_STEP
                 : audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-    }
-
-    private LinearLayout assistantSection() {
-        LinearLayout box = sectionBox();
-        MaterialSwitch enabled = switchView("啟用魔姬手勢替換");
-        enabled.setChecked(prefs.getBoolean(Config.KEY_ASSISTANT_REDIRECT_ENABLED, false));
-        enabled.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_ASSISTANT_REDIRECT_ENABLED, isChecked).commit();
-            showToast("已寫入魔姬手勢替換開關");
-        });
-        box.addView(enabled);
-        box.addView(detailText("攔截小白條長按喚出魔姬助手的事件，改為啟動指定目標。可能需要重啟 SystemUI 才能生效。"));
-        addDetailField(box, "作用進程", "com.android.systemui");
-        addDetailField(box, "攔截方法", "Context.sendBroadcast / sendBroadcastAsUser 發出的 event_Home_Longpressed");
-        addDetailField(box, "目前目標", assistantTargetLabel(prefs.getString(Config.KEY_ASSISTANT_TARGET, Config.ASSISTANT_TARGET_DEFAULT)));
-        box.addView(assistantTabs());
-        if (assistantTab == 0) {
-            addSystemActions(box);
-        } else {
-            addAppList(box, assistantTab == 2);
-        }
-        return box;
-    }
-
-    private LinearLayout launcherSection() {
-        LinearLayout box = sectionBox();
-        MaterialSwitch enabled = switchView("從最近使用列表隱藏選定啟動器");
-        enabled.setChecked(prefs.getBoolean(Config.KEY_LAUNCHER_OVERRIDE_ENABLED, false));
-        enabled.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(Config.KEY_LAUNCHER_OVERRIDE_ENABLED, isChecked).commit();
-            showToast("已寫入最近任務隱藏開關");
-        });
-        box.addView(enabled);
-        box.addView(detailText("避免使用第三方啟動器時，啟動器被補成最近任務卡片。只在手勢模式、目前任務為選定第三方 HOME 時生效。"));
-        addDetailField(box, "作用進程", "com.zte.mifavor.launcher");
-        addDetailField(box, "攔截方法", "RecentsView#onGestureAnimationStart");
-        box.addView(verticalSpace(ITEM_GAP));
-        box.addView(text("更換啟動器", 18, true));
-        box.addView(detailText("優先使用 root 執行系統 set-home-activity；無 root 時可透過 Shizuku 授權，以 shell 權限套用。"));
-        addDetailField(box, "指令", "cmd package set-home-activity --user 0 <component>");
-
-        String component = prefs.getString(Config.KEY_LAUNCHER_COMPONENT, "");
-        if (isSettingsFallbackHome(component)) {
-            component = stockLauncherComponent().flattenToString();
-            prefs.edit()
-                    .putString(Config.KEY_LAUNCHER_COMPONENT, component)
-                    .putString(Config.KEY_LAUNCHER_PACKAGE, STOCK_LAUNCHER_PACKAGE)
-                    .commit();
-        }
-
-        List<ResolveInfo> launchers = installedLaunchers();
-        if (launchers.isEmpty()) {
-            box.addView(detailText("未找到可處理 HOME intent 的啟動器。"));
-        }
-        for (ResolveInfo info : launchers) {
-            String packageName = info.activityInfo.packageName;
-            String className = info.activityInfo.name;
-            if (isSettingsFallbackHome(packageName, className)) {
-                continue;
-            }
-            ComponentName componentName = new ComponentName(packageName, className);
-            CharSequence label = info.loadLabel(getPackageManager());
-            String title = label == null ? packageName : label.toString();
-            String description = componentName.flattenToShortString();
-            Drawable icon = info.loadIcon(getPackageManager());
-            box.addView(launcherCard(title, description, componentName.flattenToString(), packageName, icon));
-        }
-        return box;
-    }
-
-    private LinearLayout wirelessAdbSection() {
-        LinearLayout box = sectionBox();
-        box.addView(detailText("以下功能皆需 root 權限。"));
-        box.addView(verticalSpace(ITEM_GAP));
-
-        MaterialSwitch developerAdb = switchView("啟用 ADB（開發人員選項）");
-        developerAdb.setEnabled(false);
-        box.addView(developerAdb);
-        box.addView(detailText("快速控制開發人員選項的「USB 偵錯」開關。關閉後也會中斷無線 ADB。"));
-        box.addView(verticalSpace(ITEM_GAP));
-
-        MaterialSwitch fakeAdb = switchView("偽裝 ADB 狀態");
-        fakeAdb.setEnabled(false);
-        box.addView(fakeAdb);
-        box.addView(detailText("寫入 adb_enabled=2。系統會把大於零的值視為 ADB 已開啟，只能欺騙精確檢查 adb_enabled 是否等於 1 的部分 App。對於會檢查非零值或其它偵錯狀態的 App 無效。"));
-        TextView developerAdbStatus = wirelessAdbField(box, "系統狀態", "讀取中...");
-
-        box.addView(verticalSpace(ITEM_GAP));
-
-        MaterialSwitch enabled = switchView("啟用無線 ADB");
-        enabled.setChecked(prefs.getBoolean(Config.KEY_WIRELESS_ADB_ENABLED, false));
-        enabled.setEnabled(false);
-        box.addView(enabled);
-        box.addView(detailText("立即設定 ADB TCP 連接埠並重啟 adbd。開啟後會保留使用者設定；ADB 已開啟時每 5 秒確認一次，未執行時會自動恢復。"));
-
-        TextInputLayout portLayout = new TextInputLayout(this);
-        portLayout.setHint("自訂連接埠");
-        LinearLayout.LayoutParams portParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        portParams.setMargins(0, dp(ITEM_GAP), 0, 0);
-        portLayout.setLayoutParams(portParams);
-        TextInputEditText customPort = new TextInputEditText(portLayout.getContext());
-        customPort.setText(String.valueOf(prefs.getInt(Config.KEY_WIRELESS_ADB_PORT, Config.DEFAULT_WIRELESS_ADB_PORT)));
-        customPort.setSingleLine(true);
-        customPort.setSelectAllOnFocus(false);
-        customPort.setInputType(InputType.TYPE_CLASS_NUMBER);
-        portLayout.addView(customPort);
-        box.addView(portLayout);
-
-        TextView statusValue = wirelessAdbField(box, "狀態", "讀取中...");
-        TextView endpointValue = wirelessAdbField(box, "IP 位址", "讀取中...");
-        TextView commandValue = wirelessAdbField(box, "連線指令", "-");
-
-        MaterialButton copyCommand = new MaterialButton(this);
-        copyCommand.setText("複製連線指令");
-        styleButton(copyCommand, false, false);
-        copyCommand.setEnabled(false);
-        copyCommand.setOnClickListener(view -> {
-            String command = String.valueOf(commandValue.getText());
-            if (!"-".equals(command)) {
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                clipboard.setPrimaryClip(ClipData.newPlainText("ADB connect", command));
-                showToast("已複製連線指令");
-            }
-        });
-        box.addView(copyCommand);
-
-        MaterialButton applyPort = new MaterialButton(this);
-        applyPort.setText("套用");
-        styleButton(applyPort, false, false);
-        applyPort.setOnClickListener(view -> {
-            int port = parseWirelessAdbPort(customPort);
-            if (port == -1) {
-                showToast("連接埠必須介於 1 到 65535");
-                return;
-            }
-            prefs.edit().putInt(Config.KEY_WIRELESS_ADB_PORT, port).commit();
-            applyWirelessAdbPort(port, enabled, statusValue, endpointValue, commandValue, copyCommand);
-        });
-        box.addView(applyPort);
-
-        box.addView(verticalSpace(ITEM_GAP));
-        MaterialSwitch adbInstall = switchView("允許 ADB 安裝");
-        adbInstall.setEnabled(false);
-        box.addView(adbInstall);
-        box.addView(detailText("控制開發人員選項的「允許 USB 安裝」，開啟時寫入 adb_install_enabled=1。"));
-
-        enabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!updatingWirelessAdbSwitch) {
-                int port = parseWirelessAdbPort(customPort);
-                if (port == -1) {
-                    updatingWirelessAdbSwitch = true;
-                    enabled.setChecked(false);
-                    updatingWirelessAdbSwitch = false;
-                    showToast("連接埠必須介於 1 到 65535");
-                    return;
-                }
-                prefs.edit()
-                        .putInt(Config.KEY_WIRELESS_ADB_PORT, port)
-                        .putBoolean(Config.KEY_WIRELESS_ADB_ENABLED, isChecked)
-                        .commit();
-                toggleWirelessAdb(isChecked, port, enabled, statusValue, endpointValue, commandValue, copyCommand);
-            }
-        });
-        developerAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!updatingDeveloperAdbSwitch) {
-                toggleDeveloperAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus,
-                        enabled, statusValue, endpointValue, commandValue, copyCommand);
-            }
-        });
-        fakeAdb.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!updatingDeveloperAdbSwitch) {
-                toggleFakeAdb(isChecked, developerAdb, fakeAdb, developerAdbStatus,
-                        enabled, statusValue, endpointValue, commandValue, copyCommand);
-            }
-        });
-        adbInstall.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!updatingAdbInstallSwitch) {
-                toggleAdbInstall(isChecked, adbInstall);
-            }
-        });
-        refreshDeveloperAdbStatus(developerAdb, fakeAdb, developerAdbStatus);
-        refreshAdbInstallStatus(adbInstall);
-        startWirelessAdbPolling(enabled, statusValue, endpointValue, commandValue, copyCommand);
-        return box;
-    }
-
-    private TextView wirelessAdbField(LinearLayout box, String label, String value) {
-        addDetailField(box, label, value);
-        return (TextView) box.getChildAt(box.getChildCount() - 1);
     }
 
     private void refreshDeveloperAdbStatus(MaterialSwitch toggle, MaterialSwitch fakeToggle, TextView statusValue) {
@@ -1864,9 +1534,10 @@ public class MainActivity extends Activity {
                 && SETTINGS_FALLBACK_HOME_CLASS.equals(className);
     }
 
-    private MaterialCardView launcherCard(String title, String description, String component, String packageName, Drawable icon) {
+    private MaterialCardView launcherCard(ViewGroup parent, String title, String description, String component,
+                                          String packageName, Drawable icon) {
         boolean selected = component.equals(prefs.getString(Config.KEY_LAUNCHER_COMPONENT, ""));
-        return choiceCard(title, description, icon, selected, view -> {
+        return choiceCard(parent, title, description, icon, selected, view -> {
             prefs.edit()
                     .putString(Config.KEY_LAUNCHER_COMPONENT, component)
                     .putString(Config.KEY_LAUNCHER_PACKAGE, packageName)
@@ -1876,49 +1547,27 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** One selectable row inside a section: selected = primary container, otherwise outlined. */
-    private MaterialCardView choiceCard(String title, String description, Drawable icon, boolean selected,
-                                        View.OnClickListener listener) {
-        MaterialCardView card = new MaterialCardView(
-                this, null, com.google.android.material.R.attr.materialCardViewOutlinedStyle);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        cardParams.setMargins(0, dp(CARD_MARGIN_TOP), 0, dp(CARD_MARGIN_BOTTOM));
-        card.setLayoutParams(cardParams);
+    /** One selectable row (res/layout/item_choice.xml): selected = primary container, otherwise outlined. */
+    private MaterialCardView choiceCard(ViewGroup parent, String title, String description, Drawable icon,
+                                        boolean selected, View.OnClickListener listener) {
+        MaterialCardView card = (MaterialCardView) getLayoutInflater().inflate(R.layout.item_choice, parent, false);
+        TextView titleView = card.findViewById(R.id.choice_title);
+        TextView descriptionView = card.findViewById(R.id.choice_desc);
+        titleView.setText(title);
+        descriptionView.setText(description);
+        if (icon != null) {
+            ImageView image = card.findViewById(R.id.choice_icon);
+            image.setImageDrawable(icon);
+            image.setVisibility(View.VISIBLE);
+        }
         if (selected) {
+            int onContainer = color(com.google.android.material.R.attr.colorOnPrimaryContainer);
             card.setCardBackgroundColor(color(com.google.android.material.R.attr.colorPrimaryContainer));
             card.setStrokeWidth(0);
+            titleView.setTextColor(onContainer);
+            descriptionView.setTextColor(onContainer);
         }
         card.setOnClickListener(listener);
-
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(CARD_PADDING_H), dp(CARD_PADDING_V), dp(CARD_PADDING_H), dp(CARD_PADDING_V));
-        if (icon != null) {
-            ImageView image = new ImageView(this);
-            image.setImageDrawable(icon);
-            LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(44), dp(44));
-            imageParams.setMargins(0, 0, dp(ICON_GAP), 0);
-            image.setLayoutParams(imageParams);
-            row.addView(image);
-        }
-        LinearLayout labels = new LinearLayout(this);
-        labels.setOrientation(LinearLayout.VERTICAL);
-        labels.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        TextView titleView = text(title, 15, true);
-        titleView.setTextColor(color(selected
-                ? com.google.android.material.R.attr.colorOnPrimaryContainer
-                : com.google.android.material.R.attr.colorOnSurface));
-        labels.addView(titleView);
-        TextView descriptionView = detailText(description);
-        descriptionView.setTextSize(12);
-        if (selected) {
-            descriptionView.setTextColor(color(com.google.android.material.R.attr.colorOnPrimaryContainer));
-        }
-        labels.addView(descriptionView);
-        row.addView(labels);
-        card.addView(row);
         return card;
     }
 
@@ -1938,51 +1587,25 @@ public class MainActivity extends Activity {
         }
     }
 
-    private LinearLayout assistantTabs() {
-        LinearLayout tabs = new LinearLayout(this);
-        tabs.setOrientation(LinearLayout.HORIZONTAL);
-        tabs.setPadding(0, dp(SPACE_M), 0, dp(SPACE_S));
-        tabs.addView(tabButton("系統動作", 0));
-        tabs.addView(tabButton("User App", 1));
-        tabs.addView(tabButton("System App", 2));
-        return tabs;
-    }
-
-    private MaterialButton tabButton(String label, int tab) {
-        MaterialButton button = new MaterialButton(this);
-        button.setText(label);
-        styleButton(button, assistantTab == tab, true);
-        button.setOnClickListener(view -> {
-            if (assistantTab == tab) {
-                return;
-            }
-            assistantTab = tab;
-            showAssistantPage();
-        });
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), 1f);
-        params.setMargins(dp(SPACE_XS), 0, dp(SPACE_XS), 0);
-        button.setLayoutParams(params);
-        return button;
-    }
-
-    private void addSystemActions(LinearLayout box) {
-        box.addView(targetCard("小助手", "啟動系統預設 android.intent.action.ASSIST", Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST, null, null));
-        box.addView(targetCard("語音助手", "啟動 android.intent.action.VOICE_COMMAND，實際助手依使用者系統設定", Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE, null, null));
-        box.addView(targetCard("最近應用", "送出 KEYCODE_APP_SWITCH", Config.TARGET_PREFIX_ACTION + Config.ACTION_RECENTS, null, null));
-        box.addView(targetCard("螢幕截圖", "送出 KEYCODE_SYSRQ", Config.TARGET_PREFIX_ACTION + Config.ACTION_SCREENSHOT, null, null));
-        box.addView(targetCard("手電筒", "透過 CameraManager 切換背面閃光燈", Config.TARGET_PREFIX_ACTION + Config.ACTION_FLASHLIGHT, null, null));
+    private void addSystemActions(LinearLayout list) {
+        list.addView(targetCard(list, "小助手", "啟動系統預設 android.intent.action.ASSIST", Config.TARGET_PREFIX_ACTION + Config.ACTION_DEFAULT_ASSIST, null));
+        list.addView(targetCard(list, "語音助手", "啟動 android.intent.action.VOICE_COMMAND，實際助手依使用者系統設定", Config.TARGET_PREFIX_ACTION + Config.ACTION_GOOGLE_VOICE, null));
+        list.addView(targetCard(list, "最近應用", "送出 KEYCODE_APP_SWITCH", Config.TARGET_PREFIX_ACTION + Config.ACTION_RECENTS, null));
+        list.addView(targetCard(list, "螢幕截圖", "送出 KEYCODE_SYSRQ", Config.TARGET_PREFIX_ACTION + Config.ACTION_SCREENSHOT, null));
+        list.addView(targetCard(list, "手電筒", "透過 CameraManager 切換背面閃光燈", Config.TARGET_PREFIX_ACTION + Config.ACTION_FLASHLIGHT, null));
     }
 
     private String shellQuote(String value) {
         return "'" + value.replace("'", "'\\''") + "'";
     }
 
-    private void addAppList(LinearLayout box, boolean systemApps) {
+    private void addAppList(LinearLayout list, TextView header, boolean systemApps) {
         List<ApplicationInfo> apps = installedApps(systemApps);
-        box.addView(text((systemApps ? "系統應用" : "使用者應用") + "：" + apps.size() + " 個", 14, true));
+        header.setText((systemApps ? "系統應用" : "使用者應用") + "：" + apps.size() + " 個");
+        header.setVisibility(View.VISIBLE);
         for (ApplicationInfo app : apps) {
             String label = String.valueOf(app.loadLabel(getPackageManager()));
-            box.addView(targetCard(label, app.packageName, Config.TARGET_PREFIX_APP + app.packageName, app.loadIcon(getPackageManager()), null));
+            list.addView(targetCard(list, label, app.packageName, Config.TARGET_PREFIX_APP + app.packageName, app.loadIcon(getPackageManager())));
         }
     }
 
@@ -2006,9 +1629,9 @@ public class MainActivity extends Activity {
         return result;
     }
 
-    private MaterialCardView targetCard(String title, String description, String target, Drawable icon, String fallbackIconText) {
+    private MaterialCardView targetCard(ViewGroup parent, String title, String description, String target, Drawable icon) {
         boolean selected = target.equals(prefs.getString(Config.KEY_ASSISTANT_TARGET, Config.ASSISTANT_TARGET_DEFAULT));
-        return choiceCard(title, description, icon, selected, view -> {
+        return choiceCard(parent, title, description, icon, selected, view -> {
             prefs.edit().putString(Config.KEY_ASSISTANT_TARGET, target).commit();
             showToast("已選擇：" + title);
             showAssistantPage();
@@ -2047,35 +1670,21 @@ public class MainActivity extends Activity {
     }
 
     private void showSettingsDialog() {
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(DIALOG_PADDING_H), dp(DIALOG_PADDING_TOP), dp(DIALOG_PADDING_H), 0);
-
-        MaterialSwitch autoCheck = switchView("自動檢測更新");
+        View content = getLayoutInflater().inflate(R.layout.dialog_settings, null);
+        MaterialSwitch autoCheck = content.findViewById(R.id.dialog_auto_check);
         autoCheck.setChecked(prefs.getBoolean(Config.KEY_AUTO_CHECK_UPDATES, true));
         autoCheck.setOnCheckedChangeListener((buttonView, checked) ->
                 prefs.edit().putBoolean(Config.KEY_AUTO_CHECK_UPDATES, checked).apply());
-        content.addView(autoCheck);
-
-        TextView description = detailText("開啟後，啟動 App 時會檢查 GitHub 最新正式 Release。偵測到新版本時會顯示通知。");
-        description.setPadding(0, 0, 0, dp(SPACE_M));
-        content.addView(description);
-
-        MaterialButton checkNow = new MaterialButton(this);
-        checkNow.setText("手動檢查更新");
-        styleButton(checkNow, false, false);
+        MaterialButton checkNow = content.findViewById(R.id.dialog_check_now);
         checkNow.setOnClickListener(view -> {
             checkNow.setEnabled(false);
             checkForUpdates(true, () -> checkNow.setEnabled(true));
         });
-        content.addView(checkNow);
-
-        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+        showThemedDialog(new MaterialAlertDialogBuilder(this)
                 .setTitle("設定")
                 .setView(content)
                 .setPositiveButton("關閉", null)
-                .create();
-        showThemedDialog(dialog);
+                .create());
     }
 
     private void checkForUpdates(boolean userInitiated) {
@@ -2193,25 +1802,21 @@ public class MainActivity extends Activity {
     }
 
     private void showAboutDialog() {
-        String message = "作者：XPRAMT\nGitHub：https://github.com/XPRAMT/RedMagicX\n版本：" + versionName();
-        SpannableString spannable = new SpannableString(message);
         String url = "https://github.com/XPRAMT/RedMagicX";
+        String message = "作者：XPRAMT\nGitHub：" + url + "\n版本：" + versionName();
+        SpannableString spannable = new SpannableString(message);
         int start = message.indexOf(url);
         if (start >= 0) {
             spannable.setSpan(new URLSpan(url), start, start + url.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        TextView content = text("", 14, false);
+        TextView content = (TextView) getLayoutInflater().inflate(R.layout.dialog_about, null);
         content.setText(spannable);
-        content.setLinkTextColor(color(androidx.appcompat.R.attr.colorPrimary));
         content.setMovementMethod(LinkMovementMethod.getInstance());
-        content.setPadding(dp(DIALOG_PADDING_H), dp(DIALOG_PADDING_TOP), dp(DIALOG_PADDING_H), 0);
-
-        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+        showThemedDialog(new MaterialAlertDialogBuilder(this)
                 .setTitle("關於")
                 .setView(content)
                 .setPositiveButton("確定", null)
-                .create();
-        showThemedDialog(dialog);
+                .create());
     }
 
     private void showThemedDialog(AlertDialog dialog) {
@@ -2227,205 +1832,22 @@ public class MainActivity extends Activity {
         }
     }
 
-    private LinearLayout sectionSwitch(String title, String description, String process, String parameter, String key) {
-        LinearLayout box = sectionBox();
-        MaterialSwitch sw = switchView(title);
-        sw.setChecked(prefs.getBoolean(key, true));
-        sw.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            prefs.edit().putBoolean(key, isChecked).commit();
-            showToast("已保存 LSPosed 設定：" + title);
-        });
-        box.addView(sw);
-        box.addView(detailText(description));
-        addDetailField(box, "作用進程", process);
-        addDetailField(box, "參數", parameter);
-        return box;
-    }
-
-    private LinearLayout styleSection() {
-        LinearLayout box = sectionBox();
-        box.addView(text("VoWiFi 圖標樣式", 18, true));
-        box.addView(detailText("控制 SystemUI 選用哪一套 VoWiFi / VoLTE 圖標。GEN_BD 模式會讀取下列參數；Hook array 模式則直接替換 IMS icon array。"));
-        addDetailField(box, "作用進程", "com.android.systemui");
-        addDetailField(box, "參數", "persist.custom.variant.id=GEN_BD");
-
-        RadioGroup group = new RadioGroup(this);
-        group.setOrientation(RadioGroup.VERTICAL);
-        addRadio(group, Config.STYLE_DEFAULT, "預設：不改 persist.custom.variant.id，通常使用 vowifi / vowifi_card1/2/12");
-        addRadio(group, Config.STYLE_GEN_BD, "GEN_BD：等效 persist.custom.variant.id=GEN_BD，使用 bd_stat_vowifi / bd_vowifi_card1/2/12");
-        addRadio(group, Config.STYLE_ARRAY_HOOK, "Hook array：替換 ImsUpdateFeature 的 IMS icon array；已實測雙卡可用，依賴目前 ROM 方法名");
-
-        String current = prefs.getString(Config.KEY_ICON_STYLE, Config.STYLE_GEN_BD);
-        int checkedId = styleToId(current);
-        if (checkedId != 0) {
-            group.check(checkedId);
-        }
-        group.setOnCheckedChangeListener((radioGroup, checked) -> {
-            prefs.edit().putString(Config.KEY_ICON_STYLE, idToStyle(checked)).commit();
-            showToast("已保存 LSPosed 設定：VoWiFi 圖標樣式");
-        });
-        box.addView(group);
-        return box;
-    }
-
-    private LinearLayout actionSection() {
-        LinearLayout box = sectionBox();
-        box.addView(text("重啟", 18, true));
-        box.addView(detailText("開關變更會自動保存到 LSPosed 設定。重啟 Settings / SystemUI 後才會重新讀取設定；重啟操作需要 root 權限。"));
-
-        MaterialButton restartSettings = new MaterialButton(this);
-        restartSettings.setText("重啟 Settings");
-        styleButton(restartSettings, false, false);
-        restartSettings.setOnClickListener(view -> runRootCommand(
-                "am force-stop com.android.settings",
-                "已執行：am force-stop com.android.settings",
-                "重啟 Settings 失敗"
-        ));
-        box.addView(restartSettings);
-
-        MaterialButton restartSystemUi = new MaterialButton(this);
-        restartSystemUi.setText("重啟 SystemUI");
-        styleButton(restartSystemUi, false, false);
-        restartSystemUi.setOnClickListener(view -> runRootCommand(
-                "kill -9 $(pidof com.android.systemui)",
-                "已執行：kill -9 $(pidof com.android.systemui)",
-                "重啟 SystemUI 失敗"
-        ));
-        box.addView(restartSystemUi);
-
-        MaterialButton restartBoth = new MaterialButton(this);
-        restartBoth.setText("重啟 Settings + SystemUI");
-        styleButton(restartBoth, false, false);
-        restartBoth.setOnClickListener(view -> runRootCommand(
-                "am force-stop com.android.settings; kill -9 $(pidof com.android.systemui)",
-                "已重啟 Settings + SystemUI",
-                "重啟失敗"
-        ));
-        box.addView(restartBoth);
-
-        return box;
-    }
-
-    /** Tonal button; a selected tab gets the default filled (primary) look. */
-    private void styleButton(MaterialButton button, boolean selected, boolean compact) {
-        button.setAllCaps(false);
-        if (!selected) {
-            button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-                    color(com.google.android.material.R.attr.colorSecondaryContainer)));
-            button.setTextColor(color(com.google.android.material.R.attr.colorOnSecondaryContainer));
-        }
-        if (button.getLayoutParams() == null) {
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-            params.setMargins(0, dp(ITEM_GAP), 0, 0);
-            button.setLayoutParams(params);
-        }
-    }
-
-    private void addRadio(RadioGroup group, String style, String label) {
-        MaterialRadioButton button = new MaterialRadioButton(this);
-        button.setId(styleToId(style));
-        button.setText(label);
-        button.setTextSize(14);
-        group.addView(button);
-    }
-
     private int styleToId(String style) {
-        if (Config.STYLE_GEN_BD.equals(style)) return 1002;
-        if (Config.STYLE_ARRAY_HOOK.equals(style)) return 1003;
-        return 1001;
+        if (Config.STYLE_GEN_BD.equals(style)) return R.id.vowifi_style_gen_bd;
+        if (Config.STYLE_ARRAY_HOOK.equals(style)) return R.id.vowifi_style_array_hook;
+        return R.id.vowifi_style_default;
     }
 
     private String idToStyle(int id) {
-        if (id == 1002) return Config.STYLE_GEN_BD;
-        if (id == 1003) return Config.STYLE_ARRAY_HOOK;
+        if (id == R.id.vowifi_style_gen_bd) return Config.STYLE_GEN_BD;
+        if (id == R.id.vowifi_style_array_hook) return Config.STYLE_ARRAY_HOOK;
         return Config.STYLE_DEFAULT;
     }
 
     // Extra top spacing before every section title except the first child of a section box (SECTION_TITLE_TOP_SPACING_DP).
 
-    private boolean isSectionTitle(View child) {
-        if (!(child instanceof TextView)) return false;
-        TextView tv = (TextView) child;
-        android.graphics.Typeface tf = tv.getTypeface();
-        boolean bold = tf != null && tf.isBold();
-        float sp = tv.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
-        return bold && sp >= 17f;
-    }
-
-    private LinearLayout sectionBox() {
-        LinearLayout box = new LinearLayout(this) {
-            @Override
-            public void addView(View child, int index, ViewGroup.LayoutParams params) {
-                if (getChildCount() > 0 && isSectionTitle(child)) {
-                    LinearLayout.LayoutParams lp = params instanceof LinearLayout.LayoutParams
-                            ? (LinearLayout.LayoutParams) params
-                            : new LinearLayout.LayoutParams(params);
-                    lp.topMargin = Math.max(lp.topMargin, dp(SECTION_TITLE_TOP_SPACING_DP));
-                    params = lp;
-                }
-                super.addView(child, index, params);
-            }
-        };
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        ));
-        return box;
-    }
-
     private int color(int attr) {
         return MaterialColors.getColor(this, attr, Color.MAGENTA);
-    }
-
-    private MaterialSwitch switchView(String title) {
-        MaterialSwitch toggle = new MaterialSwitch(this);
-        toggle.setText(title);
-        toggle.setTextSize(16);
-        toggle.setTextColor(color(com.google.android.material.R.attr.colorOnSurface));
-        toggle.setMinHeight(dp(56));
-        return toggle;
-    }
-
-    private TextView text(String value, int sp, boolean bold) {
-        TextView textView = new TextView(this);
-        textView.setText(value);
-        textView.setTextSize(sp);
-        textView.setLineSpacing(0, 1.12f);
-        boolean sectionLabel = bold && sp >= 17;
-        textView.setTextColor(color(sectionLabel
-                ? androidx.appcompat.R.attr.colorPrimary
-                : com.google.android.material.R.attr.colorOnSurface));
-        if (bold) {
-            textView.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        }
-        return textView;
-    }
-
-    private TextView detailText(String value) {
-        TextView textView = text(value, 13, false);
-        textView.setGravity(Gravity.START);
-        textView.setTextColor(color(com.google.android.material.R.attr.colorOnSurfaceVariant));
-        return textView;
-    }
-
-    private void addDetailField(LinearLayout box, String label, String value) {
-        TextView labelView = text(label, 14, true);
-        labelView.setPadding(0, dp(FIELD_LABEL_TOP), 0, 0);
-        box.addView(labelView);
-        box.addView(detailText(value));
-    }
-
-    private View verticalSpace(int dp) {
-        View view = new View(this);
-        view.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(dp)
-        ));
-        return view;
     }
 
     private int dp(int value) {

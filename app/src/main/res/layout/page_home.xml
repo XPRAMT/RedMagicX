@@ -1,0 +1,269 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_vowifi"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_vowifi_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_vowifi_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_volume"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_volume_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_volume_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_bt"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_bt_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_bt_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_assistant"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_assistant_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_assistant_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_launcher"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_launcher_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_launcher_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_theme"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_theme_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_theme_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_adb"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_adb_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_adb_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_quick"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_quick_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_quick_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/home_other"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.FeatureTitle"
+                android:text="@string/home_other_title" />
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/home_other_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

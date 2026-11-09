@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/adb_intro" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/adb_developer_switch"
+                style="@style/Widget.App.Switch"
+                android:enabled="false"
+                android:text="@string/adb_developer" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/adb_developer_desc" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/adb_fake_switch"
+                style="@style/Widget.App.Switch"
+                android:enabled="false"
+                android:text="@string/adb_fake" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/adb_fake_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/adb_system_label" />
+            <TextView
+                android:id="@+id/adb_system_value"
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/adb_system_value" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/adb_wireless_switch"
+                style="@style/Widget.App.Switch"
+                android:enabled="false"
+                android:text="@string/adb_wireless" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/adb_wireless_desc" />
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/adb_port_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap_item"
+                android:hint="@string/adb_port_hint">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/adb_port"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:singleLine="true" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/adb_status_label" />
+            <TextView
+                android:id="@+id/adb_status_value"
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/adb_status_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/adb_endpoint_label" />
+            <TextView
+                android:id="@+id/adb_endpoint_value"
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/adb_endpoint_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/adb_command_label" />
+            <TextView
+                android:id="@+id/adb_command_value"
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/adb_command_value" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/adb_copy"
+                style="@style/Widget.App.Button"
+                android:enabled="false"
+                android:text="@string/adb_copy" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/adb_apply"
+                style="@style/Widget.App.Button"
+                android:text="@string/adb_apply" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/adb_install_switch"
+                style="@style/Widget.App.Switch"
+                android:enabled="false"
+                android:text="@string/adb_install" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/adb_install_desc" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

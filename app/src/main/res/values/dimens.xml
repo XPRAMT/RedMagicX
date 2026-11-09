@@ -1,0 +1,15 @@
+﻿<resources>
+    <!-- Spacing scale 4 / 8 / 12 / 16 / 20 / 24 (see AGENTS.md "UI"). -->
+    <dimen name="gap_xs">4dp</dimen>
+    <dimen name="gap_small">8dp</dimen>
+    <dimen name="gap_item">12dp</dimen>
+    <dimen name="gap_large">16dp</dimen>
+    <dimen name="gap_group">24dp</dimen>
+    <dimen name="page_margin_h">20dp</dimen>
+    <dimen name="page_margin_top">16dp</dimen>
+    <dimen name="page_margin_bottom">24dp</dimen>
+    <dimen name="card_padding_h">16dp</dimen>
+    <dimen name="card_padding_v">16dp</dimen>
+    <dimen name="dialog_padding_h">24dp</dimen>
+    <dimen name="dialog_padding_top">8dp</dimen>
+</resources>

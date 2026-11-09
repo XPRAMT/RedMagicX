@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/launcher_hide_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/launcher_hide" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/launcher_hide_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/launcher_hide_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/launcher_hide_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/launcher_hide_methods_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/launcher_hide_methods_value" />
+            <TextView
+                style="@style/Widget.App.Title"
+                android:text="@string/launcher_change_title" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/launcher_change_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/launcher_change_cmd_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/launcher_change_cmd_value" />
+            <TextView
+                android:id="@+id/launcher_empty"
+                style="@style/Widget.App.Description"
+                android:layout_marginTop="@dimen/gap_item"
+                android:visibility="gone"
+                android:text="@string/launcher_empty" />
+            <LinearLayout
+                android:id="@+id/launcher_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

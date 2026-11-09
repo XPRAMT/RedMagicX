@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/gap_item">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/card_padding_h"
+            android:paddingTop="@dimen/card_padding_v"
+            android:paddingEnd="@dimen/card_padding_h"
+            android:paddingBottom="@dimen/card_padding_v">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/theme_select_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/theme_select" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/theme_select_desc" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/theme_splash_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/theme_splash" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/theme_splash_desc" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/theme_trial_switch"
+                style="@style/Widget.App.Switch"
+                android:text="@string/theme_trial" />
+            <TextView
+                style="@style/Widget.App.Description"
+                android:text="@string/theme_trial_desc" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/theme_elements_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/theme_elements_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/theme_process_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/theme_process_value" />
+            <TextView
+                style="@style/Widget.App.FieldLabel"
+                android:text="@string/theme_condition_label" />
+            <TextView
+                style="@style/Widget.App.FieldValue"
+                android:text="@string/theme_condition_value" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/theme_open_beautify"
+                style="@style/Widget.App.Button"
+                android:text="@string/theme_open_beautify" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>
